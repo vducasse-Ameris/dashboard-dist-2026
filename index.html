@@ -1975,7 +1975,8 @@ import micropip
 await micropip.install('openpyxl')
 `);
     statusText.textContent = 'Cargando pipeline…';
-    const pipelineSrc = await (await fetch('./pipeline.py')).text();
+    // cache-bust: el browser cacheaba pipeline.py y nos quedaba con una versión vieja.
+    const pipelineSrc = await (await fetch('./pipeline.py?v=' + Date.now(), { cache: 'no-store' })).text();
     py.FS.writeFile('pipeline.py', pipelineSrc);
     py.runPython('import pipeline');
 
