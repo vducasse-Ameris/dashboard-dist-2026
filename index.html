@@ -1813,7 +1813,7 @@ function renderMonthly(){
   var st=window._MONTH; var MN=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   var pC={HP:'#1B4B9B',MP:'#2E6BAF',LP:'#5A93CC','?':'#8FA3BE'}; var rows; var titleStr;
   if(!st.mo){
-    var map={}; for(var mo=1;mo<=12;mo++){(monthlyDetailData[st.yr+'_'+mo]||[]).forEach(function(r){if(!map[r.nombre])map[r.nombre]={nombre:r.nombre,prio:r.prio,reun:0,subtemas:[]};map[r.nombre].reun+=r.reun;(r.subtemas||[]).forEach(function(s){if(map[r.nombre].subtemas.indexOf(s)<0)map[r.nombre].subtemas.push(s);});});}
+    var map={}; for(var mo=1;mo<=12;mo++){(monthlyDetailData[st.yr+'_'+mo]||[]).forEach(function(r){if(!map[r.nombre])map[r.nombre]={nombre:r.nombre,prio:r.prio,tipo:r.tipo,reun:0,subtemas:[]};map[r.nombre].reun+=r.reun;(r.subtemas||[]).forEach(function(s){if(map[r.nombre].subtemas.indexOf(s)<0)map[r.nombre].subtemas.push(s);});});}
     rows=Object.values(map); titleStr=st.yr+' &mdash; Todo el a&ntilde;o';
   } else { rows=monthlyDetailData[st.yr+'_'+st.mo]||[]; titleStr=MN[st.mo]+' '+st.yr; }
   rows=rows.filter(function(r){return st.prio==='ALL'||r.prio===st.prio;});
@@ -2018,13 +2018,6 @@ data = pipeline.compute_data(xlsm_bytes)
 json.dumps(data, ensure_ascii=False, default=str)
 `);
     const data = JSON.parse(jsonStr);
-    // ── DEBUG ──
-    try {
-      const sample = Object.values(data.monthlyDetailData).flat().slice(0, 200);
-      const counts = sample.reduce((acc, r) => { acc[r.tipo] = (acc[r.tipo]||0)+1; return acc; }, {});
-      console.log('[debug] tipo counts (primeros 200):', counts);
-      console.log('[debug] pipeline _debug:', data._debug);
-    } catch (e) { console.warn('[debug] log fallo', e); }
     applyData(data);
     document.body.classList.remove('no-data');
     spinner.style.display = 'none';

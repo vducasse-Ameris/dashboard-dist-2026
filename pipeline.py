@@ -145,42 +145,21 @@ def _load_foto(xls, sheet: str) -> pd.DataFrame:
     # última sección vista.
     current_section: str | None = None
     tipos: list[str | None] = []
-    sections_found = []
-    for i, cliente_val in enumerate(df["Cliente"]):
+    for cliente_val in df["Cliente"]:
         cl = str(cliente_val).strip().lower() if pd.notna(cliente_val) else ""
         if "distribu" in cl:
             current_section = "Dist"
-            sections_found.append([i, "Dist", str(cliente_val)])
         elif cl.startswith("institucional"):  # "Institucionales" / "Institucional"
             current_section = "Inst"
-            sections_found.append([i, "Inst", str(cliente_val)])
         tipos.append(current_section)
     df["_tipo"] = tipos
-    # DEBUG: stash debug info en atributo del df para colectar después
-    df.attrs["_debug"] = {
-        "sheet": sheet,
-        "rows": len(df),
-        "sections_found": sections_found,
-        "first_10_clientes": [str(x) for x in df["Cliente"].head(10).tolist()],
-        "rows_155_to_160": [str(x) for x in df["Cliente"].iloc[150:165].tolist()] if len(df) > 160 else [],
-        "tipos_before_filter": {"Dist": tipos.count("Dist"), "Inst": tipos.count("Inst"), "None": tipos.count(None)},
-    }
 
     # Ahora sí filtramos los separadores y totales para quedarnos sólo con clientes
-    df_before_filter = df.copy()
     df = df[
         df["Cliente"].notna()
         & ~df["Cliente"].astype(str).str.contains("Total|Distribu|Inst", case=False, na=False)
     ].fillna(0)
     df["_cn"] = df["Cliente"].astype(str).str.strip().str.lower()
-    # DEBUG después del filtro
-    after_counts = df["_tipo"].value_counts(dropna=False).to_dict()
-    sample_inst = df[df["_tipo"] == "Inst"]["Cliente"].head(5).tolist()
-    sample_dist = df[df["_tipo"] == "Dist"]["Cliente"].head(5).tolist()
-    df.attrs["_debug"]["after_filter_rows"] = len(df)
-    df.attrs["_debug"]["tipos_after_filter"] = {str(k): int(v) for k, v in after_counts.items()}
-    df.attrs["_debug"]["sample_inst_after"] = [str(x) for x in sample_inst]
-    df.attrs["_debug"]["sample_dist_after"] = [str(x) for x in sample_dist]
     return df
 
 
@@ -234,10 +213,8 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     df24 = _load_foto(xls, "Clientes foto 2024")
     try:
         df23 = _load_foto(xls, "Clientes foto 2023")
-        debug26_25_24_23 = [df26.attrs.get("_debug"), df25.attrs.get("_debug"), df24.attrs.get("_debug"), df23.attrs.get("_debug")]
     except Exception:
         df23 = pd.DataFrame()
-        debug26_25_24_23 = [df26.attrs.get("_debug"), df25.attrs.get("_debug"), df24.attrs.get("_debug"), None]
 
     prio_dict = dict(zip(df26["_cn"], df26["Prioridad"]))
     name_dict = dict(zip(df26["_cn"], df26["Cliente"]))
@@ -520,5 +497,4 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "n_clientes": int(len(df26)),
             "fecha_corte": str(today_ts.date()),
         },
-        "_debug": debug26_25_24_23,
     }
