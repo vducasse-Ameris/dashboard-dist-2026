@@ -295,12 +295,12 @@ footer {
 <!-- ═══════════════════════════════════════════════ TAB 1: RESUMEN -->
 <div class="panel active" id="tab-resumen">
 
-  <div class="section-label">Visión general Q1 2026</div>
+  <div class="section-label" data-q-section="vision-general">Visión general Q1 2026</div>
   <div class="kpi-row kpi-row-4">
     <div class="kpi accent">
-      <div class="kpi-label">Reuniones Q1 2026</div>
+      <div class="kpi-label" data-q-text="reuniones-q-label">Reuniones Q1 2026</div>
       <div class="kpi-value" data-kpi="q1-value">110</div>
-      <div class="kpi-sub">vs 98 en Q1 2025 (+11%)</div>
+      <div class="kpi-sub" data-q-text="reuniones-q-vs">vs 98 en Q1 2025 (+11%)</div>
     </div>
     <div class="kpi">
       <div class="kpi-label">Clientes activos Q1</div>
@@ -319,7 +319,7 @@ footer {
     </div>
   
     <div class="kpi" style="border-left:3px solid #0E7A4E;">
-      <div class="kpi-label">Reuniones 2026 YTD</div>
+      <div class="kpi-label" data-q-text="reuniones-ytd-label">Reuniones 2026 YTD</div>
       <div class="kpi-value" style="color:#0E7A4E;" data-kpi="ytd-value">167</div>
       <div class="kpi-sub pos" data-kpi="ytd-sub">Q1: 109 &nbsp;&middot;&nbsp; Abr: 19</div>
     </div></div>
@@ -683,7 +683,7 @@ footer {
       <div id="clients-container"></div>
     </div>
     <div class="card">
-      <div class="card-title">Top clientes Q1 2026 por segmento</div>
+      <div class="card-title" data-q-text="top-clientes-q-card">Top clientes Q1 2026 por segmento</div>
       <div class="card-sub">✓ = cumplió meta individual del trimestre</div>
       <div class="ftabs">
         <button class="ftab active" onclick="setPrioClients('HP',this)">HP</button>
@@ -2064,26 +2064,77 @@ function applyData(d) {
   // Estos quedan idénticos a los inline (no son data sensible — son aliases JS):
   window.data2024 = d.data['2024']; window.data2025 = d.data['2025']; window.data2026 = d.data['2026'];
 
-  // 2) Re-renderizar el line chart (3 datasets: 2024/2025/2026)
+  // 2) Re-renderizar el line chart usando los 3 años más recientes disponibles
+  // (en 2027 esto pasará a mostrar 2025/2026/2027 automáticamente).
   try {
-    if (typeof lineChart !== 'undefined' && lineChart && lineChart.data) {
-      lineChart.data.datasets[0].data = d.data['2024'];
-      lineChart.data.datasets[1].data = d.data['2025'];
-      lineChart.data.datasets[2].data = d.data['2026'];
+    if (typeof lineChart !== 'undefined' && lineChart && lineChart.data && d.years) {
+      var yrs3 = d.years.slice(-3);
+      for (var i = 0; i < 3; i++) {
+        var yr = yrs3[i];
+        if (yr == null) continue;
+        var ds = lineChart.data.datasets[i];
+        if (!ds) continue;
+        ds.label = String(yr);
+        ds.data = d.data[String(yr)] || [];
+      }
       lineChart.update();
     }
   } catch (e) { console.warn('lineChart update fallo', e); }
 
-  // 3) KPIs hardcodeados en el DOM
+  // 3) KPIs + labels Q-rolling
   try {
     var k = d.kpi || {};
+    var cq = d.currentQ || { label: 'Q1', year: 2026, q: 1, label_year_prev: 'Q1' };
+    var cy = d.currentYear || 2026;
+
+    // KPI principal del trimestre: muestra el total del Q actual completo
     var elQ1 = document.querySelector('[data-kpi="q1-value"]');
-    if (elQ1) elQ1.textContent = k.q1;
+    if (elQ1) elQ1.textContent = (cq.reuniones != null ? cq.reuniones : k.q1);
+
+    // KPI Reuniones 2026 YTD: número
     var elYtd = document.querySelector('[data-kpi="ytd-value"]');
     if (elYtd) elYtd.textContent = k.ytd;
+
+    // Sub del YTD: muestra hasta el mes anterior con su valor
     var elYtdSub = document.querySelector('[data-kpi="ytd-sub"]');
-    if (elYtdSub) elYtdSub.innerHTML = 'Q1: ' + k.q1 + ' &nbsp;&middot;&nbsp; Abr: ' + k.abr + ' &nbsp;&middot;&nbsp; May: ' + k.may;
-  } catch (e) { console.warn('KPI update fallo', e); }
+    if (elYtdSub) {
+      var MES_ABBR = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      var dCur = d.data && d.data[String(cy)] ? d.data[String(cy)] : [];
+      var parts = [];
+      // Mostrar Q del trimestre completo + 1 o 2 meses posteriores con datos
+      parts.push(cq.label.split(' ')[0] + ': ' + (cq.reuniones || 0));
+      var startM = cq.q * 3;  // primer mes después del Q completo (idx 0-based en MES_ABBR)
+      for (var i = startM; i < 12 && dCur[i] > 0; i++) {
+        parts.push(MES_ABBR[i] + ': ' + dCur[i]);
+      }
+      elYtdSub.innerHTML = parts.join(' &nbsp;&middot;&nbsp; ');
+    }
+
+    // Labels que rolan con el trimestre
+    var setText = function(sel, text) {
+      document.querySelectorAll(sel).forEach(function(el) { el.textContent = text; });
+    };
+    setText('[data-q-section="vision-general"]', 'Visión general ' + cq.label);
+    setText('[data-q-text="reuniones-q-label"]', 'Reuniones ' + cq.label);
+    setText('[data-q-text="reuniones-ytd-label"]', 'Reuniones ' + cy + ' YTD');
+    setText('[data-q-text="top-clientes-q-card"]', 'Top clientes ' + cq.label + ' por segmento');
+
+    // Sub "vs N en QX YYYY-1 (+P%)"
+    var elVs = document.querySelector('[data-q-text="reuniones-q-vs"]');
+    if (elVs && cq.reuniones_prev != null) {
+      var sign = (cq.pct_change || 0) >= 0 ? '+' : '';
+      elVs.textContent = 'vs ' + cq.reuniones_prev + ' en ' + cq.label_year_prev + ' (' + sign + (cq.pct_change || 0) + '%)';
+    }
+
+    // Header badge: "Q1 2026 · Mar 2026" → "Q? YYYY · Mes YYYY"
+    var elBadge = document.getElementById('update-badge');
+    if (elBadge && d.meta && d.meta.fecha_corte) {
+      var MES_FULL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+      var parts2 = d.meta.fecha_corte.split('-');
+      var mesIdx = parseInt(parts2[1], 10) - 1;
+      elBadge.textContent = cq.label + ' · ' + MES_FULL[mesIdx] + ' ' + parts2[0];
+    }
+  } catch (e) { console.warn('KPI/Q-label update fallo', e); }
 
   // 4) Recontact bars (texto + barra + %)
   try {

@@ -208,27 +208,43 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     # ── LOAD ────────────────────────────────────────────────────────────
     xls = pd.ExcelFile(xls_handle, engine="openpyxl")
 
-    df26 = _load_foto(xls, "Clientes foto 2026")
-    df25 = _load_foto(xls, "Clientes foto 2025")
-    df24 = _load_foto(xls, "Clientes foto 2024")
-    try:
-        df23 = _load_foto(xls, "Clientes foto 2023")
-    except Exception:
-        df23 = pd.DataFrame()
+    # Auto-detectar años disponibles desde los nombres de las hojas
+    # "Clientes foto YYYY". Soporta cualquier año (2023, 2024, ... 2027, ...).
+    import re as _re
+    foto_sheets = {}
+    for s in xls.sheet_names:
+        m = _re.match(r"Clientes foto (\d{4})", s)
+        if m:
+            foto_sheets[int(m.group(1))] = s
+    years_avail = sorted(foto_sheets.keys())
+    if not years_avail:
+        raise ValueError("No encontré ninguna hoja 'Clientes foto YYYY' en el Excel.")
 
-    prio_dict = dict(zip(df26["_cn"], df26["Prioridad"]))
-    name_dict = dict(zip(df26["_cn"], df26["Cliente"]))
-    # tipo viene de la sección del Excel; default a "Dist" si falta
-    tipo_dict = {cn: (t or "Dist") for cn, t in zip(df26["_cn"], df26["_tipo"])}
+    year_dfs = {yr: _load_foto(xls, foto_sheets[yr]) for yr in years_avail}
 
-    # Apuntes — los nombres de las hojas tienen espacios raros, los probamos
+    # Año "actual" = año de hoy si tiene hoja, si no el más reciente disponible
+    cur_year = today_ts.year if today_ts.year in year_dfs else max(year_dfs.keys())
+    df_cur = year_dfs[cur_year]
+    # Aliases por legibilidad: y0=actual, y1=1 año atrás, etc.
+    def _df_offset(off):
+        return year_dfs.get(cur_year - off, pd.DataFrame())
+    df_p1 = _df_offset(1)
+    df_p2 = _df_offset(2)
+    df_p3 = _df_offset(3)
+
+    prio_dict = dict(zip(df_cur["_cn"], df_cur.get("Prioridad", pd.Series(dtype=object))))
+    name_dict = dict(zip(df_cur["_cn"], df_cur["Cliente"]))
+    tipo_dict = {cn: (t or "Dist") for cn, t in zip(df_cur["_cn"], df_cur["_tipo"])}
+
+    # Apuntes — los nombres de las hojas tienen espacios variables, los probamos
+    # con un patrón laxo (`Apuntes\s+YYYY\s*`).
+    apuntes_sheets = {}
+    for s in xls.sheet_names:
+        m = _re.match(r"Apuntes\s+(\d{4})\s*$", s)
+        if m:
+            apuntes_sheets[int(m.group(1))] = s
     ap_dfs = []
-    for sheet_name, yr in [
-        ("Apuntes  2026", 2026),
-        ("Apuntes  2025", 2025),
-        ("Apuntes 2024 ", 2024),
-        ("Apuntes  2023", 2023),
-    ]:
+    for yr, sheet_name in apuntes_sheets.items():
         try:
             df = pd.read_excel(xls, sheet_name=sheet_name)
             df["_year"] = yr
@@ -250,20 +266,48 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     )
     last_contact = df_ap.groupby("cn")["Fecha"].max() if len(df_ap) else pd.Series(dtype="datetime64[ns]")
 
-    # ── MONTHLY SUMS ────────────────────────────────────────────────────
-    d24 = _monthly(df24)
-    d25 = _monthly(df25)
-    d26_m = _monthly(df26)
-    ytd = sum(d26_m[: today_ts.month])
-    q1 = sum(d26_m[:3])
+    # ── MONTHLY SUMS (por año disponible) ───────────────────────────────
+    monthly_by_year = {yr: _monthly(year_dfs[yr]) for yr in years_avail}
+    d_cur = monthly_by_year[cur_year]
+    ytd = sum(d_cur[: today_ts.month])
 
-    # ── TOPS ────────────────────────────────────────────────────────────
-    clients_2026 = _top10(df26, MESES)
-    clients_2025 = _top10(df25, MESES)
-    clients_2024 = _top10(df24, MESES)
+    # ── ÚLTIMO TRIMESTRE COMPLETO ───────────────────────────────────────
+    # Hoy en QN → último completo es Q(N-1) del mismo año (Q4 año anterior si hoy en Q1)
+    cur_month = today_ts.month
+    if cur_month <= 3:
+        last_q_year, last_q = cur_year - 1, 4
+    elif cur_month <= 6:
+        last_q_year, last_q = cur_year, 1
+    elif cur_month <= 9:
+        last_q_year, last_q = cur_year, 2
+    else:
+        last_q_year, last_q = cur_year, 3
+    last_q_months = list(range((last_q - 1) * 3 + 1, last_q * 3 + 1))
+    last_q_month_names = [MESES[m - 1] for m in last_q_months]
+    last_q_label = f"Q{last_q} {last_q_year}"
+
+    # Q1 del año actual (siempre los 3 primeros meses) — para compat con KPIs viejos
+    q1_cur = sum(d_cur[:3])
+
+    # Suma de reuniones del trimestre completo (en el df del año del Q)
+    df_q = year_dfs.get(last_q_year, df_cur)
+    reuniones_q = sum(int(df_q[m].sum()) if m in df_q.columns else 0 for m in last_q_month_names)
+    df_q_prev = year_dfs.get(last_q_year - 1)
+    reuniones_q_prev = (
+        sum(int(df_q_prev[m].sum()) if m in df_q_prev.columns else 0 for m in last_q_month_names)
+        if df_q_prev is not None and not df_q_prev.empty else 0
+    )
+    pct_change_q = (
+        round((reuniones_q - reuniones_q_prev) / reuniones_q_prev * 100)
+        if reuniones_q_prev else 0
+    )
+
+    # ── TOPS (por año, anual) ───────────────────────────────────────────
+    clients_by_year = {yr: _top10(year_dfs[yr], MESES) for yr in years_avail}
 
     all_t = {}
-    for dfx in [df24, df25, df26]:
+    # Suma todos los años disponibles para "clientsData.all"
+    for dfx in year_dfs.values():
         for _, row in dfx.iterrows():
             all_t[row["_cn"]] = all_t.get(row["_cn"], 0) + sum(
                 float(row.get(m, 0)) for m in MESES if m in dfx.columns
@@ -273,38 +317,59 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         key=lambda x: -x[1],
     )[:10]
 
-    # ── PRIO Q1 ─────────────────────────────────────────────────────────
-    q1c = [m for m in ["Enero", "Febrero", "Marzo"] if m in df26.columns]
-    df26 = df26.copy()
-    df26["_q1"] = df26[q1c].sum(axis=1).astype(float)
+    # ── TOP CLIENTES DEL ÚLTIMO TRIMESTRE COMPLETO ──────────────────────
+    q_cols = [m for m in last_q_month_names if m in df_q.columns]
+    df_q_local = df_q.copy()
+    df_q_local["_qsum"] = df_q_local[q_cols].sum(axis=1).astype(float) if q_cols else 0.0
+    top_q_df = df_q_local.nlargest(10, "_qsum")[["Cliente", "_qsum"]]
+    clients_q = [
+        [str(r["Cliente"]), int(r["_qsum"])]
+        for _, r in top_q_df.iterrows() if r["_qsum"] > 0
+    ]
+
+    # ── PRIO DEL ÚLTIMO TRIMESTRE (top 8 por prio HP/MP/LP) ─────────────
     prio_data = {}
-    for prio in ["HP", "MP", "LP"]:
-        s = df26[df26["Prioridad"] == prio].nlargest(8, "_q1")
-        prio_data[prio] = [
-            [str(r["Cliente"]), int(r["_q1"])] for _, r in s.iterrows() if r["_q1"] > 0
-        ]
+    if "Prioridad" in df_q_local.columns:
+        for prio in ["HP", "MP", "LP"]:
+            s = df_q_local[df_q_local["Prioridad"] == prio].nlargest(8, "_qsum")
+            prio_data[prio] = [
+                [str(r["Cliente"]), int(r["_qsum"])]
+                for _, r in s.iterrows() if r["_qsum"] > 0
+            ]
+    else:
+        prio_data = {"HP": [], "MP": [], "LP": []}
 
-    # ── RECONTACT (2025 → 2026 YTD) ─────────────────────────────────────
-    df25 = df25.copy()
-    df25["_cn2"] = df25["Cliente"].astype(str).str.strip().str.lower()
-    df25["_tot25"] = df25[[m for m in MESES if m in df25.columns]].sum(axis=1).astype(float)
-    had_25 = set(df25[df25["_tot25"] > 0]["_cn2"])
+    # ── RECONTACT (año anterior → año actual YTD) ───────────────────────
+    if not df_p1.empty:
+        df_p1_local = df_p1.copy()
+        df_p1_local["_cn2"] = df_p1_local["Cliente"].astype(str).str.strip().str.lower()
+        df_p1_local["_totp1"] = df_p1_local[[m for m in MESES if m in df_p1_local.columns]].sum(axis=1).astype(float)
+        had_prev = set(df_p1_local[df_p1_local["_totp1"] > 0]["_cn2"])
+    else:
+        had_prev = set()
 
-    df26["_ytd"] = df26[[m for m in MESES[: today_ts.month] if m in df26.columns]].sum(axis=1).astype(float)
-    had_ytd = set(df26[df26["_ytd"] > 0]["_cn"])
+    df_cur = df_cur.copy()
+    df_cur["_ytd"] = df_cur[[m for m in MESES[: today_ts.month] if m in df_cur.columns]].sum(axis=1).astype(float)
+    had_ytd = set(df_cur[df_cur["_ytd"] > 0]["_cn"])
 
     recontact_data = {}
     for prio_low in ["hp", "mp", "lp"]:
-        sub = df26[df26["Prioridad"] == prio_low.upper()]
+        if "Prioridad" not in df_cur.columns:
+            recontact_data[prio_low] = {"yes": [], "no": []}
+            continue
+        sub = df_cur[df_cur["Prioridad"] == prio_low.upper()]
         recontact_data[prio_low] = {
-            "yes": [str(x) for x in sub[sub["_cn"].isin(had_25) & sub["_cn"].isin(had_ytd)]["Cliente"]],
-            "no": [str(x) for x in sub[sub["_cn"].isin(had_25) & ~sub["_cn"].isin(had_ytd)]["Cliente"]],
+            "yes": [str(x) for x in sub[sub["_cn"].isin(had_prev) & sub["_cn"].isin(had_ytd)]["Cliente"]],
+            "no": [str(x) for x in sub[sub["_cn"].isin(had_prev) & ~sub["_cn"].isin(had_ytd)]["Cliente"]],
         }
 
     # ── SEMÁFORO ────────────────────────────────────────────────────────
     semaforo = {}
     for prio, meta in [("HP", 2), ("MP", 1), ("LP", 1)]:
-        sub = df26[df26["Prioridad"] == prio]["_ytd"]
+        if "Prioridad" not in df_cur.columns:
+            semaforo[prio] = {"en_meta": 0, "parcial": 0, "sin_cont": 0, "total": 0}
+            continue
+        sub = df_cur[df_cur["Prioridad"] == prio]["_ytd"]
         semaforo[prio] = {
             "en_meta": int((sub >= meta).sum()),
             "parcial": int((sub == 1).sum()) if meta == 2 else 0,
@@ -312,10 +377,10 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "total": len(sub),
         }
 
-    # ── RISK 2026 + RISK ALL ────────────────────────────────────────────
-    risk_2026 = {"HP": [], "MP": [], "LP": []}
+    # ── RISK (año actual) + RISK ALL ────────────────────────────────────
+    risk_cur = {"HP": [], "MP": [], "LP": []}
     risk_all = {"HP": [], "MP": [], "LP": []}
-    for _, row in df26.iterrows():
+    for _, row in df_cur.iterrows():
         cn = row["_cn"]
         prio = prio_dict.get(cn)
         if prio not in THRESH:
@@ -325,28 +390,28 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         dias = int((today_ts - last).days) if last is not None and not pd.isna(last) else None
         last_str = str(last.date()) if last is not None and not pd.isna(last) else "Sin historial"
         last_yr = last.year if last is not None and not pd.isna(last) else 0
-        reun26 = int(sum(float(row.get(m, 0)) for m in MESES if m in df26.columns))
+        reun_cur = int(sum(float(row.get(m, 0)) for m in MESES if m in df_cur.columns))
         tipo = row.get("_tipo") or "Dist"
-        status = "activo" if reun26 > 0 else ("pendiente" if last_yr >= 2025 else "inactivo")
-        risk_2026[prio].append({
+        # "activo" si tuvo reuniones en el año actual. "pendiente" si último contacto en
+        # el año anterior. "inactivo" si nada en el año anterior tampoco.
+        status = "activo" if reun_cur > 0 else ("pendiente" if last_yr >= cur_year - 1 else "inactivo")
+        risk_cur[prio].append({
             "name": name, "prio": prio, "dias": dias, "last": last_str,
-            "tipo": tipo, "reun26": reun26, "status": status, "last_yr": last_yr,
+            "tipo": tipo, "reun26": reun_cur, "status": status, "last_yr": last_yr,
         })
         risk_all[prio].append({"name": name, "dias": dias, "last": last_str, "tipo": tipo})
 
-    for prio in risk_2026:
-        risk_2026[prio].sort(
+    for prio in risk_cur:
+        risk_cur[prio].sort(
             key=lambda x: ({"inactivo": 0, "pendiente": 1, "activo": 2}[x["status"]], -(x["dias"] or 9999))
         )
     for prio in risk_all:
         risk_all[prio].sort(key=lambda x: -(x["dias"] or 9999))
 
-    # `risk_all` que consume el dashboard incluye prio + reun26 + status (igual que risk_2026)
-    # — el JS lo usa para filtrar. Mantenemos la estructura de generar_dashboard.py.
     kpi = {}
     for prio in ["HP", "MP", "LP"]:
-        kpi[prio] = {k: sum(1 for r in risk_2026[prio] if r["status"] == k) for k in ["activo", "pendiente", "inactivo"]}
-        kpi[prio]["total"] = len(risk_2026[prio])
+        kpi[prio] = {k: sum(1 for r in risk_cur[prio] if r["status"] == k) for k in ["activo", "pendiente", "inactivo"]}
+        kpi[prio]["total"] = len(risk_cur[prio])
 
     # ── CRITICAL LIST ───────────────────────────────────────────────────
     critical = []
@@ -383,10 +448,9 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
 
     # ── SUBTEMAS ────────────────────────────────────────────────────────
     foto_all = {}
-    for dfx, yr in [(df26, 2026), (df25, 2025), (df24, 2024)]:
-        foto_all.update(_foto_counts(dfx, yr))
-    if not df23.empty:
-        foto_all.update(_foto_counts(df23, 2023))
+    for yr, dfx in year_dfs.items():
+        if not dfx.empty:
+            foto_all.update(_foto_counts(dfx, yr))
 
     df_ap_local = df_ap.copy()
     df_ap_local["sub_clean"] = df_ap_local["Subtema"].apply(_clean_sub)
@@ -412,7 +476,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     if len(df_sub):
         for (yr, mo), g in df_sub.groupby(["year_num", "month_num"]):
             sm[f"{yr}_{mo}"] = g["sub_clean"].value_counts().to_dict()
-        for yr in [2023, 2024, 2025, 2026]:
+        for yr in years_avail:
             sa[str(yr)] = df_sub[df_sub["year_num"] == yr]["sub_clean"].value_counts().to_dict()
 
         def _build_cli(dfg):
@@ -429,7 +493,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
 
         for (yr, mo), g in df_sub.groupby(["year_num", "month_num"]):
             scm[f"{yr}_{mo}"] = _build_cli(g)
-        for yr in [2023, 2024, 2025, 2026]:
+        for yr in years_avail:
             sca[str(yr)] = _build_cli(df_sub[df_sub["year_num"] == yr])
         all_subs = sorted(set(df_sub["sub_clean"].dropna().unique()))
         sub_colors = {s: _sub_color(s) for s in all_subs}
@@ -439,13 +503,12 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     # ── RECENT 5 LABELS / VALS (para el peakChart) ──────────────────────
     # Toma los 5 meses anteriores al mes en curso (incluyendo si cruza años).
     MES_ABBR = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
-    cur_y, cur_m = today_ts.year, today_ts.month
-    monthly_by_year = {2024: d24, 2025: d25, 2026: d26_m}
+    cur_m = today_ts.month
     recent_labels: list[str] = []
     recent_vals: list[int] = []
     for offset in range(5, 0, -1):
         m = cur_m - offset
-        y = cur_y
+        y = cur_year
         while m <= 0:
             m += 12
             y -= 1
@@ -454,17 +517,29 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
 
     # ── REUNIONES YTD POR PRIORIDAD (para reunYtdChart) ─────────────────
     reun_ytd_by_prio = {
-        prio: sum(int(r["reun26"]) for r in risk_2026[prio])
+        prio: sum(int(r["reun26"]) for r in risk_cur[prio])
         for prio in ["HP", "MP", "LP"]
     }
 
     # ── RESULT ──────────────────────────────────────────────────────────
+    # data y clientsData keyed por año (string) — dinámico según años disponibles.
+    data_out = {str(yr): monthly_by_year[yr] for yr in years_avail}
+    clients_out = {"all": clients_all}
+    for yr in years_avail:
+        clients_out[str(yr)] = _top10(year_dfs[yr], MESES)
+
+    # Reuniones del año anterior en el MISMO mes en curso (para "vs YTD año anterior")
+    df_prev_year = year_dfs.get(cur_year - 1)
+    ytd_prev = (
+        sum(int(df_prev_year[m].sum()) if m in df_prev_year.columns else 0
+            for m in MESES[: today_ts.month])
+        if df_prev_year is not None and not df_prev_year.empty else 0
+    )
+    pct_change_ytd = round((ytd - ytd_prev) / ytd_prev * 100) if ytd_prev else 0
+
     return {
-        "data": {"2024": d24, "2025": d25, "2026": d26_m},
-        "clientsData": {
-            "all": clients_all, "2024": clients_2024,
-            "2025": clients_2025, "2026": clients_2026,
-        },
+        "data": data_out,
+        "clientsData": clients_out,
         "prioData": prio_data,
         "recontactData": recontact_data,
         "riskAll": risk_all,
@@ -475,14 +550,33 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "subtemasColors": sub_colors,
         "subtemasClientsM": scm,
         "subtemasClientsA": sca,
-        "riskData2026": risk_2026,
+        "riskData2026": risk_cur,  # legacy key
+        "riskCurrent": risk_cur,
+        "topClientesQ": clients_q,
         "recentLabels": recent_labels,
         "recentVals": recent_vals,
+        "years": years_avail,
+        "currentYear": cur_year,
+        "currentQ": {
+            "year": last_q_year,
+            "q": last_q,
+            "label": last_q_label,           # "Q1 2026"
+            "label_year_prev": f"Q{last_q} {last_q_year - 1}",
+            "months": last_q_months,         # [1,2,3]
+            "monthNames": last_q_month_names,
+            "reuniones": reuniones_q,
+            "reuniones_prev": reuniones_q_prev,
+            "pct_change": pct_change_q,
+        },
         "kpi": {
             "ytd": ytd,
-            "q1": q1,
-            "abr": d26_m[3],
-            "may": d26_m[4],
+            "ytd_prev": ytd_prev,
+            "pct_change_ytd": pct_change_ytd,
+            "q1": q1_cur,
+            "current_q_total": reuniones_q,
+            "current_q_prev": reuniones_q_prev,
+            "abr": d_cur[3] if len(d_cur) > 3 else 0,
+            "may": d_cur[4] if len(d_cur) > 4 else 0,
             "riesgo_totals": {
                 "activo": sum(kpi[p]["activo"] for p in ["HP", "MP", "LP"]),
                 "pendiente": sum(kpi[p]["pendiente"] for p in ["HP", "MP", "LP"]),
@@ -494,7 +588,8 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "reun_ytd_by_prio": reun_ytd_by_prio,
         },
         "meta": {
-            "n_clientes": int(len(df26)),
+            "n_clientes": int(len(df_cur)),
             "fecha_corte": str(today_ts.date()),
+            "years_disponibles": years_avail,
         },
     }
