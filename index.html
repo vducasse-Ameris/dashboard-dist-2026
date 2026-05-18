@@ -1,0 +1,2266 @@
+<div style="display:flex;align-items:center;gap:8px;padding:6px 0 8px;border-bottom:2px solid var(--border2);"><span style="min-width:20px;"></span><span style="min-width:35px;"></span><span style="flex:1;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Cliente</span><span style="min-width:74px;text-align:right;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Gasto</span><span style="min-width:44px;text-align:right;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">25/26</span><span style="min-width:72px;text-align:center;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">CLP/reun</span></div><!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Distribución Ameris — Dashboard 2026</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --a1: #1B4B9B;  --a2: #0D2D6B;  --a3: #2E6BAF;  --a4: #5A93CC;  --a5: #A8C5E0;
+  --bg: #F2F4F8;  --card: #FFFFFF;  --card2: #EBF0F8;
+  --border: rgba(27,75,155,0.12);  --border2: rgba(27,75,155,0.24);
+  --text: #0B1E3D;  --text2: #3D5278;  --text3: #7D93B5;
+  --green: #0E7A4E;  --green-bg: #E0F4EC;
+  --red: #B33A2E;    --red-bg: #FAE9E7;
+  --amber: #895200;  --amber-bg: #FEF3E2;
+  --r: 8px; --rl: 12px;
+}
+* { box-sizing:border-box; margin:0; padding:0; }
+
+body { font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+
+/* ── HEADER ── */
+.header {
+  background: linear-gradient(135deg, var(--a2) 0%, var(--a1) 60%, var(--a3) 100%);
+  padding: 0 2rem;
+  display: flex; align-items: stretch; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 12px rgba(11,30,61,0.18);
+}
+.header-brand { display:flex; align-items:center; gap:14px; padding: 14px 0; }
+.header-logo {
+  width:36px; height:36px; border-radius:8px;
+  background: rgba(255,255,255,0.15);
+  display:flex; align-items:center; justify-content:center;
+  font-size:16px; font-weight:600; color:#fff; letter-spacing:-0.5px;
+}
+.header-title { color:#fff; }
+.header-title h1 { font-size:15px; font-weight:600; letter-spacing:-0.01em; }
+.header-title p  { font-size:11px; color:rgba(255,255,255,0.65); margin-top:2px; }
+.header-meta { display:flex; align-items:center; gap:8px; }
+.header-badge {
+  font-family:'IBM Plex Mono',monospace; font-size:10px;
+  background:rgba(255,255,255,0.12); color:rgba(255,255,255,0.8);
+  padding:4px 10px; border-radius:5px; border:1px solid rgba(255,255,255,0.2);
+}
+
+/* ── TABS ── */
+.tab-bar {
+  background:var(--a2);
+  display:flex; gap:0; padding: 0 2rem;
+  border-bottom:1px solid rgba(255,255,255,0.08);
+}
+.tab-btn {
+  font-family:'IBM Plex Sans',sans-serif; font-size:12px; font-weight:500;
+  color:rgba(255,255,255,0.55); background:transparent; border:none;
+  padding:11px 18px; cursor:pointer; position:relative;
+  transition: color .15s; white-space:nowrap;
+  letter-spacing:0.02em;
+}
+.tab-btn:hover { color:rgba(255,255,255,0.85); }
+.tab-btn.active { color:#fff; }
+.tab-btn.active::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:2px;
+  background:#fff; border-radius:2px 2px 0 0;
+}
+.tab-icon { margin-right:6px; font-size:13px; }
+
+/* ── PANELS ── */
+.panel { display:none; padding:1.5rem 2rem 2rem; }
+.panel.panel-active { display:block !important; }
+.panel.active { display:block; }
+
+/* ── GRID & CARDS ── */
+.kpi-row { display:grid; gap:12px; margin-bottom:1.25rem; }
+.kpi-row-4 { grid-template-columns: repeat(4,1fr); }
+.kpi-row-3 { grid-template-columns: repeat(3,1fr); }
+.kpi-row-2 { grid-template-columns: repeat(2,1fr); }
+.kpi-row-5 { grid-template-columns: repeat(5,1fr); }
+
+.kpi {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--r); padding:16px 18px;
+}
+.kpi.accent { background:var(--a1); border-color:transparent; }
+.kpi-label { font-size:10px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:var(--text3); margin-bottom:7px; }
+.kpi.accent .kpi-label { color:rgba(255,255,255,0.6); }
+.kpi-value { font-size:28px; font-weight:600; letter-spacing:-0.03em; color:var(--text); line-height:1; font-family:'IBM Plex Mono',monospace; }
+.kpi.accent .kpi-value { color:#fff; }
+.kpi-sub { font-size:11px; margin-top:5px; color:var(--text3); }
+.kpi.accent .kpi-sub { color:rgba(255,255,255,0.55); }
+.pos { color:var(--green) !important; }
+.neg { color:var(--red)   !important; }
+.warn{ color:var(--amber) !important; }
+
+.card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--rl); padding:18px 20px;
+}
+.card-title { font-size:12px; font-weight:600; color:var(--text); margin-bottom:3px; }
+.card-sub   { font-size:11px; color:var(--text3); margin-bottom:14px; line-height:1.4; }
+
+.section-label {
+  font-size:10px; font-weight:600; letter-spacing:.1em; text-transform:uppercase;
+  color:var(--text3); margin-bottom:10px; margin-top:1.5rem;
+}
+.section-label:first-child { margin-top:0; }
+
+.two-col   { display:grid; grid-template-columns:1.4fr 1fr; gap:14px; }
+.three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; }
+.equal-col { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+.chart-wrap { position:relative; width:100%; }
+
+/* ── TABS FILTER (inside panels) ── */
+.ftabs { display:flex; gap:5px; margin-bottom:12px; flex-wrap:wrap; }
+.ftab {
+  font-family:'IBM Plex Sans',sans-serif; font-size:11px; font-weight:500;
+  padding:4px 11px; border:1px solid var(--border2); border-radius:5px;
+  cursor:pointer; background:transparent; color:var(--text2); transition:all .12s;
+}
+.ftab:hover { background:var(--card2); }
+.ftab.active { background:var(--card2); color:var(--a1); border-color:var(--a1); }
+
+/* ── CLIENT ROWS ── */
+.client-row { display:flex; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--border); }
+.client-row:last-child { border-bottom:none; }
+.client-rank { font-family:'IBM Plex Mono',monospace; font-size:10px; color:var(--text3); min-width:16px; }
+.client-name { font-size:11px; color:var(--text); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.client-bar-wrap { width:70px; height:5px; background:var(--card2); border-radius:3px; flex-shrink:0; }
+.client-bar { height:5px; border-radius:3px; background:var(--a1); transition:width .4s; }
+.client-val { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:500; color:var(--text); min-width:22px; text-align:right; }
+
+/* ── YOY ROWS ── */
+.yoy-row { display:flex; align-items:center; gap:6px; padding:5px 0; border-bottom:1px solid var(--border); font-size:12px; }
+.yoy-row:last-child { border-bottom:none; }
+.month-label { font-size:11px; color:var(--text2); min-width:60px; }
+.yoy-bars { flex:1; display:flex; flex-direction:column; gap:2px; }
+.yoy-bar  { height:6px; border-radius:2px; min-width:2px; }
+.nums  { font-family:'IBM Plex Mono',monospace; font-size:11px; min-width:24px; text-align:right; color:var(--text2); }
+.delta { font-family:'IBM Plex Mono',monospace; font-size:11px; min-width:32px; text-align:right; }
+
+/* ── HEATMAP ── */
+.heatmap-grid { display:grid; grid-template-columns:48px repeat(12,1fr); gap:3px; }
+.hm-cell { aspect-ratio:1.2; border-radius:3px; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-size:9px; font-weight:500; cursor:default; transition:transform .1s; }
+.hm-cell:hover { transform:scale(1.2); z-index:2; position:relative; }
+.hm-label { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:500; color:var(--text2); display:flex; align-items:center; }
+.hm-month { color:var(--text3); font-size:9px; text-align:center; display:flex; align-items:flex-end; justify-content:center; padding-bottom:2px; font-family:'IBM Plex Mono',monospace; }
+
+/* ── RISK TABLE ── */
+.risk-item { padding:6px 0; border-bottom:1px solid var(--border); }
+.risk-item:last-child { border-bottom:none; }
+.risk-top { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:3px; }
+.risk-name { font-size:11px; color:var(--text); max-width:130px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.risk-days { font-family:'IBM Plex Mono',monospace; font-size:10px; font-weight:600; }
+.risk-date { font-size:9px; color:var(--text3); }
+.risk-bar-wrap { height:4px; background:var(--card2); border-radius:2px; overflow:hidden; }
+.risk-bar { height:4px; border-radius:2px; opacity:.8; }
+
+/* ── SEMAFORO ── */
+.sem-badge {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  border-radius:var(--r); padding:10px 6px; text-align:center;
+}
+.sem-badge .sem-n { font-size:22px; font-weight:600; line-height:1; font-family:'IBM Plex Mono',monospace; }
+.sem-badge .sem-l { font-size:9px; margin-top:3px; font-weight:500; letter-spacing:.03em; }
+
+/* ── AUM CARDS ── */
+.aum-card {
+  background:var(--card); border:1px solid var(--border);
+  border-radius:var(--rl); padding:18px 20px;
+  border-left:4px solid var(--a1);
+}
+.aum-placeholder {
+  background:repeating-linear-gradient(-45deg, var(--card2), var(--card2) 4px, var(--card) 4px, var(--card) 12px);
+  border-radius:var(--r); height:80px;
+  display:flex; align-items:center; justify-content:center;
+  font-size:11px; color:var(--text3); font-style:italic;
+}
+.progress-wrap { height:8px; background:var(--card2); border-radius:4px; overflow:hidden; margin:6px 0; }
+.progress-bar  { height:8px; border-radius:4px; transition:width .6s ease; }
+.pct-badge {
+  font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px; display:inline-block;
+}
+
+/* ── FOOTER ── */
+footer {
+  margin: 0 2rem 1.5rem; padding-top:14px;
+  border-top:1px solid var(--border);
+  display:flex; justify-content:space-between; align-items:center;
+  font-size:10px; color:var(--text3); font-family:'IBM Plex Mono',monospace;
+}
+
+/* ── LEGEND ── */
+.legend { display:flex; gap:14px; margin-top:10px; flex-wrap:wrap; }
+.legend-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--text2); }
+.legend-dot { width:12px; height:3px; border-radius:2px; display:inline-block; }
+
+/* ── BANNER ── */
+#data-banner { display:none; padding:7px 2rem; font-size:11px; font-family:'IBM Plex Mono',monospace; align-items:center; justify-content:space-between; }
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px) {
+  .kpi-row-4,.kpi-row-5 { grid-template-columns:repeat(2,1fr); }
+  .two-col,.three-col,.equal-col { grid-template-columns:1fr; }
+  /* .panel padding handled above */
+  .tab-btn { padding:10px 12px; font-size:11px; }
+}
+</style>
+
+<!-- ──────────────── Pyodide (motor Python en el browser) ──────────────── -->
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.2/full/pyodide.js"></script>
+<style>
+  /* Barra de upload */
+  #upload-bar {
+    background: #FFFFFF; border-bottom: 1px solid var(--border);
+    padding: 10px 2rem; display: flex; align-items: center; gap: 14px;
+    font-size: 12px; flex-wrap: wrap;
+  }
+  #upload-bar.empty { background: linear-gradient(180deg,#FAFBFD 0%,#FFFFFF 100%); padding: 22px 2rem; }
+  #upload-bar .ub-status { display:flex; align-items:center; gap:8px; color:var(--text2); }
+  #upload-bar .ub-spinner {
+    width:14px; height:14px; border:2px solid var(--border2); border-top-color: var(--a1);
+    border-radius:50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #upload-bar .ub-check  { color: var(--green); font-weight:600; }
+  #upload-bar .ub-error  { color: var(--red);   font-weight:600; }
+  #upload-bar .ub-info   { color: var(--text3); font-size:11px; }
+  #upload-bar .ub-meta   { color: var(--text3); font-size:11px; font-family:'IBM Plex Mono',monospace; }
+  #upload-bar button {
+    background: var(--a1); color:#fff; border:0; border-radius:6px;
+    padding: 7px 14px; font-size: 12px; font-weight:500; cursor: pointer;
+    display:flex; align-items:center; gap:6px;
+  }
+  #upload-bar button:hover { background: var(--a2); }
+  #upload-bar button:disabled { background: var(--text3); cursor: not-allowed; }
+  #upload-bar .ub-secondary { background: var(--card2); color: var(--text2); border:1px solid var(--border); }
+  #upload-bar .ub-secondary:hover { background: var(--border); color: var(--text); }
+  /* Estado "esperando upload" — esconde paneles para que se vea limpio */
+  body.no-data .panel { opacity: 0.35; pointer-events: none; }
+  body.no-data #upload-bar { background: #FFF3CD; border-bottom-color:#E5C97D; }
+  body.no-data #upload-bar .ub-info { color: #6B5100; font-weight:500; }
+</style>
+
+</head>
+<body>
+
+<!-- ── Upload bar (Pyodide-powered) ────────────────────────────────────── -->
+<div id="upload-bar" class="empty">
+  <input type="file" id="xlsm-input" accept=".xlsm,.xlsx" style="display:none;">
+  <button id="upload-btn" disabled onclick="document.getElementById('xlsm-input').click();">
+    <span id="upload-btn-icon">⏳</span> <span id="upload-btn-text">Cargando motor…</span>
+  </button>
+  <div class="ub-status" id="upload-status">
+    <span class="ub-spinner" id="upload-spinner"></span>
+    <span id="upload-status-text">Iniciando Python en el navegador (primera vez ~15 s, después instantáneo)…</span>
+  </div>
+  <div class="ub-info" style="margin-left:auto;">
+    Los datos viven sólo en tu navegador — nada se sube a un servidor.
+  </div>
+</div>
+
+
+<div id="data-banner">
+  <span><span id="banner-icon"></span> <span id="banner-text"></span></span>
+  <span id="banner-date"></span>
+</div>
+
+<!-- HEADER -->
+<div class="header">
+  <div class="header-brand">
+    <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAIkAAAAkCAYAAAC9phn5AAAPSElEQVR42u1bf5BcVZX+znuvO5OESEJMAgQ0bNDECbhQI2iWmI4Yfq2CCnQUohGwHEtjtKhlXeKuvBmWBcWi1AUXcYMEjSnSYyQaBUmAzrAsP2QisARWhpUEItEQIUAgw8x0v2//eOd2n7nzeiajSFVgbtWrrnnv/j7nfvec75wBRst+WWIyAACSU0h+i+TvSVZI7iHZSfJ0pBWCIhkWyoxQZlTQh6SM7uKbQ0GOIvkkG5fLw33oZ7S8wQpJicmA5ASS/6fK0K+/fUZB3LtWku8l+W2S15O8huQSkuNHFeUNWgplRqos/6RK0KvPUpIzSf4dybJRlEoDlHmc5NxRRXkDoghIITmJ5B+NAlzs1XsLyadJJvr4xbV7keQsxHEwqihvPBS5VIVcJfkUyXGFMqNiieGp3+keo3WuMEiTkFyrV89VJHvM1XRLCKBYZDi6w/u7sRozUBSZRvIFVRCSXFpXIEocMyC3NpF8zCgJSV4IAJIq0Gna3iHKPAAolkYVZT9HkbJDkW8aFHmC7B6DmAFAMUjzOWOTVBVJXiF5OFq7cqooa831sykSIO1ntOzvKDJd7QiHIp+uoQgpiBmQPCDDHnGezjcl7TAgeYz24/paOIom+3FxgiN5rQo0Ifm/ZFfOnX6DIl8ydZ4kudwgzx6Sh4KUIK37Y1P3Pqqije74/oYirKHI20juNSf/HAAokqHxeg4k+YypszyXKkO3QZVrUqqVQnKOGrDONjljFE32bxT5vjn1D5IMMlDknw1q/IHkRH1/jnnfQ3IGSFHb5Aav33AUTf4ypkLS53VHkaO8E//hDBSZSHKnQZGvOAViytA+ZNBkhaTaIyRnqFHr2i22ijdaRnSkDQQXS+HrhSJ62m8yp/1+64kYFGnzuJPxiBm0XteV0+8fMd/7SM6CBvlIXm2+dZNb8moEy76dnEI5Sh+mv29mHElPZPB6KQgAIfluRRB30k92343XM4XkblPn8wPQQAVO8l6DJquDOpocSvIl0/78UTQZmWYIU1iPNd7xW5LLAvx1eYViiaF6ID81fMZdIeqxliJr9splBgm2kRxnkcDUO8nUq5A8yqDJN8y3J8mtTVAlbHRiXMMpJP+d5HcUki55M+UhxHEtJD/Hi330kpxq9+q1RxEKyeP15DtbZH4GihzicSetWSgQxwyidL53m3V0GNtkKsnnTT/LhkaTQu2euygjODQXoLwpuH61PRTybamSPNQq0muMXoGiyAYz5obAeDuGgb1qIHfCnGNgG3hJC8waEpLHubok/9V82+EQKWuKkmpxOdJB+0m+qq5TheR/im/IWRumyLAQl6NCrCwgNHjkbJoCo0JcjuI4DnxY9+uNRBHjmEHdbmII7StLiHHMoBDXx7F16nNgVIjTb3rd/FB5ir0kvxE2oLFJSiE2Npz2UyypJzKsfVwT5jxPmO8DKMUSQ487ecUgzaeGOv3mCttolO82fSckDyL5rEGTi7InWaxN8lQzSRqadzfJKSOAWhnupA7tLaQu3hDaEQB1hRMAIQBPAwMMN9dU4DLUIkjmyS35hvPcJ6UeehywZmTaa2GdGDQwivQfRkaPDMdxGDSZ68l2nlHyr5hvz5KcOkjjOtCBMF3CUtfO7FMVwEQAZwK4bkHbphBABaRAhCQPBnAKgF4AEYCNY/Oys6ePCwEUtG0/gEcA3C4i21EoR+j4QIXsGge0LARwPIADAewC8F9jQin3pRISiHCQYNslyQvQm/A4HfsdAMYD6APwKIBf5UQ2V7SPMBRWqnw3gIUADgPwMoC1IvJwLgT6Kvx7APMAjANwH4C1gUh/krKReWCOkHwxDGRDwlR3UrgWSgeqSXoNzQfQDOAgAD0AtgP4LYCHcyI7K0OgSIdIFeRJAE7Q/U5XqldCTAbtQELybwBcACDRM3GpiFQLZUad7Uiy+u9YJNViiWEgcm9Crgdwusr38kgwvz+hAPgugGUApgOYAuDCRobakWqcORj7Lsm7jPt0Ty6onQqLPgu9u/tKkrc3yIzaTXJxmLY73aTi+eUXDrkGoEF9rkeQXMehy2qSk7X+EnOCaNL+PkRyZUbbBzSJ53HzrjMSd+W6+/yZcWofvDDEPHaTvJnktEyEZKarumYAitS5k5UG4R9gegUFw5tZNaP4b1W+TsanGTT5gun7d57BWjOG/s0LNU8zDfu18bGpgpRCoyTv10H7TOSRGZ5Bv8mQuiJDaFWv3j0kc+5aMcp8rLKMHGI8twldKoDzzLfEywull+7nDspBmoHer8/awO1XzIDsHkPyDq9fZigiSb7s6HKrJOYK+bDZg36S78qwRWYb2ZDkKbaPEVD9NsDXZfJnD1ZbhyQrAwxHbTheg0RuoZv0tE9XwqWGLqIbZZRkvnfXVcwGPU5yl2ff+Jv6ktbba967pJlzAaCltSsHxIHS0E/pt1f1d5ve05foSXve+76E5AnqMt6qUdEsoT6h1j1J/ropBEhuNt9/FgDAqbUssC/q+x4z3u0qhI0kt5u2qzIN/9RADhQV3Hxu8FFEx1tl5t0ZCVAs1e06MlWqQpwazYXywKe4hfmW65hTry0x8jpD2880e9ZbB5G45vae42n+GUAttLzSM2rekratIZBVEjdwB8l3pkYfJ3mpd/Ykf0uZv7xeIeu99Lv1oQAobsnLQALJLWYNyUkOb1WxZ5uoqAtgvZXkEWMDQOfm1urcvg+SzGlE9TKS1+vaHxykJGAul/Zzl1nzDpKzIkkNhXyqYAdoxvqNJM/yI61G+GeZvdnrAnExGRRLpdCL41QHcCeKIiPNVTUkWqLG70T15Nw8/meA1R0JQPJO06ib7Mo524PkBzwFWgIARy6rnaj5HvT/hjUITJEqn25qp5datyYvNogGqJB2mlO1jaQbZ5wn/K4JuYabsNSLgE4DgBgMDNy+al1IID2VqowH6u8DGUoS5dI9u9/L4ZiWJakQQCAZXlGKImNIbjHCvwbZKGIzyjam3ElpgIKofXSmKvm1DZ7rSH6P5E88JN3uyfh832B1cQIn5IuLRYaHXXjP2JbWrhz59FjPwLw7H4ol3+Z7wr8AAJrj1G1saaW7Kr7q1Xs/wKC1NQ1GtWSn2D1rQt/HeNfaPUoEXaEbcxnJy/W51at7dBwzUKRZbYS7l+QhKJZqbKY7HEEjJWnektd+bvauxhf03XI9WJOjBsFBg+Cf8pKDDgPTnFWjIO/xUHpujYGt/8PWccpvjaT4/3rhlOZHUWAMVhXKNWaiO0nmM07mZz2j9mjzbb6nhecCSi4NNIxbvXrHOyPY1WNqga8wE99plOSjGUbmUMUZ0j0kjzDX0WpT53nnAfleVEMlKabKT/KUDAOV3txXk2ypcztuHArJJk0McsL/9kBbpBTqfH9l+lwvVkHSq2gmyee8QzGS4kIAL2ooJkTMIFL+oZKQkwB8QrcmALADwCKSkfHFqb5/YuotEeAfmY32ASAEyv776uB6/gthMjh3w/2dGyHR7epXUv6FQgj3ifRrBxt3O6eKmEEocluV/AyAKwFMNhUqumdTAZwD4GyS54rIT4rFUogOoANSBXii8jsEsBvA1wlK86NtLJHhIpEqyROUB6qqjl9GACgCjwECkQRkm8qnX3miHwL4vbs50VBGSADMBfAh7fuhnMiXK6CAQFRoQ9iZLmaRLtAJ8BgAP2rQccUIdnFCXioiezI2mvtqP42w3kv6m+ii7gdwr3mXRZgKgG1RKC+jUI7QicprEmdplyQBAxH5AcnbAJwG4GQAxwI40tTsS8k4XE3yVhHsbVm4OdL9bta1CYCOQOSPKDFsX9ReLba1hbrRbVonBLAuFLm/WGJYAhJJiczxAD5o6pwrIj8fgQH7dlXCHICZ/eQBIvIyQIk629sSzZH4gmdjDVUigwiHAPgowFX70O4vCnsBcNT373Rsp6i7ciIXDiX1oIH2/Llz+VqhHLU/uVlZaEkAQESeAbAiAlb0k2MBzFameSmAmTrngwHMAuQ3Uw7vDjL2u48A8MttuWXd3dHVIr0kT1SGONHnEreWtrY2MQg/URVtF9Dxy7ffsLXp+FkzZFxveri2ZSxkwh4Ev9j4RFXnVlUlER/theT7PK/k15r7eKP++s9KjzNxXMoC715ebF1kY5N8xqv3Xt8mURvpes9miEzyz30my4okv5jLuDDUBT2DZCkl5NL+g8E2ye5Mm6Tu/lub5BYBoO5v/tM3bG1SbmZ2Psg8pRdlrrdUs2ksgfYnkrNN2yaVh7MxVnvejvMGJ6hxn6gcT9xXjQ8GR4DvjYI6qx0FqRZ+zrTpBfDxQGRro4ssBNBP9gH4rF498yrk4RoH+WsgiIsZ/YPGh/4E4GsANuj4CYCr+xLOBbAOwB/0RMzR+MTJ2tfPAPwYY6eH2m74zDwIq6kgJpj5tCSp+38WgOtXnjfjAQDtAJb3VnkHgLsAdOuJPEZR2tl1PQCeAoDmR+dUQMrmHbiz5VBs13jJZACbSF4L4HkA5+vV1a9jt4OUZhWNiLBYKoUisofk3QA+5kI1JK/Svci60t0VPF7R7iyV/RgAN1YSoLAAQWc7EmjSym5Dt69P3Tvm66mL9efIU7vHoMjQoE+Pat/FSl5VlXeoOpY0A0ku8Op5SDIob7PXs8JvUTLsRmOV9w9htbv2T6VoUkOSVcalfK4BkgRRndvJovEX68Nh5uC+rQiMK2zo+I8M43WQ5L8AA9nVGj+SejdHG85npMXdCmWS+QE5Kerq2HLK8ElFNQrZUtVbNVBny3kNlOTzgxOZ6kqivI2QfIeJIdjNeoikhCmRdbm3MVWPanZli84vQEtXLhjMw/SSfOsgJamHHD6ZEV+i/hvD2XrQhivrXIKyHcNwHJ9QktAve0guD4aIz5g+Ttb/4PtzSonkAX4aSKTwdodCz3MA7gSEHR2D3FQTIYJI6pZdCaDV2IQTAWzUvgIATwPA1Dm7Um9t6gJ2pPV2pOOgonPYDQDNzY8SANrbJUHMIBB5IiHPBPB1ADMAvALgYQArAKB6NsNI5KsV8ma9+k4EcLhxeZ8F8CCANcD2m0Te1qOElnAzAKBL5wwAexRuvfi6VBHHQT6SVX0VTtf1TtKr4L8B/DwUeaRKblYX8iT1VibrHrwI4CEAq5tysqa3otdYe90FbxdJ9Mq4ieQmAJ/UlIkqgMcBlETkMcQMOkSq2U6WJDEZiMgGku8BcJ6mLDQ1cPFp1r0dwPq8yMZ+VRAxaRn/DxxNgFd+YbdlAAAAAElFTkSuQmCC" alt="Ameris" style="height:24px;width:auto;display:block;">
+    <div style="width:1px;height:32px;background:rgba(255,255,255,0.2);margin:0 4px;"></div>
+    <div class="header-title">
+      <h1>Área de Distribución</h1>
+      <p>Dashboard de seguimiento · 2024 – 2026</p>
+    </div>
+  </div>
+  <div class="header-meta">
+    <div class="header-badge" id="update-badge">Q1 2026 · Mar 2026</div>
+  </div>
+</div>
+
+<!-- TAB BAR -->
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="showTab('resumen',this)"><span class="tab-icon">◎</span>Resumen</button>
+  <button class="tab-btn" onclick="showTab('reuniones',this)"><span class="tab-icon">◈</span>Reuniones</button>
+  <button class="tab-btn" onclick="showTab('clientes',this)"><span class="tab-icon">◇</span>Clientes</button>
+  <button class="tab-btn" onclick="showTab('metas-aum',this)"><span class="tab-icon">◆</span>Metas AUM</button>
+  <button class="tab-btn" onclick="showTab('riesgo',this)"><span class="tab-icon">▲</span>Riesgo</button>
+</div>
+
+<!-- ═══════════════════════════════════════════════ TAB 1: RESUMEN -->
+<div class="panel active" id="tab-resumen">
+
+  <div class="section-label">Visión general Q1 2026</div>
+  <div class="kpi-row kpi-row-4">
+    <div class="kpi accent">
+      <div class="kpi-label">Reuniones Q1 2026</div>
+      <div class="kpi-value" data-kpi="q1-value">110</div>
+      <div class="kpi-sub">vs 98 en Q1 2025 (+11%)</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Clientes activos Q1</div>
+      <div class="kpi-value">72</div>
+      <div class="kpi-sub">de 190 en cartera (38%) · con al menos 1 reunión en Q1</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Ritmo semanal actual</div>
+      <div class="kpi-value">8.0</div>
+      <div class="kpi-sub">reuniones por semana en Q1 (13 sem.)</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Nuevos distribuidores Q1 2026</div>
+      <div class="kpi-value pos">4</div>
+      <div class="kpi-sub">FYNSA AGF · XIM · Investera · Vizcaya · Meta anual: 8</div>
+    </div>
+  
+    <div class="kpi" style="border-left:3px solid #0E7A4E;">
+      <div class="kpi-label">Reuniones 2026 YTD</div>
+      <div class="kpi-value" style="color:#0E7A4E;" data-kpi="ytd-value">167</div>
+      <div class="kpi-sub pos" data-kpi="ytd-sub">Q1: 109 &nbsp;&middot;&nbsp; Abr: 19</div>
+    </div></div>
+
+  <div class="section-label">Nuevos distribuidores Q1 2026 — detalle</div>
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-title">Clientes nuevos incorporados en Q1 2026</div>
+    <div class="card-sub">Distribuidores que realizaron su primera inversión con Ameris en 2026</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;">
+      <thead>
+        <tr style="background:#1B4B9B;">
+          <th style="padding:8px 12px;text-align:left;color:#fff;font-weight:500;border-radius:4px 0 0 0;">Distribuidor</th>
+          <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Fondo / Producto</th>
+          <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;border-radius:0 4px 0 0;">Trimestre</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-weight:500;color:var(--text);">FYNSA AGF</td>
+          <td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">FCP</span></td>
+          <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:#0E7A4E;font-weight:600;">Q1</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-weight:500;color:var(--text);">XIM</td>
+          <td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">ADI 6</span></td>
+          <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:#0E7A4E;font-weight:600;">Q1</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 12px;font-weight:500;color:var(--text);">Investera</td>
+          <td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">Fogape</span></td>
+          <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:#0E7A4E;font-weight:600;">Q1</td>
+        </tr>
+        <tr>
+          <td style="padding:8px 12px;font-weight:500;color:var(--text);">Vizcaya</td>
+          <td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">FCP</span></td>
+          <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:#0E7A4E;font-weight:600;">Q1</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3);">* Cliente nuevo = distribuidor que ha invertido en Ameris por primera vez en 2026 · Meta anual: 8 nuevos (2 por trimestre)</div>
+  </div>
+
+  <div class="section-label">Consolidado Q1 2026 — progreso del año por segmento</div>
+  <div class="card" style="margin-bottom:1.25rem;overflow-x:auto;">
+    <div class="card-title">Reuniones y contrapartes por trimestre 2026</div>
+    <div class="card-sub">"Reun." = total de reuniones · "CP" = contrapartes distintas (clientes únicos contactados) · Q2–Q4 se completarán durante el año · Proy. = Q1 × 4</div>
+    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;min-width:700px;">
+      <thead>
+        <tr style="background:#1B4B9B;">
+          <th style="padding:8px 10px;text-align:left;color:#fff;font-weight:500;border-radius:4px 0 0 0;" rowspan="2">Seg.</th>
+          <th style="padding:8px 10px;text-align:center;color:#fff;font-weight:500;" rowspan="2">Clientes</th>
+          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.95);font-weight:600;background:#0D2D6B;border-left:1px solid rgba(255,255,255,0.2);" colspan="2">Q1 2026 ✓</th>
+          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2">Q2 2026 (YTD)</th>
+          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2">Q3 2026</th>
+          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2">Q4 2026</th>
+          <th style="padding:8px 10px;text-align:center;color:#fff;font-weight:500;border-left:1px solid rgba(255,255,255,0.2);" rowspan="2">Total</th>
+          <th style="padding:8px 10px;text-align:center;color:#fff;font-weight:500;border-radius:0 4px 0 0;" rowspan="2">Proy.</th>
+        </tr>
+        <tr style="background:#0D2D6B;">
+          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.9);font-weight:500;font-size:10px;border-left:1px solid rgba(255,255,255,0.2);">Reun.</th>
+          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.9);font-weight:500;font-size:10px;">CP</th>
+          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;border-left:1px solid rgba(255,255,255,0.1);">Reun.</th>
+          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;">CP</th>
+          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;border-left:1px solid rgba(255,255,255,0.1);">Reun.</th>
+          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;">CP</th>
+          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;border-left:1px solid rgba(255,255,255,0.1);">Reun.</th>
+          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;">CP</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;">HP</span></td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;">72</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#EBF0F8;border-left:2px solid #1B4B9B;">74</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;background:#EBF0F8;color:#1B4B9B;">46</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;border-left:2px solid rgba(27,75,155,0.3);color:var(--text2);">36</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--text2);">18</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;border-left:1px solid var(--border2);">72</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">288</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;"><span style="background:#EBF0F8;color:#2E6BAF;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;">MP</span></td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;">43</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#EBF0F8;border-left:2px solid #1B4B9B;">27</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;background:#EBF0F8;color:#1B4B9B;">20</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;border-left:2px solid rgba(27,75,155,0.3);color:var(--text2);">15</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--text2);">13</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;border-left:1px solid var(--border2);">42</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">108</td>
+        </tr>
+        <tr style="border-bottom:1px solid var(--border);">
+          <td style="padding:8px 10px;"><span style="background:#EBF0F8;color:#5A93CC;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;">LP</span></td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;">75</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#EBF0F8;border-left:2px solid #1B4B9B;">9</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;background:#EBF0F8;color:#1B4B9B;">7</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;border-left:2px solid rgba(27,75,155,0.3);color:var(--text2);">6</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--text2);">6</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;border-left:1px solid var(--border2);">15</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">36</td>
+        </tr>
+        <tr style="background:var(--card2);">
+          <td style="padding:8px 10px;font-weight:600;color:var(--text);">Total</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;">190</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:700;background:#dce6f5;border-left:2px solid #1B4B9B;">110</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;background:#dce6f5;color:#1B4B9B;">73</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);">—</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;border-left:1px solid var(--border2);">167</td>
+          <td style="text-align:center;padding:8px 10px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:var(--text2);">436</td>
+        </tr>
+      </tbody>
+    </table>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3);">CP = contrapartes únicas · HP: 74 reun. en 46 clientes (prom. 1.6/cliente) · MP: 27 reun. en 20 clientes (prom. 1.4/cliente) · LP: 9 reun. en 7 clientes (prom. 1.3/cliente) · Abril 2026: 19 reuniones adicionales registradas</div>
+  </div>
+
+  <!-- Semáforo -->
+  <div class="card">
+    <div class="card-title">Semáforo de contacto 2026 YTD — por segmento</div>
+    <div class="card-sub">HP: ≥ 2 reuniones = en meta · 1 reunión = parcial · 0 = sin contacto &nbsp;·&nbsp; MP/LP: ≥ 1 reunión = en meta · 0 = sin contacto &nbsp;·&nbsp; <strong>YTD Ene–May 2026</strong></div>
+    <div class="chart-wrap" style="height:200px;"><canvas id="semaforoChart"></canvas></div>
+    <div id="semaforo-leg" class="legend" style="margin-top:8px;"></div>
+  </div>
+
+  <!-- Semáforo de reuniones YTD -->
+  <div class="card" style="margin-top:1rem;">
+    <div class="card-title">Reuniones YTD 2026 — por segmento</div>
+    <div class="card-sub">Total de reuniones realizadas Ene–May 2026 por prioridad &nbsp;·&nbsp; Total: <strong>167</strong></div>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">HP</span>
+            <span style="font-size:12px;color:var(--text);">110 reuniones · 47/71 clientes contactados</span>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#1B4B9B;">110</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" style="width:65.9%;background:#1B4B9B;"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;">66% del total YTD &nbsp;·&nbsp; 47 de 71 clientes HP con al menos 1 reunión</div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="background:#EBF0F8;color:#2E6BAF;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">MP</span>
+            <span style="font-size:12px;color:var(--text);">42 reuniones · 26/43 clientes contactados</span>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#2E6BAF;">42</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" style="width:25.1%;background:#2E6BAF;"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;">25% del total YTD &nbsp;·&nbsp; 26 de 43 clientes MP con al menos 1 reunión</div>
+      </div>
+
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="background:#EBF0F8;color:#5A93CC;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">LP</span>
+            <span style="font-size:12px;color:var(--text);">15 reuniones · 12/75 clientes contactados</span>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#5A93CC;">15</span>
+        </div>
+        <div class="progress-wrap">
+          <div class="progress-bar" style="width:9%;background:#5A93CC;"></div>
+        </div>
+        <div style="font-size:10px;color:var(--text3);margin-top:3px;">9% del total YTD &nbsp;·&nbsp; 12 de 75 clientes LP con al menos 1 reunión</div>
+      </div>
+
+    </div>
+
+    <!-- Mini chart canvas -->
+    <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+      <div class="chart-wrap" style="height:160px;"><canvas id="reunYtdChart"></canvas></div>
+      <div id="reun-ytd-leg" class="legend" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+
+
+</div>
+
+<!-- ═══════════════════════════════════════════════ TAB 2: REUNIONES -->
+<div class="panel" id="tab-reuniones">
+
+  <div class="section-label">Evolución mensual — click en la leyenda para mostrar/ocultar años</div>
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-title">Reuniones por mes · 2024 – 2026</div>
+    <div class="card-sub">2023 excluido por baja representatividad de datos · Click en la leyenda para filtrar años</div>
+    <div class="chart-wrap" style="height:240px;"><canvas id="lineChart"></canvas></div>
+    <div id="line-legend" class="legend" style="margin-top:10px;"></div>
+  </div>
+
+  <div class="two-col" style="margin-bottom:1.25rem;">
+    <div class="card">
+      <div class="card-title">Comparativo año a año por mes</div>
+      <div class="card-sub">Barras dobles: año anterior (tenue) vs año siguiente</div>
+      <div class="ftabs">
+        <button class="ftab active" onclick="setYoy('2425',this)">2024 vs 2025</button>
+        <button class="ftab" onclick="setYoy('2526',this)">2025 vs 2026</button>
+      </div>
+      <div id="yoy-container"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Mapa de calor — reuniones por mes y año</div>
+      <div class="card-sub">2024–2026 · Mayor contraste = mayor concentración</div>
+      <div id="heatmap"></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-title">Actividad reciente — Dic 2025 a Mar 2026</div>
+    <div class="card-sub">Reuniones por mes desde diciembre 2025 · Tendencia más reciente del equipo</div>
+    <div class="chart-wrap" style="height:200px;"><canvas id="peakChart"></canvas></div>
+  </div>
+
+  <div class="section-label">Comparativa YTD Enero–Marzo</div>
+  <div class="kpi-row kpi-row-3">
+    <div class="kpi">
+      <div class="kpi-label">Q1 2024</div>
+      <div class="kpi-value">83</div>
+      <div class="kpi-sub" style="color:var(--text3)">Base de comparación</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Q1 2025</div>
+      <div class="kpi-value">104</div>
+      <div class="kpi-sub pos">+25% vs Q1 2024</div>
+    </div>
+    <div class="kpi accent">
+      <div class="kpi-label">Q1 2026</div>
+      <div class="kpi-value">109</div>
+      <div class="kpi-sub pos">+5% vs Q1 2025</div>
+    </div>
+  </div>
+
+
+  <!-- ── VISTA MENSUAL ────────────────────────────────────────────── -->
+  <div class="section-label" style="margin-top:2rem;">Vista mensual &mdash; clientes y temas por reuni&oacute;n</div>
+  <div id="vista-m-body">
+  <div style="background:var(--card2);border-radius:var(--rl);padding:14px 16px;margin-bottom:1rem;">
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">A&ntilde;o</span>
+      <div class="ftabs" style="margin:0;">
+        <button class="ftab active" data-yr="2026" onclick="setMonthYear('2026',this)">2026</button>
+        <button class="ftab" data-yr="2025" onclick="setMonthYear('2025',this)">2025</button>
+        <button class="ftab" data-yr="2024" onclick="setMonthYear('2024',this)">2024</button>
+        <button class="ftab" data-yr="2023" onclick="setMonthYear('2023',this)">2023</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Mes</span>
+      <div class="ftabs" style="margin:0;flex-wrap:wrap;">
+        <button class="ftab active" data-mo="ALL" onclick="setMonthMo('ALL',this)">Todo el a&ntilde;o</button>
+        <button class="ftab" data-mo="1"  onclick="setMonthMo(1,this)">Ene</button>
+        <button class="ftab" data-mo="2"  onclick="setMonthMo(2,this)">Feb</button>
+        <button class="ftab" data-mo="3"  onclick="setMonthMo(3,this)">Mar</button>
+        <button class="ftab" data-mo="4"  onclick="setMonthMo(4,this)">Abr</button>
+        <button class="ftab" data-mo="5"  onclick="setMonthMo(5,this)">May</button>
+        <button class="ftab" data-mo="6"  onclick="setMonthMo(6,this)">Jun</button>
+        <button class="ftab" data-mo="7"  onclick="setMonthMo(7,this)">Jul</button>
+        <button class="ftab" data-mo="8"  onclick="setMonthMo(8,this)">Ago</button>
+        <button class="ftab" data-mo="9"  onclick="setMonthMo(9,this)">Sep</button>
+        <button class="ftab" data-mo="10" onclick="setMonthMo(10,this)">Oct</button>
+        <button class="ftab" data-mo="11" onclick="setMonthMo(11,this)">Nov</button>
+        <button class="ftab" data-mo="12" onclick="setMonthMo(12,this)">Dic</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Prio</span>
+      <div class="ftabs" style="margin:0;">
+        <button class="ftab active" data-mprio="ALL" onclick="setMonthPrio('ALL',this)">Todos</button>
+        <button class="ftab" data-mprio="HP" onclick="setMonthPrio('HP',this)">HP</button>
+        <button class="ftab" data-mprio="MP" onclick="setMonthPrio('MP',this)">MP</button>
+        <button class="ftab" data-mprio="LP" onclick="setMonthPrio('LP',this)">LP</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px;">
+      <div id="monthly-summary" style="font-size:11px;color:var(--text2);"></div>
+      <button onclick="toggleVistaM(event)" id="vista-m-btn" style="font-size:10px;color:var(--text3);padding:2px 8px;border-radius:4px;background:var(--card2);border:1px solid var(--border);cursor:pointer;white-space:nowrap;flex-shrink:0;">&#9660; expandir</button>
+    </div>
+    <div id="monthly-table" style="display:none;"></div>
+  </div>
+
+  <!-- ── SUBTEMAS ──────────────────────────────────────────────────── -->
+  </div>
+
+  <div class="section-label" style="margin-top:2rem;">Reuniones por subtema / producto</div>
+  <div style="background:var(--card2);border-radius:var(--rl);padding:14px 16px;margin-bottom:1rem;">
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">A&ntilde;o</span>
+      <div class="ftabs" style="margin:0;">
+        <button class="ftab active" data-sub-yr="2026" onclick="setSubYear('2026',this)">2026</button>
+        <button class="ftab" data-sub-yr="2025" onclick="setSubYear('2025',this)">2025</button>
+        <button class="ftab" data-sub-yr="2024" onclick="setSubYear('2024',this)">2024</button>
+        <button class="ftab" data-sub-yr="2023" onclick="setSubYear('2023',this)">2023</button>
+        <button class="ftab" data-sub-yr="ALL"  onclick="setSubYear('ALL',this)">Todos</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Mes</span>
+      <div class="ftabs" style="margin:0;">
+        <button class="ftab active" data-sub-mo="ALL" onclick="setSubMo('ALL',this)">Todo el a&ntilde;o</button>
+        <button class="ftab" data-sub-mo="1" onclick="setSubMo('1',this)">Ene</button>
+        <button class="ftab" data-sub-mo="2" onclick="setSubMo('2',this)">Feb</button>
+        <button class="ftab" data-sub-mo="3" onclick="setSubMo('3',this)">Mar</button>
+        <button class="ftab" data-sub-mo="4" onclick="setSubMo('4',this)">Abr</button>
+        <button class="ftab" data-sub-mo="5" onclick="setSubMo('5',this)">May</button>
+        <button class="ftab" data-sub-mo="6" onclick="setSubMo('6',this)">Jun</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:12px;font-weight:600;color:var(--text);">Reuniones por subtema</span>
+        <div id="subtema-summary" style="font-size:11px;color:var(--text3);"></div>
+      </div>
+      <button onclick="toggleSubtemaChart(event)" id="subtema-m-btn" style="font-size:10px;color:var(--text3);padding:2px 8px;border-radius:4px;background:var(--card2);border:1px solid var(--border);cursor:pointer;white-space:nowrap;flex-shrink:0;">&#9660; expandir</button>
+    </div>
+    <div id="subtema-chart" style="display:none;"></div>
+  </div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════ TAB 3: CLIENTES -->
+<div class="panel" id="tab-clientes">
+
+  <!-- ── TOP CLIENTES ───────────────────────────────────────────────── -->
+  <div class="section-label">Ranking de clientes por reuniones</div>
+  <div class="equal-col" style="margin-bottom:1.25rem;">
+    <div class="card">
+      <div class="card-title">Top clientes por reuniones</div>
+      <div class="card-sub">Histórico 2024–2026</div>
+      <div class="ftabs">
+        <button class="ftab active" onclick="setClients('all',this)">Histórico</button>
+        <button class="ftab" onclick="setClients('2024',this)">2024</button>
+        <button class="ftab" onclick="setClients('2025',this)">2025</button>
+        <button class="ftab" onclick="setClients('2026',this)">2026</button>
+      </div>
+      <div id="clients-container"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Top clientes Q1 2026 por segmento</div>
+      <div class="card-sub">✓ = cumplió meta individual del trimestre</div>
+      <div class="ftabs">
+        <button class="ftab active" onclick="setPrioClients('HP',this)">HP</button>
+        <button class="ftab" onclick="setPrioClients('MP',this)">MP</button>
+        <button class="ftab" onclick="setPrioClients('LP',this)">LP</button>
+      </div>
+      <div id="prio-clients-container"></div>
+    </div>
+  </div>
+
+  <!-- ── TASA DE RECONTACTO ─────────────────────────────────────────── -->
+  <div class="section-label">Tasa de recontacto 2025 → 2026 YTD · click para ver detalle</div>
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-title">Clientes que tuvieron reunión en 2025 y ya fueron contactados en 2026 (Ene–May)</div>
+    <div class="card-sub">Haz click en HP, MP o LP para ver qué clientes fueron o no fueron recontactados</div>
+    <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;cursor:pointer;" onclick="toggleRecontact('hp')">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">HP</span>
+            <span style="font-size:12px;color:var(--text);" data-recontact-text="hp">32 de 46 recontactados</span>
+            <span style="font-size:10px;color:var(--text3);">▼ ver clientes</span>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#1B4B9B;" data-recontact-pct="hp">70%</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" style="width:0%;background:#1B4B9B;" data-recontact-bar="hp"></div></div>
+        <div id="recontact-detail-hp" style="display:none;margin-top:10px;"></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;cursor:pointer;" onclick="toggleRecontact('mp')">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="background:#EBF0F8;color:#2E6BAF;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">MP</span>
+            <span style="font-size:12px;color:var(--text);" data-recontact-text="mp">23 de 36 recontactados</span>
+            <span style="font-size:10px;color:var(--text3);">▼ ver clientes</span>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#2E6BAF;" data-recontact-pct="mp">64%</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" style="width:0%;background:#2E6BAF;" data-recontact-bar="mp"></div></div>
+        <div id="recontact-detail-mp" style="display:none;margin-top:10px;"></div>
+      </div>
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;cursor:pointer;" onclick="toggleRecontact('lp')">
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span style="background:#EBF0F8;color:#5A93CC;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">LP</span>
+            <span style="font-size:12px;color:var(--text);" data-recontact-text="lp">6 de 38 recontactados</span>
+            <span style="font-size:10px;color:var(--text3);">▼ ver clientes</span>
+          </div>
+          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:#5A93CC;" data-recontact-pct="lp">16%</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" style="width:0%;background:#5A93CC;" data-recontact-bar="lp"></div></div>
+        <div id="recontact-detail-lp" style="display:none;margin-top:10px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── ACTIVACIÓN DE CARTERA ──────────────────────────────────────── -->
+  <div class="section-label">Activación de cartera Q1 2026 · click para ver detalle</div>
+  <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
+    <div class="kpi" style="cursor:pointer;transition:box-shadow .15s;" onmouseenter="this.style.boxShadow='0 4px 16px rgba(27,75,155,0.15)'" onmouseleave="this.style.boxShadow=''" onclick="toggleActivation('nunca')">
+      <div class="kpi-label">Nunca contactados (HP)</div>
+      <div class="kpi-value neg">12</div>
+      <div class="kpi-sub" style="color:var(--text3);">AFPs + seguros sin historial · ▼ ver lista</div>
+    </div>
+    <div class="kpi" style="cursor:pointer;transition:box-shadow .15s;" onmouseenter="this.style.boxShadow='0 4px 16px rgba(14,122,78,0.15)'" onmouseleave="this.style.boxShadow=''" onclick="toggleActivation('nuevos')">
+      <div class="kpi-label">Nuevos activados Q1</div>
+      <div class="kpi-value pos">17</div>
+      <div class="kpi-sub" style="color:var(--text3);">Primera reunión en 2026 · ▼ ver lista</div>
+    </div>
+    <div class="kpi" style="cursor:pointer;transition:box-shadow .15s;" onmouseenter="this.style.boxShadow='0 4px 16px rgba(14,122,78,0.15)'" onmouseleave="this.style.boxShadow=''" onclick="toggleActivation('reactiv')">
+      <div class="kpi-label">Reactivados (dormant 2025)</div>
+      <div class="kpi-value">2</div>
+      <div class="kpi-sub" style="color:var(--text3);">Tenían historial, sin reunión en 2025 · ▼ ver lista</div>
+    </div>
+    <div class="kpi" style="cursor:pointer;transition:box-shadow .15s;" onmouseenter="this.style.boxShadow='0 4px 16px rgba(179,58,46,0.15)'" onmouseleave="this.style.boxShadow=''" onclick="toggleActivation('inactivos')">
+      <div class="kpi-label">Sin reunión 2025 ni 2026</div>
+      <div class="kpi-value neg">49</div>
+      <div class="kpi-sub" style="color:var(--text3);">HP:12 · MP:3 · LP:34 · ▼ ver lista</div>
+    </div>
+  </div>
+  <div id="activation-detail" style="display:none;margin-bottom:1.25rem;"></div>
+
+  <!-- ── REUNIONES POR ÁREA ──────────────────────────────────────────── -->
+  <div class="section-label">Reuniones Q1 2026 por área / producto · click para ver clientes</div>
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-title">Desglose de reuniones por fondo o producto discutido</div>
+    <div class="card-sub">Basado en el subtema de cada reunión registrada en la hoja Fechas 2025+ · Un cliente puede aparecer en más de un área</div>
+    <div id="areas-container" style="margin-top:4px;"></div>
+  </div>
+
+  <!-- ── LISTA CRÍTICA ───────────────────────────────────────────────── -->
+  <div class="section-label">Lista crítica — clientes con mayor tiempo sin contacto</div>
+  <div class="card">
+    <div class="card-title">Ranking por días sin reunión (solo clientes con historial previo)</div>
+    <div class="card-sub">Ordenados de mayor a menor tiempo sin contacto · Umbral HP: 75d · MP: 120d · LP: 210d</div>
+    <div id="critical-list" style="margin-top:8px;"></div>
+  
+  <!-- ── GASTOS DE RELACIONAMIENTO ──────────────────────────────────── -->
+  
+
+  <!-- GASTOS x REUNIONES -->
+  
+
+</div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->
+<div class="panel" id="tab-metas-aum">
+
+  <!-- Aviso logros pendientes -->
+  <div style="background:var(--card2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 20px;margin-bottom:1.25rem;border-left:4px solid var(--a1);display:flex;align-items:flex-start;gap:12px;">
+    <span style="font-size:20px;opacity:.5;">◎</span>
+    <div>
+      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;">Metas planteadas · Logros pendientes de información</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.6;">Solo se muestran metas de <strong>Aumento de Patrimonio (AUM)</strong>. Las barras de progreso se activarán cuando se provea información real desde Britech. Las Internacionales tienen distribución trimestral irregular (Q3 concentra el mayor volumen).</div>
+    </div>
+  </div>
+
+  <!-- Sub-pestañas AUM -->
+  <div style="display:flex;gap:0;border-bottom:2px solid var(--border2);margin-bottom:1.25rem;">
+    <button id="aum-tab-q" onclick="showAumTab('q',this)"
+      style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;padding:9px 20px;border:none;background:transparent;cursor:pointer;color:var(--a1);border-bottom:2px solid var(--a1);margin-bottom:-2px;letter-spacing:.01em;">
+      ◈ &nbsp;Progreso trimestral
+    </button>
+    <button id="aum-tab-y" onclick="showAumTab('y',this)"
+      style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;padding:9px 20px;border:none;background:transparent;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-2px;letter-spacing:.01em;">
+      ◆ &nbsp;Progreso anual (YTD)
+    </button>
+  </div>
+
+  <!-- ── SUB-TAB: TRIMESTRAL ── -->
+  <div id="aum-panel-q">
+
+    <div class="section-label">Selecciona el trimestre activo</div>
+    <div style="display:flex;gap:8px;margin-bottom:1.25rem;">
+      <button class="ftab active" id="qsel-1t" onclick="selectQuarter('1T26',this)">Q1 · 1T26</button>
+      <button class="ftab" id="qsel-2t" onclick="selectQuarter('2T26',this)">Q2 · 2T26</button>
+      <button class="ftab" id="qsel-3t" onclick="selectQuarter('3T26',this)">Q3 · 3T26</button>
+      <button class="ftab" id="qsel-4t" onclick="selectQuarter('4T26',this)">Q4 · 4T26</button>
+    </div>
+
+    <!-- KPI meta trimestral total -->
+    <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
+      <div class="kpi accent" style="grid-column:span 1;">
+        <div class="kpi-label">Meta total trimestre</div>
+        <div class="kpi-value" style="font-size:20px;" id="q-total-meta">CLP 15.44B</div>
+        <div class="kpi-sub">Suma de los 4 instrumentos</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Logro trimestre</div>
+        <div class="kpi-value" style="font-size:20px;color:var(--text3);" id="q-total-logro">— pendiente</div>
+        <div class="kpi-sub" id="q-total-pct">Dato no disponible aún</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Trimestre en curso</div>
+        <div class="kpi-value" id="q-current-label">Q1 2026</div>
+        <div class="kpi-sub">Ene – Mar 2026</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Ponderación AUM</div>
+        <div class="kpi-value">34.5%</div>
+        <div class="kpi-sub">Del scorecard total distribución</div>
+      </div>
+    </div>
+
+    <!-- 4 cards instrumentos -->
+    <div class="section-label" id="q-section-label">Desglose por instrumento · Q1 2026</div>
+    <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
+
+      <div class="aum-card" style="border-left-color:#1B4B9B;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <div class="kpi-label">Deuda Directa</div>
+            <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-deuda-meta">CLP 7.93B</div>
+          </div>
+          <span style="font-size:9px;background:#EBF0F8;color:#1B4B9B;padding:2px 6px;border-radius:4px;font-weight:600;">17.15%</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" id="q-deuda-bar" style="width:0%;background:#1B4B9B;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;">
+          <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-deuda-logro" style="color:var(--text2);">pendiente</span></span>
+          <span style="font-size:10px;color:var(--text3);">Fuente: Britech</span>
+        </div>
+      </div>
+
+      <div class="aum-card" style="border-left-color:#2E6BAF;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <div class="kpi-label">Inmobiliario</div>
+            <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-inm-meta">CLP 1.52B</div>
+          </div>
+          <span style="font-size:9px;background:#EBF0F8;color:#2E6BAF;padding:2px 6px;border-radius:4px;font-weight:600;">3.15%</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" id="q-inm-bar" style="width:0%;background:#2E6BAF;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;">
+          <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-inm-logro" style="color:var(--text2);">pendiente</span></span>
+          <span style="font-size:10px;color:var(--text3);">Fuente: Britech</span>
+        </div>
+      </div>
+
+      <div class="aum-card" style="border-left-color:#5A93CC;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <div class="kpi-label">Internacionales</div>
+            <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-inter-meta">CLP 5.76B</div>
+          </div>
+          <span style="font-size:9px;background:#EBF0F8;color:#5A93CC;padding:2px 6px;border-radius:4px;font-weight:600;">14.35%</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" id="q-inter-bar" style="width:0%;background:#5A93CC;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;">
+          <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-inter-logro" style="color:var(--text2);">pendiente</span></span>
+          <span style="font-size:10px;color:var(--text3);">Fuente: Britech</span>
+        </div>
+      </div>
+
+      <div class="aum-card" style="border-left-color:#A8C5E0;">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
+          <div>
+            <div class="kpi-label">Notas Estructuradas</div>
+            <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-notas-meta">CLP 237M</div>
+          </div>
+          <span style="font-size:9px;background:#EBF0F8;color:#7D93B5;padding:2px 6px;border-radius:4px;font-weight:600;">0.35%</span>
+        </div>
+        <div class="progress-wrap"><div class="progress-bar" id="q-notas-bar" style="width:0%;background:#A8C5E0;"></div></div>
+        <div style="display:flex;justify-content:space-between;margin-top:5px;">
+          <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-notas-logro" style="color:var(--text2);">pendiente</span></span>
+          <span style="font-size:10px;color:var(--text3);">Fuente: Britech + Masstro</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gráfico trimestral comparativo -->
+    <div class="card">
+      <div class="card-title">Metas por instrumento — comparativa entre trimestres</div>
+      <div class="card-sub">Los Internacionales concentran el mayor volumen en Q3 · Deuda e Inmobiliario tienen meta fija por trimestre</div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="aumQChart"></canvas></div>
+      <div id="aumq-legend" class="legend" style="margin-top:8px;"></div>
+    </div>
+  </div>
+
+  <!-- ── SUB-TAB: YTD ANUAL ── -->
+  <div id="aum-panel-y" style="display:none;">
+
+    <div class="section-label">Progreso acumulado año 2026 (YTD)</div>
+    <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
+      <div class="kpi accent">
+        <div class="kpi-label">Meta AUM anual total</div>
+        <div class="kpi-value" style="font-size:18px;">CLP 65.32B</div>
+        <div class="kpi-sub">Suma 4 instrumentos · 2026</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Logro YTD</div>
+        <div class="kpi-value" style="font-size:18px;color:var(--text3);">— pendiente</div>
+        <div class="kpi-sub">Acumulado desde 01 ene 2026</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">Meta Q1 acumulada</div>
+        <div class="kpi-value" style="font-size:18px;">CLP 15.44B</div>
+        <div class="kpi-sub">Referencia hito Q1</div>
+      </div>
+      <div class="kpi">
+        <div class="kpi-label">% del año transcurrido</div>
+        <div class="kpi-value">25%</div>
+        <div class="kpi-sub">Q1 completado (Ene–Mar)</div>
+      </div>
+    </div>
+
+    <!-- Tabla YTD por instrumento -->
+    <div class="card" style="margin-bottom:1.25rem;overflow-x:auto;">
+      <div class="card-title">Metas anuales por instrumento — 2026</div>
+      <div class="card-sub">Desglose trimestral y total anual · Logros se registrarán cuando estén disponibles desde Britech</div>
+      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:12px;">
+        <thead>
+          <tr style="background:#1B4B9B;">
+            <th style="padding:8px 12px;text-align:left;color:#fff;font-weight:500;border-radius:4px 0 0 0;">Instrumento</th>
+            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Q1 Meta</th>
+            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Q2 Meta</th>
+            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Q3 Meta</th>
+            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Q4 Meta</th>
+            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Meta Anual</th>
+            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Pond.</th>
+            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;border-radius:0 4px 0 0;">Logro YTD</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
+              <span style="width:8px;height:8px;background:#1B4B9B;border-radius:2px;display:inline-block;flex-shrink:0;"></span>Deuda Directa</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">7.93B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">7.93B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">7.93B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">7.93B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">31.70B</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);">17.15%</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
+              <span style="width:8px;height:8px;background:#2E6BAF;border-radius:2px;display:inline-block;flex-shrink:0;"></span>Inmobiliario</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.52B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.52B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.52B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.52B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">6.07B</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);">3.15%</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
+              <span style="width:8px;height:8px;background:#5A93CC;border-radius:2px;display:inline-block;flex-shrink:0;"></span>Internacionales</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">5.76B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.48B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:#B33A2E;">13.33B ▲</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">6.04B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">26.61B</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);">14.35%</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
+              <span style="width:8px;height:8px;background:#A8C5E0;border-radius:2px;display:inline-block;flex-shrink:0;"></span>Notas Estructuradas</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">237M</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">237M</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">237M</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">237M</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">946M</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);">0.35%</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+          </tr>
+          <tr style="background:var(--card2);">
+            <td style="padding:8px 12px;font-weight:600;color:var(--text);">Total AUM</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">15.44B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">11.16B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:#B33A2E;">23.00B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">15.72B</td>
+            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">65.32B</td>
+            <td style="text-align:center;padding:8px 12px;font-weight:600;color:var(--a1);">35%</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+          </tr>
+        </tbody>
+      </table>
+      <div style="font-size:10px;color:var(--text3);margin-top:8px;">▲ Q3 concentra el mayor volumen de Internacionales (13.33B de 26.61B anuales = 50%) · Todos los valores en CLP</div>
+    </div>
+
+    <!-- Gráfico YTD: metas acumuladas por trimestre -->
+    <div class="card">
+      <div class="card-title">Curva de meta acumulada 2026 — AUM total</div>
+      <div class="card-sub">Suma acumulada de metas trimestrales · La línea muestra el hito esperado al cierre de cada trimestre</div>
+      <div class="chart-wrap" style="height:210px;"><canvas id="aumYtdChart"></canvas></div>
+    </div>
+
+    <!-- Otras metas no-AUM -->
+    <div class="section-label" style="margin-top:1.25rem;">Otras metas de gestión 2026</div>
+    <div class="equal-col">
+      <div class="card">
+        <div class="card-title">Reuniones con socios · Mantención y Fidelización (pond. 20%)</div>
+        <div class="card-sub">Meta: 6 por trimestre · 24 anuales · Fuente: CRM</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;">
+          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
+            <div style="font-size:9px;color:var(--text3);">Q1 meta</div>
+            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">6</div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
+          </div>
+          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
+            <div style="font-size:9px;color:var(--text3);">Q2 meta</div>
+            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">6</div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
+          </div>
+          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
+            <div style="font-size:9px;color:var(--text3);">Q3 meta</div>
+            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">6</div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
+          </div>
+          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
+            <div style="font-size:9px;color:var(--text3);">Q4 meta</div>
+            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">6</div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Nuevos distribuidores con contrato · Clientes (pond. 10%)</div>
+        <div class="card-sub">Meta: 2 por trimestre · 8 anuales · Fuente: CRM (deals)</div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;">
+          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
+            <div style="font-size:9px;color:var(--text3);">Q1 meta</div>
+            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">2</div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
+          </div>
+          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
+            <div style="font-size:9px;color:var(--text3);">Q2 meta</div>
+            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">2</div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
+          </div>
+          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
+            <div style="font-size:9px;color:var(--text3);">Q3 meta</div>
+            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">2</div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
+          </div>
+          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
+            <div style="font-size:9px;color:var(--text3);">Q4 meta</div>
+            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">2</div>
+            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ TAB 5: RIESGO -->
+<div class="panel" id="tab-riesgo">
+
+  <div class="section-label">Seguimiento de cartera 2026 &mdash; por prioridad</div>
+  <div style="font-size:11px;color:var(--text2);margin-bottom:1.25rem;">Todos los clientes ordenados por estado de contacto en 2026. <span style="background:#E0F4EC;color:#0E7A4E;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;">Con reuni&oacute;n 2026</span> <span style="background:#FEF3E2;color:#895200;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-left:4px;">&Uacute;ltimo 2025</span> <span style="background:#FAE9E7;color:#B33A2E;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-left:4px;">Sin contacto reciente</span></div>
+
+  <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
+    <div class="kpi" style="background:#E0F4EC;border-color:#a8d5bc;"><div class="kpi-label" style="color:#0E7A4E;">Con reuni&oacute;n 2026</div><div class="kpi-value" style="color:#0E7A4E;">85</div><div class="kpi-sub" style="color:#0E7A4E;">HP:47&nbsp;&middot;&nbsp;MP:26&nbsp;&middot;&nbsp;LP:12</div></div>
+    <div class="kpi" style="background:#FEF3E2;border-color:#e8d5a3;"><div class="kpi-label" style="color:#895200;">&Uacute;ltimo contacto 2025</div><div class="kpi-value warn">59</div><div class="kpi-sub warn">HP:14&nbsp;&middot;&nbsp;MP:14&nbsp;&middot;&nbsp;LP:31</div></div>
+    <div class="kpi" style="background:#FAE9E7;border-color:#e8b5af;"><div class="kpi-label" style="color:#8B2A1F;">Sin contacto reciente</div><div class="kpi-value neg">45</div><div class="kpi-sub neg">HP:10&nbsp;&middot;&nbsp;MP:4&nbsp;&middot;&nbsp;LP:31</div></div>
+    <div class="kpi"><div class="kpi-label">Total cartera</div><div class="kpi-value">189</div><div class="kpi-sub">HP:71&nbsp;&middot;&nbsp;MP:44&nbsp;&middot;&nbsp;LP:74</div></div>
+  </div>
+
+  <div class="three-col">
+    <div class="card"><div style="font-size:11px;font-weight:600;color:#B33A2E;text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;border-bottom:2px solid #B33A2E;margin-bottom:8px;display:flex;justify-content:space-between;"><span>HP &mdash; 71 clientes</span><span style="font-weight:400;font-size:10px;">umbral 75 d&iacute;as</span></div><div id="risk-2026-hp" style="max-height:520px;overflow-y:auto;"></div></div>
+    <div class="card"><div style="font-size:11px;font-weight:600;color:#895200;text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;border-bottom:2px solid #895200;margin-bottom:8px;display:flex;justify-content:space-between;"><span>MP &mdash; 44 clientes</span><span style="font-weight:400;font-size:10px;">umbral 120 d&iacute;as</span></div><div id="risk-2026-mp" style="max-height:520px;overflow-y:auto;"></div></div>
+    <div class="card"><div style="font-size:11px;font-weight:600;color:#2E6BAF;text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;border-bottom:2px solid #2E6BAF;margin-bottom:8px;display:flex;justify-content:space-between;"><span>LP &mdash; 74 clientes</span><span style="font-weight:400;font-size:10px;">umbral 210 d&iacute;as</span></div><div id="risk-2026-lp" style="max-height:520px;overflow-y:auto;"></div></div>
+  </div>
+
+  <div style="margin-top:1rem;font-size:10px;color:var(--text3);">Umbrales: HP 75d &middot; MP 120d &middot; LP 210d</div>
+
+</div>
+<footer>
+  <span>Fuente: Consolidado_Follow-Ups_metas_dist.xlsx</span>
+  <span id="footer-date">Q1 2026 · 2024–2026 · Perú incluido</span>
+</footer>
+
+<script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ── TAB NAVIGATION ───────────────────────────────────────────────────────────
+function showTab(tabId, btn) {
+  document.querySelectorAll('.panel').forEach(function(p) {
+    p.style.display = 'none';
+    p.classList.remove('panel-active');
+  });
+  document.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+  var panel = document.getElementById('tab-' + tabId);
+  if (panel) {
+    panel.style.display = 'block';
+    panel.classList.add('panel-active');
+  }
+  if (btn) btn.classList.add('active');
+  if (tabId === 'metas-aum') { setTimeout(initAumCharts, 30); }
+  setTimeout(function() {
+    if (window.Chart && Chart.instances) {
+      for (var id in Chart.instances) {
+        try { Chart.instances[id].resize(); } catch(e) {}
+      }
+    }
+  }, 60);
+}
+var _initPanel = document.getElementById('tab-resumen');
+if (_initPanel) { _initPanel.style.display = 'block'; _initPanel.classList.add('panel-active'); }
+
+// ── DATA ──────────────────────────────────────────────────────────────────────
+var months     = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+var fullMonths = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+var data = { 2024:[0,0,0,0,0,0,0,0,0,0,0,0], 2025:[0,0,0,0,0,0,0,0,0,0,0,0], 2026:[0,0,0,0,0,0,0,0,0,0,0,0] };
+
+var prioData = { HP:[], MP:[], LP:[] };
+
+var clientsData = { all:[], 2024:[], 2025:[], 2026:[] };
+
+var recontactData = { hp:{yes:[],no:[]}, mp:{yes:[],no:[]}, lp:{yes:[],no:[]} };
+
+var activationData = { nunca:{label:'',color:'#B33A2E',items:[]}, nuevos:{label:'',color:'#0E7A4E',items:[]}, reactiv:{label:'',color:'#0E7A4E',items:[]}, inactivos:{label:'',color:'#B33A2E',items:[]} };
+
+var areasData = [];
+
+var criticalList = [];
+
+var riskAll = { HP:[], MP:[], LP:[] };
+
+var aumData = {
+  '1T26': { deuda:7.925, inm:1.517, inter:5.764, notas:0.237, total:15.443 },
+  '2T26': { deuda:7.925, inm:1.517, inter:1.481, notas:0.237, total:11.160 },
+  '3T26': { deuda:7.925, inm:1.517, inter:13.326,notas:0.237, total:23.005 },
+  '4T26': { deuda:7.925, inm:1.517, inter:6.037, notas:0.237, total:15.716 }
+};
+var qMetas = {
+  '1T26': { deuda:'CLP 7.93B', inm:'CLP 1.52B', inter:'CLP 5.76B', notas:'CLP 237M', label:'Q1 2026', range:'Ene - Mar 2026' },
+  '2T26': { deuda:'CLP 7.93B', inm:'CLP 1.52B', inter:'CLP 1.48B', notas:'CLP 237M', label:'Q2 2026', range:'Abr - Jun 2026' },
+  '3T26': { deuda:'CLP 7.93B', inm:'CLP 1.52B', inter:'CLP 13.33B',notas:'CLP 237M', label:'Q3 2026', range:'Jul - Sep 2026' },
+  '4T26': { deuda:'CLP 7.93B', inm:'CLP 1.52B', inter:'CLP 6.04B', notas:'CLP 237M', label:'Q4 2026', range:'Oct - Dic 2026' }
+};
+
+// ── CHART HELPERS ─────────────────────────────────────────────────────────────
+var LINE_COLORS = ['#E84C3D','#F59E0B','#1B4B9B'];
+var LINE_FILLS  = ['rgba(232,76,61,0.08)','rgba(245,158,11,0.08)','rgba(27,75,155,0.08)'];
+var YEARS       = [2024,2025,2026];
+var GRID_C      = 'rgba(27,75,155,0.06)';
+var TICK_C      = '#7D93B5';
+var TICK_FONT   = { size:10, family:'IBM Plex Mono' };
+function xScale() { return { grid:{display:false}, ticks:{color:TICK_C,font:TICK_FONT} }; }
+function yScale(max) {
+  var s = { grid:{color:GRID_C}, ticks:{color:TICK_C,font:TICK_FONT}, beginAtZero:true };
+  if (max) s.max = max;
+  return s;
+}
+
+// ── LINE CHART ────────────────────────────────────────────────────────────────
+var lineChart = new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: { labels: months, datasets: YEARS.map(function(y,i) {
+    return { label:String(y), data:data[y], borderColor:LINE_COLORS[i],
+      backgroundColor:LINE_FILLS[i], borderWidth:y===2026?2:2.5,
+      borderDash:y===2026?[5,3]:[], tension:0.35, fill:false,
+      pointRadius:4, pointHoverRadius:6, pointBackgroundColor:LINE_COLORS[i],
+      pointBorderColor:'#fff', pointBorderWidth:1.5 };
+  })},
+  options: { responsive:true, maintainAspectRatio:false, animation:{duration:300},
+    interaction:{mode:'index',intersect:false},
+    plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
+    scales:{x:xScale(),y:yScale()} }
+});
+(function() {
+  var leg = document.getElementById('line-legend');
+  if (!leg) return;
+  YEARS.forEach(function(y,i) {
+    var item = document.createElement('span');
+    item.className = 'legend-item'; item.style.cursor = 'pointer';
+    item.style.userSelect = 'none'; item.style.opacity = '1'; item.dataset.index = i;
+    item.innerHTML = '<span class="legend-dot" style="background:' + LINE_COLORS[i] + (y===2026?';border-top:2px dashed '+LINE_COLORS[i]+';background:transparent;':'') + '"></span>' + y + (y===2026?' (YTD)':'');
+    item.addEventListener('click', function() {
+      var idx = parseInt(this.dataset.index);
+      var meta = lineChart.getDatasetMeta(idx);
+      meta.hidden = !meta.hidden; this.style.opacity = meta.hidden?'0.35':'1'; lineChart.update();
+    });
+    leg.appendChild(item);
+  });
+})();
+
+// ── YOY ───────────────────────────────────────────────────────────────────────
+function setYoy(pair, btn) {
+  document.querySelectorAll('[onclick*="setYoy"]').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  var years = pair==='2425'?[2024,2025]:[2025,2026];
+  var c1 = pair==='2425'?'#E84C3D':'#F59E0B', c2 = pair==='2425'?'#F59E0B':'#1B4B9B';
+  var d1=data[years[0]], d2=data[years[1]];
+  var max=Math.max.apply(null,d1.concat(d2.filter(function(v){return v>0;})));
+  var n=pair==='2526'?4:12, html='';
+  for (var i=0;i<n;i++) {
+    var diff=d2[i]-d1[i],sign=diff>0?'+':'',cls=diff>0?'pos':diff<0?'neg':'';
+    html+='<div class="yoy-row"><span class="month-label">'+fullMonths[i].substring(0,3)+'</span>'
+      +'<div class="yoy-bars"><div class="yoy-bar" style="width:'+Math.max(2,d1[i]/max*100)+'%;background:'+c1+';opacity:.55"></div>'
+      +'<div class="yoy-bar" style="width:'+Math.max(2,d2[i]/max*100)+'%;background:'+c2+'"></div></div>'
+      +'<span class="nums">'+d1[i]+'</span><span class="nums">'+d2[i]+'</span>'
+      +'<span class="delta '+cls+'">'+sign+diff+'</span></div>';
+  }
+  document.getElementById('yoy-container').innerHTML = html;
+}
+setYoy('2425', document.querySelector('[onclick*="setYoy"]'));
+
+// ── PEAK CHART ────────────────────────────────────────────────────────────────
+(function() {
+  var el = document.getElementById('peakChart');
+  if (!el) return;
+  var labels=['Dic 2025','Ene 2026','Feb 2026','Mar 2026','Abr 2026'];
+  var vals=[39,41,8,60,19];
+  var colors=['rgba(90,147,204,0.65)','rgba(27,75,155,0.80)','rgba(27,75,155,0.80)','rgba(27,75,155,0.90)','rgba(13,45,107,0.95)'];
+  var vLabels={id:'vLabels',afterDatasetsDraw:function(ch){
+    var ctx=ch.ctx;
+    ch.data.datasets.forEach(function(ds,i){
+      ch.getDatasetMeta(i).data.forEach(function(bar,j){
+        ctx.save();ctx.font='600 13px IBM Plex Mono,monospace';
+        ctx.fillStyle='#0B1E3D';ctx.textAlign='center';ctx.textBaseline='bottom';
+        ctx.fillText(ds.data[j],bar.x,bar.y-4);ctx.restore();
+      });
+    });
+  }};
+  new Chart(el,{type:'bar',data:{labels:labels,datasets:[{data:vals,backgroundColor:colors,borderRadius:5,borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{top:22}},
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ' '+ctx.parsed.y+' reuniones';}}}},
+      scales:{x:xScale(),y:Object.assign(yScale(70),{ticks:Object.assign({},yScale().ticks,{callback:function(v){return Number.isInteger(v)?v:'';}})})}}
+    ,plugins:[vLabels]});
+})();
+
+// ── HEATMAP ───────────────────────────────────────────────────────────────────
+function buildHeatmap() {
+  var el=document.getElementById('heatmap'); if(!el) return;
+  var allVals=[];
+  [2024,2025,2026].forEach(function(y){data[y].forEach(function(v){if(v>0)allVals.push(v);});});
+  var max=Math.max.apply(null,allVals);
+  function getColor(v){if(v===0)return '#F0F3F8';var t=v/max;if(t>0.8)return '#051B4A';if(t>0.6)return '#0D2D6B';if(t>0.4)return '#1B4B9B';if(t>0.22)return '#3A7BC8';if(t>0.1)return '#7FB3E8';return '#C8DDF4';}
+  function txtCol(v){return v/max>0.35?'#fff':'#1B4B9B';}
+  var html='<div class="heatmap-grid"><div class="hm-label"></div>';
+  months.forEach(function(m){html+='<div class="hm-month">'+m+'</div>';});
+  [2024,2025,2026].forEach(function(y){
+    html+='<div class="hm-label">'+y+'</div>';
+    data[y].forEach(function(v){html+='<div class="hm-cell" style="background:'+getColor(v)+';color:'+(v>0?txtCol(v):'#B8C8DC')+'" title="'+v+' reuniones">'+(v>0?v:'')+'</div>';});
+  });
+  html+='</div><div style="display:flex;align-items:center;gap:5px;margin-top:10px;font-size:10px;color:var(--text3);"><span>0</span>';
+  ['#F0F3F8','#C8DDF4','#7FB3E8','#3A7BC8','#1B4B9B','#0D2D6B','#051B4A'].forEach(function(col){html+='<span style="width:20px;height:11px;background:'+col+';border-radius:2px;display:inline-block"></span>';});
+  html+='<span>'+max+'</span></div>';
+  el.innerHTML=html;
+}
+buildHeatmap();
+
+
+// ── REUNIONES YTD CHART ──────────────────────────────────────────────────────
+(function() {
+  var el = document.getElementById('reunYtdChart'); if (!el) return;
+  new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: ['HP (71 clientes)', 'MP (43 clientes)', 'LP (75 clientes)'],
+      datasets: [
+        { label: 'Reuniones YTD',    data: [110, 42, 15],
+          backgroundColor: ['#1B4B9B','#2E6BAF','#5A93CC'], borderSkipped: false },
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: function(ctx) {
+          var pct = [65.9, 25.1, 9.0][ctx.dataIndex];
+          return ' ' + ctx.parsed.y + ' reuniones (' + pct + '% del total)';
+        }}}
+      },
+      scales: {
+        x: Object.assign({}, xScale()),
+        y: Object.assign({}, yScale(), {
+          ticks: { callback: function(v) { return Number.isInteger(v) ? v : ''; },
+                   color: TICK_C, font: TICK_FONT }
+        })
+      }
+    }
+  });
+  var leg = document.getElementById('reun-ytd-leg');
+  if (leg) {
+    leg.innerHTML = [
+      ['#1B4B9B', 'HP · 110 reun. · 47 clientes'],
+      ['#2E6BAF', 'MP · 42 reun. · 26 clientes'],
+      ['#5A93CC', 'LP · 15 reun. · 12 clientes']
+    ].map(function(it) {
+      return '<span class="legend-item"><span class="legend-dot" style="background:' + it[0] + '"></span>' + it[1] + '</span>';
+    }).join('');
+  }
+})();
+
+// ── SEMAFORO ──────────────────────────────────────────────────────────────────
+(function() {
+  var el=document.getElementById('semaforoChart'); if(!el) return;
+  new Chart(el,{type:'bar',data:{labels:['HP (71)','MP (43)','LP (75)'],datasets:[
+    {label:'>= meta',data:[24,26,12],backgroundColor:'#0E7A4E',borderSkipped:false},
+    {label:'Parcial',data:[23,0,0],backgroundColor:'#D4890A',borderSkipped:false},
+    {label:'Sin contacto',data:[24,17,63],backgroundColor:'#B33A2E',borderSkipped:false}]},
+    options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+      plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{label:function(ctx){return ' '+ctx.dataset.label+': '+ctx.parsed.y+' clientes';}}}},
+      scales:{x:Object.assign({stacked:true},xScale()),y:Object.assign({stacked:true},yScale())}}});
+  var semLeg=document.getElementById('semaforo-leg');
+  if(semLeg)semLeg.innerHTML=[['#0E7A4E','>= meta'],['#D4890A','Parcial'],['#B33A2E','Sin contacto']].map(function(it){return '<span class="legend-item"><span class="legend-dot" style="background:'+it[0]+'"></span>'+it[1]+'</span>';}).join('');
+})();
+
+// ── AUM (LAZY INIT) ───────────────────────────────────────────────────────────
+var aumChartsInited = false;
+function initAumCharts() {
+  if (aumChartsInited) return;
+  aumChartsInited = true;
+
+  var elQ = document.getElementById('aumQChart');
+  if (elQ) {
+    var quarters=['Q1 2026','Q2 2026','Q3 2026','Q4 2026'];
+    var keys=['deuda','inm','inter','notas'];
+    var colors=['rgba(27,75,155,0.85)','rgba(46,107,175,0.85)','rgba(90,147,204,0.85)','rgba(168,197,224,0.85)'];
+    var labels=['Deuda Directa','Inmobiliario','Internacionales','Notas Estr.'];
+    window.aumQChartInst = new Chart(elQ, {
+      type:'bar',
+      data:{labels:quarters,datasets:keys.map(function(k,i){return{label:labels[i],
+        data:['1T26','2T26','3T26','4T26'].map(function(q){return aumData[q][k];}),
+        backgroundColor:colors[i],stack:'s',borderSkipped:false,
+        borderRadius:i===keys.length-1?[3,3,0,0]:0};})},
+      options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+        plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,
+          callbacks:{label:function(ctx){return ' '+ctx.dataset.label+': CLP '+ctx.parsed.y.toFixed(2)+'B';},
+            footer:function(ctx){return 'Total: CLP '+ctx.reduce(function(a,c){return a+c.parsed.y;},0).toFixed(2)+'B';}}}},
+        scales:{x:Object.assign({stacked:true},xScale()),y:Object.assign({stacked:true},yScale(),{
+          title:{display:true,text:'CLP Miles de millones',color:TICK_C,font:{size:9}},
+          ticks:{callback:function(v){return 'CLP '+v+'B';},color:TICK_C,font:TICK_FONT}})}}
+    });
+    var leg=document.getElementById('aumq-legend');
+    if(leg)colors.forEach(function(col,i){leg.innerHTML+='<span class="legend-item"><span class="legend-dot" style="background:'+col+'"></span>'+labels[i]+'</span>';});
+  }
+
+  var elY = document.getElementById('aumYtdChart');
+  if (elY) {
+    new Chart(elY,{type:'line',
+      data:{labels:['Inicio','Cierre Q1','Cierre Q2','Cierre Q3','Cierre Q4'],
+        datasets:[
+          {label:'Hito acumulado meta',data:[0,15.443,26.603,49.608,65.320],
+            borderColor:'#1B4B9B',backgroundColor:'rgba(27,75,155,0.08)',borderWidth:2.5,
+            fill:true,tension:0.2,pointRadius:5,pointBackgroundColor:'#1B4B9B',pointBorderColor:'#fff',pointBorderWidth:2},
+          {label:'Logro YTD',data:[0,null,null,null,null],
+            borderColor:'#0E7A4E',backgroundColor:'rgba(14,122,78,0.08)',borderWidth:2.5,
+            borderDash:[5,3],fill:true,tension:0.2,pointRadius:5,pointBackgroundColor:'#0E7A4E',pointBorderColor:'#fff',pointBorderWidth:2}
+        ]},
+      options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y===null?ctx.dataset.label+': pendiente':' '+ctx.dataset.label+': CLP '+ctx.parsed.y.toFixed(2)+'B';}}}},
+        scales:{x:xScale(),y:Object.assign(yScale(75),{
+          title:{display:true,text:'CLP Miles de millones (acum.)',color:TICK_C,font:{size:9}},
+          ticks:{callback:function(v){return 'CLP '+v+'B';},color:TICK_C,font:TICK_FONT}})}}
+    });
+  }
+
+  // Init quarter selector
+  var btn = document.querySelector('[onclick*="selectQuarter"][onclick*="1T26"]');
+  if (btn) selectQuarter('1T26', btn);
+}
+
+function showAumTab(which, btn) {
+  document.getElementById('aum-panel-q').style.display = which==='q'?'block':'none';
+  document.getElementById('aum-panel-y').style.display = which==='y'?'block':'none';
+  document.getElementById('aum-tab-q').style.color = which==='q'?'var(--a1)':'var(--text3)';
+  document.getElementById('aum-tab-y').style.color = which==='y'?'var(--a1)':'var(--text3)';
+  document.getElementById('aum-tab-q').style.borderBottomColor = which==='q'?'var(--a1)':'transparent';
+  document.getElementById('aum-tab-y').style.borderBottomColor = which==='y'?'var(--a1)':'transparent';
+}
+
+function selectQuarter(q, btn) {
+  document.querySelectorAll('[id^="qsel-"]').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');
+  var d=aumData[q], m=qMetas[q];
+  document.getElementById('q-total-meta').textContent = 'CLP '+d.total.toFixed(2)+'B';
+  document.getElementById('q-current-label').textContent = m.label;
+  document.querySelector('#q-current-label').nextElementSibling.textContent = m.range;
+  document.getElementById('q-section-label').textContent = 'Desglose por instrumento '+m.label;
+  ['deuda','inm','inter','notas'].forEach(function(f){document.getElementById('q-'+f+'-meta').textContent=m[f];});
+  if (window.aumQChartInst) {
+    window.aumQChartInst.data.datasets.forEach(function(ds,i){
+      var key=['deuda','inm','inter','notas'][i];
+      ds.data=['1T26','2T26','3T26','4T26'].map(function(qt){return aumData[qt][key];});
+    });
+    window.aumQChartInst.update();
+  }
+}
+
+// ── CLIENTS ───────────────────────────────────────────────────────────────────
+function setClients(year, btn) {
+  document.querySelectorAll('[onclick*="setClients"]').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  var list=clientsData[year]; if (!list || !list.length) { document.getElementById('clients-container').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">Subí el Excel para ver datos</div>'; return; } var max=list[0][1];
+  document.getElementById('clients-container').innerHTML=list.map(function(item,i){
+    return '<div class="client-row"><span class="client-rank">'+(i+1)+'</span><span class="client-name">'+item[0]+'</span>'
+      +'<div class="client-bar-wrap"><div class="client-bar" style="width:'+(item[1]/max*100)+'%"></div></div>'
+      +'<span class="client-val">'+item[1]+'</span></div>';
+  }).join('');
+}
+setClients('all', document.querySelector('[onclick*="setClients"]'));
+
+function setPrioClients(prio, btn) {
+  document.querySelectorAll('[onclick*="setPrioClients"]').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  var list=prioData[prio]; if(!list||!list.length){document.getElementById('prio-clients-container').innerHTML='';return;}
+  var max=list[0][1], color=prio==='HP'?'#1B4B9B':prio==='MP'?'#2E6BAF':'#5A93CC', metaQ1=prio==='HP'?2:1;
+  document.getElementById('prio-clients-container').innerHTML=list.map(function(item,i){
+    var ok=item[1]>=metaQ1;
+    return '<div class="client-row"><span class="client-rank">'+(i+1)+'</span><span class="client-name">'+item[0]+'</span>'
+      +'<div class="client-bar-wrap"><div class="client-bar" style="width:'+(item[1]/max*100)+'%;background:'+color+'"></div></div>'
+      +'<span class="client-val">'+item[1]+'</span>'
+      +'<span style="font-size:9px;padding:1px 5px;border-radius:3px;margin-left:3px;background:'+(ok?'#E0F4EC':'#FAE9E7')+';color:'+(ok?'#0E7A4E':'#B33A2E')+';"> '+(ok?'&#10003;':'&middot;')+'</span></div>';
+  }).join('');
+}
+setTimeout(function(){var btn=document.querySelector('[onclick*="setPrioClients"]');if(btn)setPrioClients('HP',btn);},0);
+
+function toggleRecontact(seg) {
+  var el=document.getElementById('recontact-detail-'+seg); if(!el) return;
+  if(el.style.display!=='none'){el.style.display='none';return;}
+  var d=recontactData[seg], color=seg==='hp'?'#1B4B9B':seg==='mp'?'#2E6BAF':'#5A93CC';
+  var cs=function(c){return 'display:inline-block;font-size:10px;padding:2px 8px;border-radius:4px;margin:2px;background:'+c+'20;color:'+c+';border:1px solid '+c+'40;';};
+  el.innerHTML='<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:10px 0;">'
+    +'<div><div style="font-size:10px;font-weight:600;color:#0E7A4E;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">Recontactados ('+d.yes.length+')</div>'
+    +d.yes.map(function(n){return '<span style="'+cs('#0E7A4E')+'">'+n+'</span>';}).join('')+'</div>'
+    +'<div><div style="font-size:10px;font-weight:600;color:#B33A2E;text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px;">No recontactados ('+d.no.length+')</div>'
+    +d.no.map(function(n){return '<span style="'+cs('#B33A2E')+'">'+n+'</span>';}).join('')+'</div></div>';
+  el.style.display='block';
+}
+
+var activeActivation=null;
+function toggleActivation(type) {
+  var el=document.getElementById('activation-detail'); if(!el) return;
+  if(activeActivation===type&&el.style.display!=='none'){el.style.display='none';activeActivation=null;return;}
+  activeActivation=type;
+  var d=activationData[type], pC={HP:'#1B4B9B',MP:'#2E6BAF',LP:'#5A93CC'};
+  var rows=d.items.map(function(item){var col=pC[item[1]]||'#7D93B5';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);">'
+      +'<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:'+col+'18;color:'+col+';min-width:24px;text-align:center;">'+item[1]+'</span>'
+      +'<span style="font-size:11px;color:var(--text);">'+item[0]+'</span></div>';}).join('');
+  el.innerHTML='<div class="card" style="border-left:3px solid '+d.color+';margin-top:0;"><div style="font-size:11px;font-weight:600;color:'+d.color+';margin-bottom:10px;">'+d.label+'</div><div style="max-height:240px;overflow-y:auto;">'+rows+'</div></div>';
+  el.style.display='block';
+  el.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+(function(){
+  var el=document.getElementById('areas-container'); if(!el) return;
+  var maxReun=0; areasData.forEach(function(a){if(a.reun>maxReun)maxReun=a.reun;});
+  el.innerHTML=areasData.map(function(area,idx){
+    var chips=area.clientes.map(function(n){return '<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;margin:2px;background:var(--card);border:1px solid var(--border);color:var(--text2);">'+n+'</span>';}).join('');
+    return '<div style="margin-bottom:10px;">'
+      +'<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;cursor:pointer;" onclick="toggleArea(\'area-'+idx+'\')">'
+      +'<div style="display:flex;align-items:center;gap:8px;"><span style="width:10px;height:10px;background:'+area.color+';border-radius:2px;flex-shrink:0;display:inline-block;"></span>'
+      +'<span style="font-size:12px;font-weight:500;color:var(--text);">'+area.name+'</span>'
+      +'<span style="font-size:10px;color:var(--text3);">'+area.cp+' clientes &#9660;</span></div>'
+      +'<span style="font-family:monospace;font-size:12px;font-weight:600;color:var(--text);">'+area.reun+' reun.</span></div>'
+      +'<div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden;margin-bottom:4px;">'
+      +'<div style="height:8px;width:'+(area.reun/maxReun*100)+'%;background:'+area.color+';border-radius:4px;"></div></div>'
+      +'<div id="area-'+idx+'" style="display:none;padding:8px 10px;background:var(--card2);border-radius:6px;margin-top:4px;">'
+      +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">'+area.cp+' contrapartes</div>'+chips+'</div></div>';
+  }).join('');
+})();
+
+function toggleArea(id){var el=document.getElementById(id);if(!el)return;el.style.display=el.style.display==='none'?'block':'none';}
+
+function _renderCriticalList(){
+  var el=document.getElementById('critical-list'); if(!el) return;
+  if(!criticalList||!criticalList.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">Sin clientes críticos</div>';return;}
+  var pC={HP:'#B33A2E',MP:'#895200',LP:'#2E6BAF'}, th={HP:75,MP:120,LP:210};
+  el.innerHTML=criticalList.map(function(r,i){
+    var col=pC[r.prio], over=r.dias-th[r.prio], urgency=over>180?'#6B0F0F':col, pct=Math.min(100,r.dias/500*100);
+    return '<div style="padding:7px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;">'
+      +'<span style="font-family:monospace;font-size:10px;color:var(--text3);min-width:20px;">'+(i+1)+'</span>'
+      +'<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:'+col+'18;color:'+col+';min-width:24px;text-align:center;">'+r.prio+'</span>'
+      +'<span style="font-size:11px;color:var(--text);flex:1;">'+r.name+'</span>'
+      +'<div style="width:80px;height:5px;background:var(--card2);border-radius:3px;overflow:hidden;flex-shrink:0;"><div style="height:5px;width:'+pct+'%;background:'+urgency+';border-radius:3px;"></div></div>'
+      +'<span style="font-family:monospace;font-size:11px;font-weight:600;color:'+urgency+';min-width:36px;text-align:right;">'+r.dias+'d</span>'
+      +'<span style="font-size:9px;color:var(--text3);min-width:74px;text-align:right;">'+r.last+'</span></div>';
+  }).join('');
+} _renderCriticalList();
+
+// ── RIESGO ────────────────────────────────────────────────────────────────────
+function buildRiskRow(r, prio, thresh) {
+  var pC={HP:'#B33A2E',MP:'#895200',LP:'#2E6BAF'}, col=pC[prio];
+  var noHist=(r.dias===null||r.dias===undefined);
+  var over=noHist?null:r.dias-thresh;
+  var urgency=noHist?'#999':(r.dias>700?'#6B0F0F':over>180?'#B33A2E':over>90?'#C05A20':col);
+  var dLabel=noHist?'Sin historial':r.dias+'d', pct=noHist?0:Math.min(100,r.dias/700*100);
+  return '<div style="padding:6px 0;border-bottom:1px solid var(--border);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;">'
+    +'<span style="font-size:11px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px;" title="'+r.name+'">'+r.name+'</span>'
+    +'<div style="text-align:right;flex-shrink:0;"><span style="font-family:monospace;font-size:10px;font-weight:600;color:'+urgency+';">'+dLabel+'</span>'
+    +'<div style="font-size:9px;color:var(--text3);">'+r.last+'</div></div></div>'
+    +'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden;">'
+    +'<div style="height:4px;width:'+pct+'%;background:'+urgency+';border-radius:2px;opacity:0.8;"></div></div></div>';
+}
+function buildRiskRowWithPrio(r, prio, thresh) {
+  var pC={HP:'#B33A2E',MP:'#895200',LP:'#2E6BAF'}, col=pC[prio];
+  var noHist=(r.dias===null||r.dias===undefined);
+  var over=noHist?null:r.dias-thresh;
+  var urgency=noHist?'#999':(r.dias>700?'#6B0F0F':over>180?'#B33A2E':over>90?'#C05A20':col);
+  var dLabel=noHist?'Sin historial':r.dias+'d', pct=noHist?0:Math.min(100,r.dias/700*100);
+  return '<div style="padding:6px 0;border-bottom:1px solid var(--border);">'
+    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;">'
+    +'<div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">'
+    +'<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:'+col+'18;color:'+col+';flex-shrink:0;">'+prio+'</span>'
+    +'<span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+r.name+'">'+r.name+'</span></div>'
+    +'<div style="text-align:right;flex-shrink:0;margin-left:6px;"><span style="font-family:monospace;font-size:10px;font-weight:600;color:'+urgency+';">'+dLabel+'</span>'
+    +'<div style="font-size:9px;color:var(--text3);">'+r.last+'</div></div></div>'
+    +'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden;">'
+    +'<div style="height:4px;width:'+pct+'%;background:'+urgency+';border-radius:2px;opacity:0.8;"></div></div></div>';
+}
+(function(){
+  var th={HP:75,MP:120,LP:210};
+  ['HP','MP','LP'].forEach(function(prio){
+    var el=document.getElementById('risk-seg-'+prio.toLowerCase()); if(!el) return;
+    el.innerHTML=riskAll[prio].map(function(r){return buildRiskRow(r,prio,th[prio]);}).join('');
+  });
+  var elAll=document.getElementById('risk-all-list');
+  if(elAll){
+    var combined=[];
+    ['HP','MP','LP'].forEach(function(p){riskAll[p].forEach(function(r){if(r.dias!==null)combined.push({r:r,prio:p});});});
+    combined.sort(function(a,b){return (b.r.dias||0)-(a.r.dias||0);});
+    elAll.innerHTML=combined.slice(0,25).map(function(item){return buildRiskRowWithPrio(item.r,item.prio,th[item.prio]);}).join('');
+  }
+})();
+
+function showRiskTab(tab, btn) {
+  document.querySelectorAll('[onclick*="showRiskTab"]').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  ['risk-panel-seg','risk-panel-tipo'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
+  var panel=document.getElementById('risk-panel-'+tab);
+  if(panel) panel.style.display='block';
+}
+// Show first risk tab by default
+(function(){
+  var btn=document.querySelector('[onclick*="showRiskTab"]');
+  if(btn) showRiskTab('seg',btn);
+})();
+
+// ── GASTOS x REUNIONES ─────────────────────────────────────────────────────
+var grData = [{"name": "Larraín Vial Banca Privada", "prio": "HP", "gasto": 814097, "reun": 52, "reun25": 18, "reun26": 4, "ratio": 15655, "y2023": 100879, "y2024": 192721, "y2025": 391797, "y2026": 128700, "flo": 609432, "juan": 204665}, {"name": "Itau Banca Privada", "prio": "HP", "gasto": 769305, "reun": 45, "reun25": 27, "reun26": 2, "ratio": 17095, "y2023": 0, "y2024": 15800, "y2025": 727535, "y2026": 25970, "flo": 488704, "juan": 280601}, {"name": "Sura Wealth Management", "prio": "HP", "gasto": 392460, "reun": 30, "reun25": 13, "reun26": 1, "ratio": 13082, "y2023": 171894, "y2024": 0, "y2025": 213666, "y2026": 6900, "flo": 392460, "juan": 0}, {"name": "BTG Pactual Wealth Management", "prio": "HP", "gasto": 292048, "reun": 59, "reun25": 12, "reun26": 6, "ratio": 4949, "y2023": 95320, "y2024": 63345, "y2025": 133383, "y2026": 0, "flo": 283448, "juan": 8600}, {"name": "Addwise", "prio": "HP", "gasto": 279249, "reun": 34, "reun25": 12, "reun26": 2, "ratio": 8213, "y2023": 113738, "y2024": 0, "y2025": 165511, "y2026": 0, "flo": 279249, "juan": 0}, {"name": "MBI Advisors", "prio": "HP", "gasto": 253861, "reun": 26, "reun25": 5, "reun26": 1, "ratio": 9763, "y2023": 172928, "y2024": 18804, "y2025": 62129, "y2026": 0, "flo": 234852, "juan": 19009}, {"name": "Afitrading", "prio": "MP", "gasto": 233352, "reun": 42, "reun25": 11, "reun26": 3, "ratio": 5556, "y2023": 99112, "y2024": 19133, "y2025": 111107, "y2026": 4000, "flo": 229352, "juan": 4000}, {"name": "THX", "prio": "HP", "gasto": 227150, "reun": 8, "reun25": 6, "reun26": 0, "ratio": 28393, "y2023": 0, "y2024": 0, "y2025": 227150, "y2026": 0, "flo": 227150, "juan": 0}, {"name": "Security Banca Privada", "prio": "HP", "gasto": 195026, "reun": 7, "reun25": 3, "reun26": 0, "ratio": 27860, "y2023": 0, "y2024": 162156, "y2025": 32870, "y2026": 0, "flo": 162156, "juan": 32870}, {"name": "AFC", "prio": "HP", "gasto": 192500, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 192500, "y2023": 0, "y2024": 0, "y2025": 192500, "y2026": 0, "flo": 192500, "juan": 0}, {"name": "Consorcio Seguros", "prio": "HP", "gasto": 191996, "reun": 4, "reun25": 3, "reun26": 1, "ratio": 47999, "y2023": 0, "y2024": 0, "y2025": 191996, "y2026": 0, "flo": 112920, "juan": 79076}, {"name": "Falcom AGF", "prio": "HP", "gasto": 183850, "reun": 6, "reun25": 3, "reun26": 2, "ratio": 30641, "y2023": 0, "y2024": 0, "y2025": 183850, "y2026": 0, "flo": 178250, "juan": 5600}, {"name": "Betterplan", "prio": "HP", "gasto": 180722, "reun": 16, "reun25": 6, "reun26": 4, "ratio": 11295, "y2023": 0, "y2024": 25201, "y2025": 125521, "y2026": 30000, "flo": 25630, "juan": 155092}, {"name": "Lakpa", "prio": "HP", "gasto": 161880, "reun": 31, "reun25": 6, "reun26": 3, "ratio": 5221, "y2023": 0, "y2024": 0, "y2025": 161880, "y2026": 0, "flo": 0, "juan": 161880}, {"name": "Grey Capital", "prio": "MP", "gasto": 157415, "reun": 35, "reun25": 11, "reun26": 1, "ratio": 4497, "y2023": 142555, "y2024": 5480, "y2025": 9380, "y2026": 0, "flo": 142555, "juan": 14860}, {"name": "Vector Global WMG", "prio": "HP", "gasto": 152325, "reun": 12, "reun25": 7, "reun26": 0, "ratio": 12693, "y2023": 0, "y2024": 0, "y2025": 152325, "y2026": 0, "flo": 8425, "juan": 143900}, {"name": "Ventum Group", "prio": "HP", "gasto": 147794, "reun": 18, "reun25": 8, "reun26": 3, "ratio": 8210, "y2023": 0, "y2024": 84769, "y2025": 63025, "y2026": 0, "flo": 0, "juan": 147794}, {"name": "Finital", "prio": "HP", "gasto": 130168, "reun": 18, "reun25": 7, "reun26": 2, "ratio": 7231, "y2023": 0, "y2024": 0, "y2025": 130168, "y2026": 0, "flo": 130168, "juan": 0}, {"name": "Patrimore", "prio": "HP", "gasto": 125843, "reun": 21, "reun25": 9, "reun26": 1, "ratio": 5992, "y2023": 0, "y2024": 11044, "y2025": 114799, "y2026": 0, "flo": 125843, "juan": 0}, {"name": "Sura AGF", "prio": "HP", "gasto": 108966, "reun": 5, "reun25": 4, "reun26": 1, "ratio": 21793, "y2023": 0, "y2024": 108966, "y2025": 0, "y2026": 0, "flo": 108966, "juan": 0}, {"name": "4 Life", "prio": "HP", "gasto": 107700, "reun": 6, "reun25": 3, "reun26": 2, "ratio": 17950, "y2023": 0, "y2024": 2700, "y2025": 105000, "y2026": 0, "flo": 107700, "juan": 0}, {"name": "Alcalá", "prio": "MP", "gasto": 107655, "reun": 11, "reun25": 4, "reun26": 2, "ratio": 9786, "y2023": 0, "y2024": 56975, "y2025": 6300, "y2026": 44380, "flo": 90195, "juan": 17460}, {"name": "Santander Private Banking", "prio": "HP", "gasto": 107551, "reun": 21, "reun25": 10, "reun26": 1, "ratio": 5121, "y2023": 0, "y2024": 8813, "y2025": 94342, "y2026": 4396, "flo": 107551, "juan": 0}, {"name": "Vision Advisors", "prio": "HP", "gasto": 88219, "reun": 10, "reun25": 5, "reun26": 2, "ratio": 8821, "y2023": 0, "y2024": 0, "y2025": 88219, "y2026": 0, "flo": 82279, "juan": 5940}, {"name": "Value Advice", "prio": "MP", "gasto": 84879, "reun": 13, "reun25": 3, "reun26": 1, "ratio": 6529, "y2023": 66012, "y2024": 8800, "y2025": 10067, "y2026": 0, "flo": 66012, "juan": 18867}, {"name": "Fourtrees", "prio": "MP", "gasto": 73150, "reun": 16, "reun25": 4, "reun26": 1, "ratio": 4571, "y2023": 0, "y2024": 0, "y2025": 73150, "y2026": 0, "flo": 73150, "juan": 0}, {"name": "Fintual", "prio": "MP", "gasto": 70044, "reun": 7, "reun25": 0, "reun26": 3, "ratio": 10006, "y2023": 0, "y2024": 39024, "y2025": 0, "y2026": 31020, "flo": 70044, "juan": 0}, {"name": "Pondera", "prio": "MP", "gasto": 56625, "reun": 14, "reun25": 5, "reun26": 0, "ratio": 4044, "y2023": 0, "y2024": 17820, "y2025": 38805, "y2026": 0, "flo": 36995, "juan": 19630}, {"name": "VanTrust Capital", "prio": "MP", "gasto": 45667, "reun": 2, "reun25": 0, "reun26": 0, "ratio": 22833, "y2023": 0, "y2024": 45667, "y2025": 0, "y2026": 0, "flo": 45667, "juan": 0}, {"name": "FYNSA Banca Privada", "prio": "MP", "gasto": 45300, "reun": 8, "reun25": 4, "reun26": 1, "ratio": 5662, "y2023": 0, "y2024": 0, "y2025": 40300, "y2026": 5000, "flo": 22400, "juan": 22900}, {"name": "Paragon", "prio": "LP", "gasto": 33400, "reun": 10, "reun25": 2, "reun26": 1, "ratio": 3340, "y2023": 0, "y2024": 0, "y2025": 21400, "y2026": 12000, "flo": 0, "juan": 33400}, {"name": "Simple Trust", "prio": "MP", "gasto": 32586, "reun": 14, "reun25": 7, "reun26": 2, "ratio": 2327, "y2023": 0, "y2024": 0, "y2025": 32586, "y2026": 0, "flo": 14686, "juan": 17900}, {"name": "Abaqus", "prio": "MP", "gasto": 32560, "reun": 8, "reun25": 2, "reun26": 2, "ratio": 4070, "y2023": 8580, "y2024": 0, "y2025": 0, "y2026": 23980, "flo": 32560, "juan": 0}, {"name": "MFO Advisors", "prio": "HP", "gasto": 31190, "reun": 12, "reun25": 4, "reun26": 1, "ratio": 2599, "y2023": 0, "y2024": 31190, "y2025": 0, "y2026": 0, "flo": 0, "juan": 31190}, {"name": "Andes investing", "prio": "MP", "gasto": 28740, "reun": 26, "reun25": 8, "reun26": 0, "ratio": 1105, "y2023": 14040, "y2024": 14700, "y2025": 0, "y2026": 0, "flo": 28740, "juan": 0}, {"name": "Vizcaya", "prio": "HP", "gasto": 26510, "reun": 16, "reun25": 2, "reun26": 2, "ratio": 1656, "y2023": 0, "y2024": 11490, "y2025": 15020, "y2026": 0, "flo": 11490, "juan": 15020}, {"name": "125 Global Invest", "prio": "MP", "gasto": 22935, "reun": 4, "reun25": 4, "reun26": 0, "ratio": 5733, "y2023": 0, "y2024": 0, "y2025": 22935, "y2026": 0, "flo": 22935, "juan": 0}, {"name": "Scotiabank Banca Privada", "prio": "HP", "gasto": 21810, "reun": 9, "reun25": 2, "reun26": 0, "ratio": 2423, "y2023": 21810, "y2024": 0, "y2025": 0, "y2026": 0, "flo": 21810, "juan": 0}, {"name": "Compass", "prio": "LP", "gasto": 21340, "reun": 10, "reun25": 1, "reun26": 2, "ratio": 2134, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 21340, "flo": 21340, "juan": 0}, {"name": "Vicapital", "prio": "HP", "gasto": 20896, "reun": 5, "reun25": 3, "reun26": 1, "ratio": 4179, "y2023": 0, "y2024": 0, "y2025": 20896, "y2026": 0, "flo": 14896, "juan": 6000}, {"name": "Global Advisors", "prio": "MP", "gasto": 19132, "reun": 4, "reun25": 2, "reun26": 0, "ratio": 4783, "y2023": 0, "y2024": 0, "y2025": 19132, "y2026": 0, "flo": 0, "juan": 19132}, {"name": "Credicorp Banca Privada", "prio": "HP", "gasto": 18205, "reun": 6, "reun25": 4, "reun26": 0, "ratio": 3034, "y2023": 0, "y2024": 0, "y2025": 18205, "y2026": 0, "flo": 11165, "juan": 7040}, {"name": "Laroche", "prio": "MP", "gasto": 18180, "reun": 2, "reun25": 1, "reun26": 1, "ratio": 9090, "y2023": 0, "y2024": 0, "y2025": 18180, "y2026": 0, "flo": 0, "juan": 18180}, {"name": "BR Capital", "prio": "LP", "gasto": 17600, "reun": 2, "reun25": 2, "reun26": 0, "ratio": 8800, "y2023": 0, "y2024": 0, "y2025": 17600, "y2026": 0, "flo": 17600, "juan": 0}, {"name": "Vector Capital", "prio": "MP", "gasto": 17380, "reun": 9, "reun25": 3, "reun26": 1, "ratio": 1931, "y2023": 0, "y2024": 17380, "y2025": 0, "y2026": 0, "flo": 17380, "juan": 0}, {"name": "GR Capital", "prio": "MP", "gasto": 14000, "reun": 14, "reun25": 6, "reun26": 2, "ratio": 1000, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 14000, "flo": 0, "juan": 14000}, {"name": "Adilac", "prio": "MP", "gasto": 11500, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 11500, "y2023": 0, "y2024": 0, "y2025": 11500, "y2026": 0, "flo": 11500, "juan": 0}, {"name": "Alejandrina Donoso", "prio": "LP", "gasto": 10890, "reun": 7, "reun25": 3, "reun26": 1, "ratio": 1555, "y2023": 0, "y2024": 10890, "y2025": 0, "y2026": 0, "flo": 10890, "juan": 0}, {"name": "Altovalsol", "prio": "MP", "gasto": 9690, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 9690, "y2023": 0, "y2024": 0, "y2025": 9690, "y2026": 0, "flo": 9690, "juan": 0}, {"name": "Partners advisers", "prio": "LP", "gasto": 8813, "reun": 7, "reun25": 0, "reun26": 1, "ratio": 1259, "y2023": 0, "y2024": 0, "y2025": 8813, "y2026": 0, "flo": 8813, "juan": 0}, {"name": "BD Investments", "prio": "MP", "gasto": 7190, "reun": 25, "reun25": 8, "reun26": 1, "ratio": 287, "y2023": 0, "y2024": 7190, "y2025": 0, "y2026": 0, "flo": 0, "juan": 7190}, {"name": "Andes Advisors", "prio": "MP", "gasto": 7000, "reun": 4, "reun25": 2, "reun26": 2, "ratio": 1750, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 7000, "flo": 0, "juan": 7000}, {"name": "Propela Partners", "prio": "LP", "gasto": 7000, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 7000, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 7000, "flo": 0, "juan": 7000}, {"name": "Quest", "prio": "HP", "gasto": 6832, "reun": 4, "reun25": 0, "reun26": 1, "ratio": 1708, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 6832, "flo": 6832, "juan": 0}, {"name": "Okomos", "prio": "LP", "gasto": 6153, "reun": 8, "reun25": 1, "reun26": 0, "ratio": 769, "y2023": 0, "y2024": 0, "y2025": 6153, "y2026": 0, "flo": 0, "juan": 6153}, {"name": "AFP Uno", "prio": "HP", "gasto": 5850, "reun": 2, "reun25": 0, "reun26": 0, "ratio": 2925, "y2023": 0, "y2024": 5850, "y2025": 0, "y2026": 0, "flo": 5850, "juan": 0}, {"name": "Ursa", "prio": "LP", "gasto": 4785, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 4785, "y2023": 0, "y2024": 0, "y2025": 4785, "y2026": 0, "flo": 0, "juan": 4785}];
+
+function fmtG(v){
+  if(v>=1000000) return (v/1000000).toFixed(2)+'M';
+  if(v>=1000) return Math.round(v/1000)+'K';
+  return String(v);
+}
+function rCol(x){
+  if(x>20000) return '#B33A2E';
+  if(x>10000) return '#895200';
+  if(x>5000)  return '#0E7A4E';
+  return '#1B4B9B';
+}
+
+// State stored directly on window object - persists across all calls
+window._GR = window._GR || {sort:'gasto', prio:'ALL', year:'ALL', resp:'ALL'};
+
+function getGRState() {
+  return window._GR;
+}
+
+function getVal(r, state) {
+  if(state.year==='2023') return r.y2023;
+  if(state.year==='2024') return r.y2024;
+  if(state.year==='2025') return r.y2025;
+  if(state.year==='2026') return r.y2026;
+  if(state.resp==='Flo')  return r.flo;
+  if(state.resp==='Juan') return r.juan;
+  return r.gasto;
+}
+
+function renderGR() {
+  var el = document.getElementById('gr-table');
+  if (!el) return;
+
+  var st = window._GR || {sort:'gasto', prio:'ALL', year:'ALL', resp:'ALL'};
+  var showAll = (st.year === 'ALL' && st.resp === 'ALL');
+
+  var rows = grData.filter(function(r) {
+    var v = getVal(r, st);
+    return (st.prio === 'ALL' || r.prio === st.prio) && v > 0;
+  }).map(function(r) {
+    return { r: r, v: getVal(r, st) };
+  });
+
+  if (st.sort === 'reun')       rows.sort(function(a,b) { return b.r.reun  - a.r.reun; });
+  else if (st.sort === 'ratio') rows.sort(function(a,b) { return b.r.ratio - a.r.ratio; });
+  else                          rows.sort(function(a,b) { return b.v - a.v; });
+
+  if (!rows.length) { el.innerHTML = '<div style="padding:20px;text-align:center;color:var(--text3);">Sin datos para este filtro</div>'; return; }
+
+  var maxV = Math.max.apply(null, rows.map(function(x) { return x.v; }));
+  var pC   = { HP:'#1B4B9B', MP:'#2E6BAF', LP:'#5A93CC' };
+
+  var html = '';
+  for (var i = 0; i < rows.length; i++) {
+    var x   = rows[i];
+    var r   = x.r;
+    var v   = x.v;
+    var col = pC[r.prio] || '#8FA3BE';
+    var rc  = rCol(r.ratio);
+    var pct = maxV > 0 ? Math.round(v / maxV * 100) : 0;
+
+    // ── Bar ──────────────────────────────────────────────────────────────────
+    var barInner = '';
+    if (showAll) {
+      var fw = r.gasto > 0 ? Math.round(r.flo  / r.gasto * pct) : 0;
+      var jw = r.gasto > 0 ? Math.round(r.juan / r.gasto * pct) : 0;
+      barInner = '<div style="width:' + fw + '%;background:#1B4B9B;height:100%;"></div>'
+               + '<div style="width:' + jw + '%;background:#F59E0B;height:100%;"></div>';
+    } else {
+      barInner = '<div style="width:' + pct + '%;background:' + col + ';height:100%;"></div>';
+    }
+    var bar = '<div style="height:5px;background:var(--card2);border-radius:3px;overflow:hidden;display:flex;margin-top:4px;max-width:55%;">' + barInner + '</div>';
+
+    // ── Detail text ───────────────────────────────────────────────────────────
+    var detail = '';
+    if (showAll) {
+      var pills = '';
+      if (r.y2023 > 0) pills += '<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:var(--card2);color:var(--text3);">23:' + fmtG(r.y2023) + '</span>';
+      if (r.y2024 > 0) pills += '<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:var(--card2);color:var(--text3);">24:' + fmtG(r.y2024) + '</span>';
+      if (r.y2025 > 0) pills += '<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(27,75,155,0.12);color:#1B4B9B;">25:' + fmtG(r.y2025) + '</span>';
+      if (r.y2026 > 0) pills += '<span style="font-size:8px;padding:1px 4px;border-radius:2px;background:rgba(14,122,78,0.12);color:#0E7A4E;">26:' + fmtG(r.y2026) + '</span>';
+      if (pills) detail += '<div style="display:flex;gap:3px;margin-top:3px;flex-wrap:wrap;">' + pills + '</div>';
+      var resp = '';
+      if (r.flo  > 0) resp += '<span style="color:#1B4B9B;">Flo ' + fmtG(r.flo) + '</span>';
+      if (r.flo > 0 && r.juan > 0) resp += '<span style="color:var(--text3);"> / </span>';
+      if (r.juan > 0) resp += '<span style="color:#895200;">Juan ' + fmtG(r.juan) + '</span>';
+      if (resp) detail += '<div style="font-size:9px;margin-top:2px;">' + resp + '</div>';
+    } else {
+      var pctOf = r.gasto > 0 ? Math.round(v / r.gasto * 100) : 0;
+      var lbl   = st.year !== 'ALL' ? st.year : st.resp;
+      var lc    = st.resp === 'Flo' ? '#1B4B9B' : st.resp === 'Juan' ? '#895200' : 'var(--a1)';
+      detail = '<div style="font-size:9px;margin-top:2px;">'
+             + '<span style="font-weight:600;color:' + lc + ';">' + lbl + ':</span>'
+             + ' <span style="color:var(--text2);">CLP ' + fmtG(v) + '</span>'
+             + ' <span style="color:var(--text3);">(' + pctOf + '% del total hist.)</span>'
+             + '</div>';
+    }
+
+    // ── Row ───────────────────────────────────────────────────────────────────
+    html += '<div style="display:flex;align-items:flex-start;gap:8px;padding:8px 0;border-bottom:1px solid var(--border);">';
+    html += '<span style="font-family:monospace;font-size:10px;color:var(--text3);min-width:20px;text-align:right;padding-top:2px;flex-shrink:0;">' + (i+1) + '</span>';
+    html += '<span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;background:' + col + '18;color:' + col + ';flex-shrink:0;margin-top:1px;">' + r.prio + '</span>';
+    html += '<div style="flex:1;min-width:0;">';
+    html +=   '<div style="font-size:11px;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + r.name + '">' + r.name + '</div>';
+    html +=   bar;
+    html +=   detail;
+    html += '</div>';
+    html += '<div style="text-align:right;min-width:74px;flex-shrink:0;">';
+    html +=   '<div style="font-family:monospace;font-size:12px;font-weight:700;color:var(--text);">CLP ' + fmtG(v) + '</div>';
+    html +=   '<div style="font-size:9px;color:var(--text3);">' + r.reun + ' reun.</div>';
+    html += '</div>';
+    html += '<div style="text-align:right;min-width:44px;flex-shrink:0;">';
+    html +=   '<div style="font-size:11px;color:var(--text2);font-weight:500;">' + r.reun25 + '/' + r.reun26 + '</div>';
+    html +=   '<div style="font-size:9px;color:var(--text3);">25/26</div>';
+    html += '</div>';
+    html += '<div style="text-align:center;min-width:72px;flex-shrink:0;">';
+    html +=   '<div style="font-family:monospace;font-size:12px;font-weight:700;color:' + rc + ';">' + (r.ratio > 0 ? fmtG(r.ratio) : '\u2014') + '</div>';
+    html +=   '<div style="font-size:9px;color:var(--text3);">' + (r.ratio > 0 ? 'CLP/reun' : '') + '</div>';
+    html += '</div>';
+    html += '</div>';
+  }
+  el.innerHTML = html;
+
+  var s = document.getElementById('gr-summary');
+  if (s) {
+    var tG  = rows.reduce(function(a,x) { return a + x.v; }, 0);
+    var tR  = rows.reduce(function(a,x) { return a + x.r.reun; }, 0);
+    var av  = tR > 0 ? Math.round(tG / tR) : 0;
+    var ctx = '';
+    if (showAll) {
+      ctx = ' \u00b7 <span style="color:#1B4B9B;">Flo CLP ' + fmtG(rows.reduce(function(a,x){return a+x.r.flo;},0)) + '</span>'
+          + ' \u00b7 <span style="color:#895200;">Juan CLP ' + fmtG(rows.reduce(function(a,x){return a+x.r.juan;},0)) + '</span>';
+    } else if (st.year !== 'ALL') {
+      ctx = ' \u00b7 <span style="color:var(--a1);">a\u00f1o ' + st.year + '</span>';
+    } else {
+      ctx = ' \u00b7 <span style="color:var(--a1);">' + st.resp + ' solamente</span>';
+    }
+    s.innerHTML = rows.length + ' clientes \u00b7 <strong>CLP ' + fmtG(tG) + '</strong>' + ctx
+                + ' \u00b7 Prom. <strong style="color:' + rCol(av) + ';">CLP ' + fmtG(av) + '/reun</strong>';
+  }
+}
+
+
+function setGRSort(key,btn){
+  window._GR.sort = key;
+  document.querySelectorAll('[data-gr-sort]').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  renderGR();
+}
+function setGRPrio(prio,btn){
+  window._GR.prio = prio;
+  document.querySelectorAll('[data-gr-prio]').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active');
+  renderGR();
+}
+function setGRYear(yr,btn){
+  window._GR.year = yr;
+  window._GR.resp = 'ALL';
+  document.querySelectorAll('[data-gr-year]').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('[data-gr-resp]').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('[data-gr-resp="ALL"]').forEach(function(t){t.classList.add('active');});
+  btn.classList.add('active');
+  renderGR();
+}
+function setGRResp(resp,btn){
+  window._GR.resp = resp;
+  window._GR.year = 'ALL';
+  document.querySelectorAll('[data-gr-resp]').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('[data-gr-year]').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('[data-gr-year="ALL"]').forEach(function(t){t.classList.add('active');});
+  btn.classList.add('active');
+  renderGR();
+}
+setTimeout(renderGR, 0);
+
+
+
+
+
+
+
+
+
+
+// ── NEW SECTIONS: MONTHLY + SUBTEMAS + RIESGO 2026 ──────────────────────────
+var monthlyDetailData = {};
+var subtemaMoData = {};
+var subteamAnnual = {};
+var subtemasColors = {};
+var subtemasClientsM = {};
+var subtemasClientsA = {};
+var riskData2026 = { HP:[], MP:[], LP:[] };
+
+window._MONTH = window._MONTH || {yr:'2026',mo:null,prio:'ALL'};
+window._SUB   = window._SUB   || {yr:'2026',mo:'ALL',activeSub:null};
+
+function setMonthYear(yr,btn){
+  document.querySelectorAll('[data-yr]').forEach(function(t){t.classList.remove('active');});
+  btn.classList.add('active'); window._MONTH.yr=yr; window._MONTH.mo=null;
+  document.querySelectorAll('[data-mo]').forEach(function(t){t.classList.remove('active');});
+  var a=document.querySelector('[data-mo="ALL"]'); if(a) a.classList.add('active');
+  for(var mo=1;mo<=12;mo++){var b=document.querySelector('[data-mo="'+mo+'"]');if(!b)continue;var has=monthlyDetailData[yr+'_'+mo]&&monthlyDetailData[yr+'_'+mo].length>0;b.style.opacity=has?'1':'0.3';b.style.pointerEvents=has?'auto':'none';}
+  renderMonthly();
+}
+function setMonthMo(mo,btn){
+  document.querySelectorAll('[data-mo]').forEach(function(t){t.classList.remove('active');}); btn.classList.add('active');
+  window._MONTH.mo=mo==='ALL'?null:parseInt(mo); renderMonthly();
+}
+function setMonthPrio(prio,btn){
+  document.querySelectorAll('[data-mprio]').forEach(function(t){t.classList.remove('active');}); btn.classList.add('active');
+  window._MONTH.prio=prio; renderMonthly();
+}
+function renderMonthly(){
+  var el=document.getElementById('monthly-table'); var es=document.getElementById('monthly-summary'); if(!el) return;
+  var st=window._MONTH; var MN=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var pC={HP:'#1B4B9B',MP:'#2E6BAF',LP:'#5A93CC','?':'#8FA3BE'}; var rows; var titleStr;
+  if(!st.mo){
+    var map={}; for(var mo=1;mo<=12;mo++){(monthlyDetailData[st.yr+'_'+mo]||[]).forEach(function(r){if(!map[r.nombre])map[r.nombre]={nombre:r.nombre,prio:r.prio,reun:0,subtemas:[]};map[r.nombre].reun+=r.reun;(r.subtemas||[]).forEach(function(s){if(map[r.nombre].subtemas.indexOf(s)<0)map[r.nombre].subtemas.push(s);});});}
+    rows=Object.values(map); titleStr=st.yr+' &mdash; Todo el a&ntilde;o';
+  } else { rows=monthlyDetailData[st.yr+'_'+st.mo]||[]; titleStr=MN[st.mo]+' '+st.yr; }
+  rows=rows.filter(function(r){return st.prio==='ALL'||r.prio===st.prio;});
+  // All-year view: sort purely by reuniones desc; monthly view: by prio then reun
+  if(!st.mo){
+    rows.sort(function(a,b){return b.reun-a.reun;});
+  } else {
+    rows.sort(function(a,b){var o={HP:0,MP:1,LP:2,'?':3};return(o[a.prio]||3)-(o[b.prio]||3)||b.reun-a.reun;});
+  }
+  var total=rows.reduce(function(a,r){return a+r.reun;},0);
+  var hp=rows.filter(function(r){return r.prio==='HP';}).length; var mp=rows.filter(function(r){return r.prio==='MP';}).length; var lp=rows.filter(function(r){return r.prio==='LP';}).length;
+  if(es) es.innerHTML = '<strong>'+titleStr+'</strong> &nbsp;&#183;&nbsp; '+total+' reuniones &nbsp;&#183;&nbsp; '+rows.length+' clientes'+(st.prio==='ALL'?' &nbsp;&#183;&nbsp; <span style="color:#1B4B9B;">HP:'+hp+'</span> <span style="color:#2E6BAF;">MP:'+mp+'</span> <span style="color:#5A93CC;">LP:'+lp+'</span>':'');
+  if(!rows.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);">Sin reuniones en este per&#237;odo</div>';return;}
+  var h=''; rows.forEach(function(r,i){var col=pC[r.prio]||'#8FA3BE';var subs=(r.subtemas||[]).map(function(s){return '<span style="font-size:9px;padding:1px 6px;border-radius:10px;background:var(--card2);color:var(--text3);border:1px solid var(--border);">'+s+'</span>';}).join(' ');
+  h+='<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">';
+  h+='<span style="font-family:monospace;font-size:10px;color:var(--text3);min-width:18px;text-align:right;padding-top:2px;flex-shrink:0;">'+(i+1)+'</span>';
+  h+='<span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;background:'+col+'18;color:'+col+';min-width:26px;text-align:center;flex-shrink:0;margin-top:1px;">'+(r.prio==='?'?'&mdash;':r.prio)+'</span>';
+  h+='<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.nombre+'</div>';
+  if(subs) h+='<div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">'+subs+'</div>'; h+='</div>';
+  h+='<div style="text-align:right;flex-shrink:0;min-width:40px;"><span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--text);">'+r.reun+'</span><div style="font-size:9px;color:var(--text3);">reun.</div></div></div>';});
+  el.innerHTML=h;
+}
+
+function setSubYear(yr,btn){
+  document.querySelectorAll('[data-sub-yr]').forEach(function(t){t.classList.remove('active');}); btn.classList.add('active');
+  window._SUB.yr=yr; window._SUB.mo='ALL'; window._SUB.activeSub=null;
+  document.querySelectorAll('[data-sub-mo]').forEach(function(t){t.classList.remove('active');}); var a=document.querySelector('[data-sub-mo="ALL"]'); if(a) a.classList.add('active');
+  for(var mo=1;mo<=6;mo++){var b=document.querySelector('[data-sub-mo="'+mo+'"]');if(!b)continue;var has=yr!=='ALL'&&subtemaMoData[yr+'_'+mo]&&Object.keys(subtemaMoData[yr+'_'+mo]).length>0;b.style.opacity=has?'1':'0.3';b.style.pointerEvents=has?'auto':'none';}
+  renderSubtemas();
+}
+function setSubMo(mo,btn){
+  document.querySelectorAll('[data-sub-mo]').forEach(function(t){t.classList.remove('active');}); btn.classList.add('active');
+  window._SUB.mo=mo; window._SUB.activeSub=null; renderSubtemas();
+}
+function toggleSubtema(el){
+  var sub=el.getAttribute('data-sub-name'); window._SUB.activeSub=window._SUB.activeSub===sub?null:sub; renderSubtemas();
+}
+function renderSubtemas(){
+  var el=document.getElementById('subtema-chart'); if(!el) return;
+  var st=window._SUB; var pC={HP:'#1B4B9B',MP:'#2E6BAF',LP:'#5A93CC','?':'#8FA3BE'};
+  var counts={};
+  if(st.yr==='ALL'){Object.keys(subtemaMoData).forEach(function(k){Object.keys(subtemaMoData[k]).forEach(function(s){counts[s]=(counts[s]||0)+subtemaMoData[k][s];});});}
+  else if(st.mo==='ALL'){counts=subteamAnnual[st.yr]||{};}
+  else{counts=subtemaMoData[st.yr+'_'+st.mo]||{};}
+  var total=Object.keys(counts).reduce(function(a,k){return a+counts[k];},0);
+  if(!total){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);">Sin datos</div>';return;}
+  var sorted=Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];}); var maxV=counts[sorted[0]];
+  var h='<div style="font-size:11px;color:var(--text2);margin-bottom:12px;">Total: <strong>'+total+' reuniones</strong> &nbsp;&#183;&nbsp; '+sorted.length+' categor&#237;as &nbsp;<span style="font-size:10px;color:var(--text3);">— Click en categor&#237;a para ver clientes</span></div>';
+  sorted.forEach(function(sub){
+    var v=counts[sub],pct=Math.round(v/maxV*100),col=subtemasColors[sub]||'#8FA3BE',isActive=st.activeSub===sub;
+    var clients=[];
+    if(st.yr==='ALL'){var cm={};Object.keys(subtemasClientsM).forEach(function(k){if(subtemasClientsM[k][sub])subtemasClientsM[k][sub].forEach(function(cl){if(!cm[cl.name])cm[cl.name]={name:cl.name,prio:cl.prio,reun:0};cm[cl.name].reun+=cl.reun;});});clients=Object.values(cm).sort(function(a,b){var o={HP:0,MP:1,LP:2,'?':3};return(o[a.prio]||3)-(o[b.prio]||3)||b.reun-a.reun;});}
+    else if(st.mo==='ALL'){clients=(subtemasClientsA[st.yr]&&subtemasClientsA[st.yr][sub])||[];}
+    else{clients=(subtemasClientsM[st.yr+'_'+st.mo]&&subtemasClientsM[st.yr+'_'+st.mo][sub])||[];}
+    var sn=sub.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    h+='<div style="margin-bottom:6px;">';
+    h+='<div onclick="toggleSubtema(this)" data-sub-name="'+sn+'" style="cursor:pointer;padding:8px 12px;border-radius:var(--r);border:1px solid '+(isActive?col+'60':'var(--border)')+';background:'+(isActive?col+'0D':'var(--card)')+';transition:all .15s;">';
+    h+='<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;"><span style="font-size:12px;font-weight:'+(isActive?'700':'500')+';color:'+(isActive?col:'var(--text)')+';">'+sub+'</span>';
+    h+='<div style="display:flex;align-items:center;gap:10px;"><span style="font-family:monospace;font-size:14px;font-weight:700;color:var(--text);">'+v+'</span><span style="font-size:10px;color:var(--text3);">'+Math.round(v/total*100)+'%</span><span style="font-size:11px;color:'+(isActive?col:'var(--text3)')+';">'+(isActive?'&#9650;':'&#9660;')+'</span></div></div>';
+    h+='<div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden;"><div style="height:8px;width:'+pct+'%;background:'+col+';border-radius:4px;"></div></div></div>';
+    if(isActive&&clients.length){
+      h+='<div style="margin:0 2px;padding:10px 12px;background:var(--card2);border-radius:0 0 var(--r) var(--r);border:1px solid '+col+'40;border-top:none;">';
+      h+='<div style="font-size:10px;font-weight:600;color:'+col+';text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">'+clients.length+' clientes</div>';
+      clients.forEach(function(cl,i){var cc=pC[cl.prio]||'#8FA3BE';
+        h+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:9px;color:var(--text3);min-width:16px;text-align:right;">'+(i+1)+'</span><span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+cc+'18;color:'+cc+';min-width:24px;text-align:center;">'+cl.prio+'</span><span style="flex:1;font-size:11px;color:var(--text);">'+cl.name+'</span><span style="font-family:monospace;font-size:11px;font-weight:600;color:var(--text);">'+cl.reun+'</span></div>';});
+      h+='</div>';
+    }
+    h+='</div>';
+  });
+  el.innerHTML=h;
+}
+
+function renderRiesgo2026(){
+  var sL={activo:'Con reuni&oacute;n 2026',pendiente:'&Uacute;ltimo contacto 2025',inactivo:'Sin contacto reciente'};
+  var sC={activo:'#0E7A4E',pendiente:'#895200',inactivo:'#B33A2E'};
+  ['HP','MP','LP'].forEach(function(prio){
+    var el=document.getElementById('risk-2026-'+prio.toLowerCase()); if(!el) return;
+    var rows=riskData2026[prio]||[],h='',last=null;
+    rows.forEach(function(r){
+      if(r.status!==last){last=r.status;h+='<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:'+sC[r.status]+';padding:8px 0 4px;border-top:1px solid var(--border2);margin-top:4px;">'+sL[r.status]+'</div>';}
+      var urg=r.status==='activo'?'#0E7A4E':r.status==='pendiente'?'#895200':'#B33A2E';
+      var dl=r.dias===null?'Sin hist.':r.dias+'d';
+      h+='<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);">';
+      h+='<div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.name+'</div><div style="font-size:9px;color:var(--text3);">'+r.last+'</div></div>';
+      if(r.reun26>0) h+='<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#E0F4EC;color:#0E7A4E;font-weight:600;flex-shrink:0;">'+r.reun26+'&#x2713;</span>';
+      h+='<span style="font-family:monospace;font-size:10px;font-weight:600;color:'+urg+';min-width:40px;text-align:right;flex-shrink:0;">'+dl+'</span></div>';
+    });
+    el.innerHTML=h||'<div style="padding:10px;color:var(--text3);font-size:11px;">Sin datos</div>';
+  });
+}
+
+setTimeout(function(){
+  var yr26=document.querySelector('[data-yr="2026"]');
+  if(yr26) setMonthYear('2026',yr26); else renderMonthly();
+  renderSubtemas();
+  renderRiesgo2026();
+},60);
+
+
+
+
+
+
+function toggleSubtemaChart(e) {
+  if (e) e.stopPropagation();
+  var chart = document.getElementById('subtema-chart');
+  var btn   = document.getElementById('subtema-m-btn');
+  if (!chart || !btn) return;
+  var collapsed = chart.style.display === 'none';
+  chart.style.display = collapsed ? '' : 'none';
+  btn.innerHTML = collapsed ? '&#9650; colapsar' : '&#9660; expandir';
+}
+function toggleVistaM(e) {
+  if (e) e.stopPropagation();
+  var tbl  = document.getElementById('monthly-table');
+  var btn  = document.getElementById('vista-m-btn');
+  if (!tbl || !btn) return;
+  var collapsed = tbl.style.display === 'none';
+  tbl.style.display = collapsed ? '' : 'none';
+  btn.innerHTML = collapsed ? '&#9650; colapsar' : '&#9660; expandir';
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// ══════════════════════════════════════════════════════════════════════════
+// PYODIDE — motor Python en browser para procesar el Excel
+// ══════════════════════════════════════════════════════════════════════════
+
+let pyodideReady = null;
+
+async function bootPyodide() {
+  const statusText = document.getElementById('upload-status-text');
+  const spinner    = document.getElementById('upload-spinner');
+  const btn        = document.getElementById('upload-btn');
+  const btnIcon    = document.getElementById('upload-btn-icon');
+  const btnText    = document.getElementById('upload-btn-text');
+
+  try {
+    statusText.textContent = 'Cargando Pyodide…';
+    const py = await loadPyodide({ indexURL: 'https://cdn.jsdelivr.net/pyodide/v0.26.2/full/' });
+    statusText.textContent = 'Cargando pandas…';
+    await py.loadPackage(['pandas', 'micropip']);
+    statusText.textContent = 'Instalando openpyxl (pip)…';
+    await py.runPythonAsync(`
+import micropip
+await micropip.install('openpyxl')
+`);
+    statusText.textContent = 'Cargando pipeline…';
+    const pipelineSrc = await (await fetch('./pipeline.py')).text();
+    py.FS.writeFile('pipeline.py', pipelineSrc);
+    py.runPython('import pipeline');
+
+    // Listo
+    document.body.classList.add('no-data');
+    spinner.style.display = 'none';
+    statusText.textContent = '';
+    statusText.innerHTML = '<span class="ub-info">Subí el Excel Follow Up clientes para ver los datos.</span>';
+    btn.disabled = false;
+    btnIcon.textContent = '↑';
+    btnText.textContent = 'Subir Excel';
+    return py;
+  } catch (err) {
+    spinner.style.display = 'none';
+    statusText.innerHTML = '<span class="ub-error">Error iniciando Pyodide: ' + (err.message || err) + '</span>';
+    throw err;
+  }
+}
+
+async function processExcel(file) {
+  const py = await pyodideReady;
+  const statusText = document.getElementById('upload-status-text');
+  const spinner    = document.getElementById('upload-spinner');
+  const btn        = document.getElementById('upload-btn');
+  spinner.style.display = '';
+  btn.disabled = true;
+  statusText.innerHTML = '<span class="ub-info">Procesando ' + file.name + '…</span>';
+
+  try {
+    const buf = await file.arrayBuffer();
+    py.globals.set('xlsm_bytes_js', new Uint8Array(buf));
+    const jsonStr = py.runPython(`
+import json
+xlsm_bytes = xlsm_bytes_js.to_bytes()
+data = pipeline.compute_data(xlsm_bytes)
+json.dumps(data, ensure_ascii=False, default=str)
+`);
+    const data = JSON.parse(jsonStr);
+    applyData(data);
+    document.body.classList.remove('no-data');
+    spinner.style.display = 'none';
+    const sizeKB = (file.size / 1024).toFixed(0);
+    statusText.innerHTML =
+      '<span class="ub-check">✓ ' + file.name + '</span>' +
+      ' <span class="ub-meta">' + sizeKB + ' KB · ' + (data.meta && data.meta.n_clientes || '?') + ' clientes · corte ' + (data.meta && data.meta.fecha_corte || '?') + '</span>';
+  } catch (err) {
+    spinner.style.display = 'none';
+    statusText.innerHTML = '<span class="ub-error">Error procesando Excel: ' + (err.message || err) + '</span>';
+    console.error(err);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// applyData(d) — toma el dict del pipeline e inyecta TODO en el dashboard
+// ══════════════════════════════════════════════════════════════════════════
+
+function applyData(d) {
+  // 1) Globales que el resto del JS consume
+  window.data              = { 2024: d.data['2024'], 2025: d.data['2025'], 2026: d.data['2026'] };
+  window.prioData          = d.prioData;
+  window.clientsData       = d.clientsData;
+  window.recontactData     = d.recontactData;
+  window.riskAll           = d.riskAll;
+  window.criticalList      = d.criticalList;
+  window.monthlyDetailData = d.monthlyDetailData;
+  window.subtemaMoData     = d.subtemaMoData;
+  window.subteamAnnual     = d.subteamAnnual;
+  window.subtemasColors    = d.subtemasColors;
+  window.subtemasClientsM  = d.subtemasClientsM;
+  window.subtemasClientsA  = d.subtemasClientsA;
+  window.riskData2026      = d.riskData2026;
+  // Estos quedan idénticos a los inline (no son data sensible — son aliases JS):
+  window.data2024 = d.data['2024']; window.data2025 = d.data['2025']; window.data2026 = d.data['2026'];
+
+  // 2) Re-renderizar el line chart (3 datasets: 2024/2025/2026)
+  try {
+    if (typeof lineChart !== 'undefined' && lineChart && lineChart.data) {
+      lineChart.data.datasets[0].data = d.data['2024'];
+      lineChart.data.datasets[1].data = d.data['2025'];
+      lineChart.data.datasets[2].data = d.data['2026'];
+      lineChart.update();
+    }
+  } catch (e) { console.warn('lineChart update fallo', e); }
+
+  // 3) KPIs hardcodeados en el DOM
+  try {
+    var k = d.kpi || {};
+    var elQ1 = document.querySelector('[data-kpi="q1-value"]');
+    if (elQ1) elQ1.textContent = k.q1;
+    var elYtd = document.querySelector('[data-kpi="ytd-value"]');
+    if (elYtd) elYtd.textContent = k.ytd;
+    var elYtdSub = document.querySelector('[data-kpi="ytd-sub"]');
+    if (elYtdSub) elYtdSub.innerHTML = 'Q1: ' + k.q1 + ' &nbsp;&middot;&nbsp; Abr: ' + k.abr + ' &nbsp;&middot;&nbsp; May: ' + k.may;
+  } catch (e) { console.warn('KPI update fallo', e); }
+
+  // 4) Recontact bars (texto + barra + %)
+  try {
+    ['hp', 'mp', 'lp'].forEach(function (pl) {
+      var sub = d.recontactData[pl];
+      if (!sub) return;
+      var yes = sub.yes.length, no = sub.no.length, tot = yes + no;
+      var pct = tot > 0 ? Math.round(yes / tot * 100) : 0;
+      var elText = document.querySelector('[data-recontact-text="' + pl + '"]');
+      var elBar  = document.querySelector('[data-recontact-bar="' + pl + '"]');
+      var elPct  = document.querySelector('[data-recontact-pct="' + pl + '"]');
+      if (elText) elText.textContent = yes + ' de ' + tot + ' recontactados';
+      if (elBar)  elBar.style.width = pct + '%';
+      if (elPct)  elPct.textContent = pct + '%';
+    });
+  } catch (e) { console.warn('recontact update fallo', e); }
+
+  // 5) Tab Riesgo — KPIs y títulos de columna (HP/MP/LP — N clientes)
+  try {
+    var r = d.kpi.riesgo_totals || {}, p = d.kpi.riesgo_by_prio || {};
+    var setText = function (sel, val) { var el = document.querySelector(sel); if (el) el.textContent = val; };
+    setText('[data-riesgo="activo-value"]',    r.activo);
+    setText('[data-riesgo="pendiente-value"]', r.pendiente);
+    setText('[data-riesgo="inactivo-value"]',  r.inactivo);
+    setText('[data-riesgo="total-value"]',     r.total);
+    setText('[data-riesgo="activo-sub"]',      'HP:' + (p.HP||{}).activo    + ' · MP:' + (p.MP||{}).activo    + ' · LP:' + (p.LP||{}).activo);
+    setText('[data-riesgo="pendiente-sub"]',   'HP:' + (p.HP||{}).pendiente + ' · MP:' + (p.MP||{}).pendiente + ' · LP:' + (p.LP||{}).pendiente);
+    setText('[data-riesgo="inactivo-sub"]',    'HP:' + (p.HP||{}).inactivo  + ' · MP:' + (p.MP||{}).inactivo  + ' · LP:' + (p.LP||{}).inactivo);
+    setText('[data-riesgo="total-sub"]',       'HP:' + (p.HP||{}).total     + ' · MP:' + (p.MP||{}).total     + ' · LP:' + (p.LP||{}).total);
+    setText('[data-riesgo-col="HP"]', 'HP — ' + (p.HP||{}).total + ' clientes');
+    setText('[data-riesgo-col="MP"]', 'MP — ' + (p.MP||{}).total + ' clientes');
+    setText('[data-riesgo-col="LP"]', 'LP — ' + (p.LP||{}).total + ' clientes');
+  } catch (e) { console.warn('riesgo update fallo', e); }
+
+  // 6) Charts anónimos del Resumen — destroy + recreate
+  try {
+    if (typeof Chart !== 'undefined') {
+      rebuildSemaforoChart(d.kpi.semaforo);
+      rebuildPeakChart(d.recentLabels, d.recentVals);
+      rebuildReunYtdChart(d.kpi.reun_ytd_by_prio, d.kpi.riesgo_by_prio);
+    }
+  } catch (e) { console.warn('rebuild charts fallo', e); }
+
+  // 7) Re-renderizar las secciones que leen las variables
+  try {
+    var btnAll = document.querySelector('[onclick*="setClients(\'all\'"]')
+              || document.querySelector('[onclick*="setClients"]');
+    if (btnAll && typeof setClients === 'function') setClients('all', btnAll);
+
+    var btnHP = document.querySelector('[onclick*="setPrioClients(\'HP\'"]')
+             || document.querySelector('[onclick*="setPrioClients"]');
+    if (btnHP && typeof setPrioClients === 'function') setPrioClients('HP', btnHP);
+
+    if (typeof _renderCriticalList === 'function') _renderCriticalList();
+    if (typeof renderRiesgo2026 === 'function')    renderRiesgo2026();
+    if (typeof renderMonthly === 'function')       renderMonthly();
+    if (typeof renderSubtemas === 'function')      renderSubtemas();
+    if (typeof buildHeatmap === 'function')        buildHeatmap();
+  } catch (e) { console.warn('re-render fallo', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Rebuild de charts anónimos (Resumen)
+// ══════════════════════════════════════════════════════════════════════════
+
+function rebuildSemaforoChart(s) {
+  var el = document.getElementById('semaforoChart');
+  if (!el || typeof Chart === 'undefined') return;
+  var existing = Chart.getChart(el);
+  if (existing) existing.destroy();
+  new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: ['HP (' + s.HP.total + ')', 'MP (' + s.MP.total + ')', 'LP (' + s.LP.total + ')'],
+      datasets: [
+        { label: '>= meta',      data: [s.HP.en_meta,  s.MP.en_meta,  s.LP.en_meta],  backgroundColor: '#0E7A4E', borderSkipped: false },
+        { label: 'Parcial',      data: [s.HP.parcial,  s.MP.parcial,  s.LP.parcial],  backgroundColor: '#D4890A', borderSkipped: false },
+        { label: 'Sin contacto', data: [s.HP.sin_cont, s.MP.sin_cont, s.LP.sin_cont], backgroundColor: '#B33A2E', borderSkipped: false }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: function(ctx) { return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y + ' clientes'; }}}},
+      scales: { x: Object.assign({ stacked: true }, xScale()), y: Object.assign({ stacked: true }, yScale()) }
+    }
+  });
+}
+
+function rebuildPeakChart(labels, vals) {
+  var el = document.getElementById('peakChart');
+  if (!el || typeof Chart === 'undefined') return;
+  var existing = Chart.getChart(el);
+  if (existing) existing.destroy();
+  var maxV = Math.max.apply(null, vals.concat([1]));
+  var colors = vals.map(function(v) {
+    if (v === maxV) return 'rgba(13,45,107,0.95)';
+    if (v >= maxV * 0.7) return 'rgba(27,75,155,0.85)';
+    return 'rgba(90,147,204,0.65)';
+  });
+  var vLabels = { id: 'vLabels', afterDatasetsDraw: function(ch) {
+    var ctx = ch.ctx;
+    ch.data.datasets.forEach(function(ds, i) {
+      ch.getDatasetMeta(i).data.forEach(function(bar, j) {
+        ctx.save(); ctx.font = '600 13px IBM Plex Mono,monospace';
+        ctx.fillStyle = '#0B1E3D'; ctx.textAlign = 'center'; ctx.textBaseline = 'bottom';
+        ctx.fillText(ds.data[j], bar.x, bar.y - 4); ctx.restore();
+      });
+    });
+  }};
+  new Chart(el, {
+    type: 'bar',
+    data: { labels: labels, datasets: [{ data: vals, backgroundColor: colors, borderRadius: 5, borderSkipped: false }] },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 }, layout: { padding: { top: 22 } },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ' ' + ctx.parsed.y + ' reuniones'; }}}},
+      scales: { x: xScale(), y: Object.assign(yScale(Math.ceil(maxV * 1.2)), { ticks: Object.assign({}, yScale().ticks, { callback: function(v) { return Number.isInteger(v) ? v : ''; }})})}
+    },
+    plugins: [vLabels]
+  });
+}
+
+function rebuildReunYtdChart(byPrio, byPrioStats) {
+  var el = document.getElementById('reunYtdChart');
+  if (!el || typeof Chart === 'undefined') return;
+  var existing = Chart.getChart(el);
+  if (existing) existing.destroy();
+  var total = (byPrio.HP || 0) + (byPrio.MP || 0) + (byPrio.LP || 0);
+  var pctOf = function(v) { return total > 0 ? Math.round(v / total * 1000) / 10 : 0; };
+  new Chart(el, {
+    type: 'bar',
+    data: {
+      labels: [
+        'HP (' + byPrioStats.HP.total + ' clientes)',
+        'MP (' + byPrioStats.MP.total + ' clientes)',
+        'LP (' + byPrioStats.LP.total + ' clientes)'
+      ],
+      datasets: [{ label: 'Reuniones YTD',
+        data: [byPrio.HP || 0, byPrio.MP || 0, byPrio.LP || 0],
+        backgroundColor: ['#1B4B9B','#2E6BAF','#5A93CC'], borderSkipped: false }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+      plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) {
+        return ' ' + ctx.parsed.y + ' reuniones (' + pctOf(ctx.parsed.y) + '% del total)';
+      }}}},
+      scales: { x: xScale(), y: Object.assign(yScale(), { ticks: { callback: function(v) { return Number.isInteger(v) ? v : ''; }, color: TICK_C, font: TICK_FONT }})}
+    }
+  });
+  var leg = document.getElementById('reun-ytd-leg');
+  if (leg) {
+    leg.innerHTML = [
+      ['#1B4B9B', 'HP · ' + (byPrio.HP || 0) + ' reun. · ' + byPrioStats.HP.total + ' clientes'],
+      ['#2E6BAF', 'MP · ' + (byPrio.MP || 0) + ' reun. · ' + byPrioStats.MP.total + ' clientes'],
+      ['#5A93CC', 'LP · ' + (byPrio.LP || 0) + ' reun. · ' + byPrioStats.LP.total + ' clientes']
+    ].map(function(it) { return '<span class="legend-item"><span class="legend-dot" style="background:' + it[0] + '"></span>' + it[1] + '</span>'; }).join('');
+  }
+}
+
+// ── Setup ──────────────────────────────────────────────────────────────────
+function _pyodideSetup() {
+  document.body.classList.add('no-data');
+  var input = document.getElementById('xlsm-input');
+  if (input) input.addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (f) processExcel(f);
+  });
+  pyodideReady = bootPyodide();
+}
+// Este <script> está al final del <body>, así que DOMContentLoaded ya
+// disparó. Corremos al toque, pero por seguridad chequeamos readyState.
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', _pyodideSetup);
+} else {
+  _pyodideSetup();
+}
+</script>
+</body>
+</html>
