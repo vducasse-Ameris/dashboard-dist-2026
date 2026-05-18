@@ -1288,8 +1288,8 @@ function buildHeatmap() {
   var allVals=[];
   [2024,2025,2026].forEach(function(y){data[y].forEach(function(v){if(v>0)allVals.push(v);});});
   var max=Math.max.apply(null,allVals);
-  function getColor(v){if(v===0)return '#F0F3F8';var t=v/max;if(t>0.8)return '#051B4A';if(t>0.6)return '#0D2D6B';if(t>0.4)return '#1B4B9B';if(t>0.22)return '#3A7BC8';if(t>0.1)return '#7FB3E8';return '#C8DDF4';}
-  function txtCol(v){return v/max>0.35?'#fff':'#1B4B9B';}
+  function getColor(v){if(v===0)return '#F5F7FA';var t=Math.sqrt(v/max);if(t>0.85)return '#B33A2E';if(t>0.70)return '#D4890A';if(t>0.55)return '#0D2D6B';if(t>0.40)return '#1B4B9B';if(t>0.25)return '#3A7BC8';if(t>0.12)return '#7FB3E8';return '#C8DDF4';}
+  function txtCol(v){return Math.sqrt(v/max)>0.40?'#fff':'#1B4B9B';}
   var html='<div class="heatmap-grid"><div class="hm-label"></div>';
   months.forEach(function(m){html+='<div class="hm-month">'+m+'</div>';});
   [2024,2025,2026].forEach(function(y){
@@ -1297,7 +1297,7 @@ function buildHeatmap() {
     data[y].forEach(function(v){html+='<div class="hm-cell" style="background:'+getColor(v)+';color:'+(v>0?txtCol(v):'#B8C8DC')+'" title="'+v+' reuniones">'+(v>0?v:'')+'</div>';});
   });
   html+='</div><div style="display:flex;align-items:center;gap:5px;margin-top:10px;font-size:10px;color:var(--text3);"><span>0</span>';
-  ['#F0F3F8','#C8DDF4','#7FB3E8','#3A7BC8','#1B4B9B','#0D2D6B','#051B4A'].forEach(function(col){html+='<span style="width:20px;height:11px;background:'+col+';border-radius:2px;display:inline-block"></span>';});
+  ['#F5F7FA','#C8DDF4','#7FB3E8','#3A7BC8','#1B4B9B','#0D2D6B','#D4890A','#B33A2E'].forEach(function(col){html+='<span style="width:20px;height:11px;background:'+col+';border-radius:2px;display:inline-block"></span>';});
   html+='<span>'+max+'</span></div>';
   el.innerHTML=html;
 }
