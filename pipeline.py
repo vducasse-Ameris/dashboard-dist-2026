@@ -153,6 +153,12 @@ def _top10(df: pd.DataFrame, cols: list[str]) -> list:
     return [[str(r["Cliente"]), int(r["_t"])] for _, r in top.iterrows() if r["_t"] > 0]
 
 
+def _tipo_cliente(name: str) -> str:
+    """Devuelve 'Inst' (AFPs, seguros, IFC, AFC, etc.) o 'Dist' (resto)."""
+    n = str(name).lower()
+    return "Inst" if any(k in n for k in ["afp", "seguro", "consorcio", "ifc", "afc"]) else "Dist"
+
+
 def _foto_counts(df_f: pd.DataFrame, yr: int) -> dict:
     c = {}
     for _, row in df_f.iterrows():
@@ -303,7 +309,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         last_str = str(last.date()) if last is not None and not pd.isna(last) else "Sin historial"
         last_yr = last.year if last is not None and not pd.isna(last) else 0
         reun26 = int(sum(float(row.get(m, 0)) for m in MESES if m in df26.columns))
-        tipo = "Inst" if any(k in name.lower() for k in ["afp", "seguro", "consorcio", "ifc", "afc"]) else "Dist"
+        tipo = _tipo_cliente(name)
         status = "activo" if reun26 > 0 else ("pendiente" if last_yr >= 2025 else "inactivo")
         risk_2026[prio].append({
             "name": name, "prio": prio, "dias": dias, "last": last_str,
@@ -347,9 +353,11 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             subs = list(dict.fromkeys(
                 [str(s).strip() for s in grp["Subtema"].dropna() if str(s).strip()]
             ))[:3]
+            nombre = name_dict.get(cn, cn.title())
             monthly_detail[key].append({
-                "nombre": name_dict.get(cn, cn.title()),
+                "nombre": nombre,
                 "prio": prio_dict.get(cn, "?"),
+                "tipo": _tipo_cliente(nombre),
                 "reun": len(grp),
                 "subtemas": subs,
             })

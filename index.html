@@ -773,22 +773,7 @@ footer {
     <div id="areas-container" style="margin-top:4px;"></div>
   </div>
 
-  <!-- ── LISTA CRÍTICA ───────────────────────────────────────────────── -->
-  <div class="section-label">Lista crítica — clientes con mayor tiempo sin contacto</div>
-  <div class="card">
-    <div class="card-title">Ranking por días sin reunión (solo clientes con historial previo)</div>
-    <div class="card-sub">Ordenados de mayor a menor tiempo sin contacto · Umbral HP: 75d · MP: 120d · LP: 210d</div>
-    <div id="critical-list" style="margin-top:8px;"></div>
-  
-  <!-- ── GASTOS DE RELACIONAMIENTO ──────────────────────────────────── -->
-  
-
-  <!-- GASTOS x REUNIONES -->
-  
-
-</div>
-
-</div>
+  </div>
 
 <!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->
 <div class="panel" id="tab-metas-aum">
@@ -1846,6 +1831,7 @@ function renderMonthly(){
   h+='<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">';
   h+='<span style="font-family:monospace;font-size:10px;color:var(--text3);min-width:18px;text-align:right;padding-top:2px;flex-shrink:0;">'+(i+1)+'</span>';
   h+='<span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;background:'+col+'18;color:'+col+';min-width:26px;text-align:center;flex-shrink:0;margin-top:1px;">'+(r.prio==='?'?'&mdash;':r.prio)+'</span>';
+  h+='<span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;background:'+(r.tipo==="Inst"?"#6B4C9B18":"#7D93B518")+';color:'+(r.tipo==="Inst"?"#6B4C9B":"#7D93B5")+';min-width:30px;text-align:center;flex-shrink:0;margin-top:1px;">'+(r.tipo||'Dist')+'</span>';
   h+='<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.nombre+'</div>';
   if(subs) h+='<div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">'+subs+'</div>'; h+='</div>';
   h+='<div style="text-align:right;flex-shrink:0;min-width:40px;"><span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--text);">'+r.reun+'</span><div style="font-size:9px;color:var(--text3);">reun.</div></div></div>';});
