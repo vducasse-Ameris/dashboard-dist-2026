@@ -1461,7 +1461,7 @@ function selectQuarter(q, btn) {
 function setClients(year, btn) {
   document.querySelectorAll('[onclick*="setClients"]').forEach(function(t){t.classList.remove('active');});
   btn.classList.add('active');
-  var list=clientsData[year]; if (!list || !list.length) { document.getElementById('clients-container').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">Subí el Excel para ver datos</div>'; return; } var max=list[0][1];
+  var list=clientsData[year]; if (!list || !list.length) { document.getElementById('clients-container').innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">Sube el Excel para ver datos</div>'; return; } var max=list[0][1];
   document.getElementById('clients-container').innerHTML=list.map(function(item,i){
     return '<div class="client-row"><span class="client-rank">'+(i+1)+'</span><span class="client-name">'+item[0]+'</span>'
       +'<div class="client-bar-wrap"><div class="client-bar" style="width:'+(item[1]/max*100)+'%"></div></div>'
@@ -1997,7 +1997,7 @@ await micropip.install('openpyxl')
     document.body.classList.add('no-data');
     spinner.style.display = 'none';
     statusText.textContent = '';
-    statusText.innerHTML = '<span class="ub-info">Subí el Excel Follow Up clientes para ver los datos.</span>';
+    statusText.innerHTML = '<span class="ub-info">Sube el Excel Follow Up clientes para ver los datos.</span>';
     btn.disabled = false;
     btnIcon.textContent = '↑';
     btnText.textContent = 'Subir Excel';
