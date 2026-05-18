@@ -2014,6 +2014,9 @@ async function processExcel(file) {
   const statusText = document.getElementById('upload-status-text');
   const spinner    = document.getElementById('upload-spinner');
   const btn        = document.getElementById('upload-btn');
+  const btnIcon    = document.getElementById('upload-btn-icon');
+  const btnText    = document.getElementById('upload-btn-text');
+  const input      = document.getElementById('xlsm-input');
   spinner.style.display = '';
   btn.disabled = true;
   statusText.innerHTML = '<span class="ub-info">Procesando ' + file.name + '…</span>';
@@ -2032,15 +2035,23 @@ json.dumps(data, ensure_ascii=False, default=str)
     document.body.classList.remove('no-data');
     spinner.style.display = 'none';
     const sizeKB = (file.size / 1024).toFixed(0);
+    const now = new Date();
+    const hhmm = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
     statusText.innerHTML =
       '<span class="ub-check">✓ ' + file.name + '</span>' +
-      ' <span class="ub-meta">' + sizeKB + ' KB · ' + (data.meta && data.meta.n_clientes || '?') + ' clientes · corte ' + (data.meta && data.meta.fecha_corte || '?') + '</span>';
+      ' <span class="ub-meta">' + sizeKB + ' KB · ' + (data.meta && data.meta.n_clientes || '?') + ' clientes · corte ' + (data.meta && data.meta.fecha_corte || '?') + ' · cargado ' + hhmm + '</span>';
+    // Después del primer éxito, el botón pasa a modo "actualizar"
+    btnIcon.textContent = '↻';
+    btnText.textContent = 'Actualizar Excel';
   } catch (err) {
     spinner.style.display = 'none';
     statusText.innerHTML = '<span class="ub-error">Error procesando Excel: ' + (err.message || err) + '</span>';
     console.error(err);
   } finally {
     btn.disabled = false;
+    // Reset del input para que el `change` event vuelva a disparar si
+    // el usuario re-selecciona el mismo archivo después de guardarlo.
+    if (input) input.value = '';
   }
 }
 
