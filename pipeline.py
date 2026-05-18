@@ -133,7 +133,28 @@ def _sub_color(name: str) -> str:
 
 
 def _load_foto(xls, sheet: str) -> pd.DataFrame:
+    """
+    Lee una hoja 'Clientes foto YYYY' y agrega `_tipo` ('Dist' / 'Inst')
+    según las filas separadoras "Distribuidores" / "Institucionales" que
+    el Excel usa como section headers en la columna Cliente.
+    """
     df = pd.read_excel(xls, sheet_name=sheet)
+
+    # Recorrer en orden y trackear la sección actual basada en las filas
+    # separadoras del Excel. Cualquier fila de cliente real hereda la
+    # última sección vista.
+    current_section: str | None = None
+    tipos: list[str | None] = []
+    for cliente_val in df["Cliente"]:
+        cl = str(cliente_val).strip().lower() if pd.notna(cliente_val) else ""
+        if "distribu" in cl:
+            current_section = "Dist"
+        elif cl.startswith("institucional"):  # "Institucionales" / "Institucional"
+            current_section = "Inst"
+        tipos.append(current_section)
+    df["_tipo"] = tipos
+
+    # Ahora sí filtramos los separadores y totales para quedarnos sólo con clientes
     df = df[
         df["Cliente"].notna()
         & ~df["Cliente"].astype(str).str.contains("Total|Distribu|Inst", case=False, na=False)
@@ -151,12 +172,6 @@ def _top10(df: pd.DataFrame, cols: list[str]) -> list:
     df["_t"] = df[[c for c in cols if c in df.columns]].sum(axis=1).astype(float)
     top = df.nlargest(10, "_t")[["Cliente", "_t"]]
     return [[str(r["Cliente"]), int(r["_t"])] for _, r in top.iterrows() if r["_t"] > 0]
-
-
-def _tipo_cliente(name: str) -> str:
-    """Devuelve 'Inst' (AFPs, seguros, IFC, AFC, etc.) o 'Dist' (resto)."""
-    n = str(name).lower()
-    return "Inst" if any(k in n for k in ["afp", "seguro", "consorcio", "ifc", "afc"]) else "Dist"
 
 
 def _foto_counts(df_f: pd.DataFrame, yr: int) -> dict:
@@ -203,6 +218,8 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
 
     prio_dict = dict(zip(df26["_cn"], df26["Prioridad"]))
     name_dict = dict(zip(df26["_cn"], df26["Cliente"]))
+    # tipo viene de la sección del Excel; default a "Dist" si falta
+    tipo_dict = {cn: (t or "Dist") for cn, t in zip(df26["_cn"], df26["_tipo"])}
 
     # Apuntes — los nombres de las hojas tienen espacios raros, los probamos
     ap_dfs = []
@@ -309,7 +326,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         last_str = str(last.date()) if last is not None and not pd.isna(last) else "Sin historial"
         last_yr = last.year if last is not None and not pd.isna(last) else 0
         reun26 = int(sum(float(row.get(m, 0)) for m in MESES if m in df26.columns))
-        tipo = _tipo_cliente(name)
+        tipo = row.get("_tipo") or "Dist"
         status = "activo" if reun26 > 0 else ("pendiente" if last_yr >= 2025 else "inactivo")
         risk_2026[prio].append({
             "name": name, "prio": prio, "dias": dias, "last": last_str,
@@ -357,7 +374,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             monthly_detail[key].append({
                 "nombre": nombre,
                 "prio": prio_dict.get(cn, "?"),
-                "tipo": _tipo_cliente(nombre),
+                "tipo": tipo_dict.get(cn, "Dist"),
                 "reun": len(grp),
                 "subtemas": subs,
             })
