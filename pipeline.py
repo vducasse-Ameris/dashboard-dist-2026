@@ -145,14 +145,21 @@ def _load_foto(xls, sheet: str) -> pd.DataFrame:
     # última sección vista.
     current_section: str | None = None
     tipos: list[str | None] = []
-    for cliente_val in df["Cliente"]:
+    sections_found = []
+    for i, cliente_val in enumerate(df["Cliente"]):
         cl = str(cliente_val).strip().lower() if pd.notna(cliente_val) else ""
         if "distribu" in cl:
             current_section = "Dist"
+            sections_found.append((i, "Dist", repr(cliente_val)))
         elif cl.startswith("institucional"):  # "Institucionales" / "Institucional"
             current_section = "Inst"
+            sections_found.append((i, "Inst", repr(cliente_val)))
         tipos.append(current_section)
     df["_tipo"] = tipos
+    # DEBUG: log para diagnosticar en Pyodide
+    from collections import Counter
+    print(f"[{sheet}] filas: {len(df)}, sections_found: {sections_found}, "
+          f"tipos counts before filter: {Counter(tipos)}")
 
     # Ahora sí filtramos los separadores y totales para quedarnos sólo con clientes
     df = df[
