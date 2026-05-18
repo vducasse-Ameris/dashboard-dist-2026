@@ -2018,13 +2018,12 @@ data = pipeline.compute_data(xlsm_bytes)
 json.dumps(data, ensure_ascii=False, default=str)
 `);
     const data = JSON.parse(jsonStr);
-    // ── DEBUG: muestra ejemplos de tipo en la consola ──
+    // ── DEBUG ──
     try {
       const sample = Object.values(data.monthlyDetailData).flat().slice(0, 200);
       const counts = sample.reduce((acc, r) => { acc[r.tipo] = (acc[r.tipo]||0)+1; return acc; }, {});
-      const inst_sample = sample.filter(r => r.tipo === 'Inst').slice(0, 3);
       console.log('[debug] tipo counts (primeros 200):', counts);
-      console.log('[debug] sample Inst:', inst_sample);
+      console.log('[debug] pipeline _debug:', data._debug);
     } catch (e) { console.warn('[debug] log fallo', e); }
     applyData(data);
     document.body.classList.remove('no-data');
