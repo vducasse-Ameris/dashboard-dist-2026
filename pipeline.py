@@ -814,6 +814,55 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
                 "mes":    primera_mes,
             })
 
+    # ── COMPARATIVA Q YoY POR PRIORIDAD ─────────────────────────────────
+    # Reuniones del Q completo: año actual del Q vs año anterior, separado HP/MP/LP
+    q_comparativa = {}
+    df_q_prev_yr = year_dfs.get(last_q_year - 1)
+    for prio in ["HP", "MP", "LP"]:
+        cur_total = 0
+        if "Prioridad" in df_q.columns:
+            sub_cur = df_q[df_q["Prioridad"] == prio]
+            cur_total = int(sum(
+                sub_cur[m].sum() for m in last_q_month_names if m in sub_cur.columns
+            ))
+        prev_total = 0
+        if df_q_prev_yr is not None and not df_q_prev_yr.empty and "Prioridad" in df_q_prev_yr.columns:
+            sub_prev = df_q_prev_yr[df_q_prev_yr["Prioridad"] == prio]
+            prev_total = int(sum(
+                sub_prev[m].sum() for m in last_q_month_names if m in sub_prev.columns
+            ))
+        pct = round((cur_total - prev_total) / prev_total * 100) if prev_total else 0
+        q_comparativa[prio] = {"cur": cur_total, "prev": prev_total, "pct": pct}
+
+    # ── CROSS-SELL RADAR ────────────────────────────────────────────────
+    # Clientes con >= 3 reuniones en el año actual pero <= 1 producto distinto
+    # (excluyendo Follow Up / Catch Up y Sin tema). Posibles oportunidades de
+    # ofrecer otros productos del portafolio.
+    cross_sell_radar = []
+    if len(df_ap):
+        df_ap_cur_yr = df_ap[df_ap["year_num"] == cur_year]
+        for cn, grp in df_ap_cur_yr.groupby("cn"):
+            reun = len(grp)
+            if reun < 3:
+                continue
+            subs = set()
+            for s in grp["Subtema"].dropna():
+                cleaned = _clean_sub(s)
+                if cleaned and cleaned not in ("Follow Up / Catch Up", "Sin tema"):
+                    subs.add(cleaned)
+            if len(subs) <= 1:
+                cross_sell_radar.append({
+                    "name":       name_dict.get(cn, cn.title()),
+                    "prio":       prio_dict.get(cn, "?"),
+                    "reun":       reun,
+                    "products":   sorted(subs),
+                    "n_products": len(subs),
+                })
+        cross_sell_radar.sort(
+            key=lambda x: (PRIO_ORD.get(x["prio"], 3), -x["reun"], x["name"])
+        )
+        cross_sell_radar = cross_sell_radar[:25]
+
     # ── ÁREAS / PRODUCTOS (subtemas del año actual) ─────────────────────
     year_str = str(cur_year)
     sa_year = sa.get(year_str, {})
@@ -868,6 +917,8 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "qMetas": q_metas,
         "metasGoals": metas_goals,
         "nuevosDistribuidores": nuevos_distribuidores,
+        "qComparativa": q_comparativa,
+        "crossSellRadar": cross_sell_radar,
         "recentLabels": recent_labels,
         "recentVals": recent_vals,
         "years": years_avail,

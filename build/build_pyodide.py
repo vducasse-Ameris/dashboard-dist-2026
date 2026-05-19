@@ -378,6 +378,9 @@ function applyData(d) {
 
     // Labels Q/año restantes (Consolidado, Semáforo, Footer, AUM, setYoy)
     setText('[data-q-text="nuevos-card-title"]', 'Clientes nuevos incorporados en ' + cy);
+    setText('[data-q-text="comparativa-section"]', 'Comparativa ' + cq.label + ' vs ' + cq.label_year_prev + ' — por prioridad');
+    setText('[data-q-text="crosssell-section"]', 'Oportunidades de cross-sell — alto contacto, pocos productos');
+    setText('[data-q-text="crosssell-title"]', 'Clientes con ≥ 3 reuniones en ' + cy + ' y ≤ 1 producto distinto discutido (fuera de Follow Up)');
     setText('[data-q-text="consolidado-section"]', 'Consolidado ' + cq.label + ' — progreso del año por segmento');
     setText('[data-q-text="semaforo-title"]', 'Semáforo de contacto ' + cy + ' YTD — por segmento');
     setText('[data-q-text="kpi-q-current"]', cq.label);
@@ -492,11 +495,73 @@ function applyData(d) {
 
     if (typeof _renderCriticalList === 'function') _renderCriticalList();
     if (typeof _renderAreas === 'function')        _renderAreas();
+    renderComparativaQ(d);
+    renderCrossSell(d);
     if (typeof renderRiesgo2026 === 'function')    renderRiesgo2026();
     if (typeof renderMonthly === 'function')       renderMonthly();
     if (typeof renderSubtemas === 'function')      renderSubtemas();
     if (typeof buildHeatmap === 'function')        buildHeatmap();
   } catch (e) { console.warn('re-render fallo', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Comparativa Q YoY por prioridad
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderComparativaQ(d) {
+  var el = document.getElementById('comparativa-q-yoy');
+  if (!el) return;
+  var c = d.qComparativa || {};
+  el.innerHTML = ['HP', 'MP', 'LP'].map(function(p) {
+    var v = c[p] || { cur: 0, prev: 0, pct: 0 };
+    var dir = v.pct > 0 ? '↑' : (v.pct < 0 ? '↓' : '−');
+    var col = v.pct > 0 ? '#0E7A4E' : (v.pct < 0 ? '#B33A2E' : '#7D93B5');
+    var bg  = v.pct > 0 ? '#E0F4EC' : (v.pct < 0 ? '#FAE9E7' : 'var(--card2)');
+    var sign = v.pct > 0 ? '+' : '';
+    var pCol = (p === 'HP') ? '#1B4B9B' : (p === 'MP' ? '#2E6BAF' : '#5A93CC');
+    return '<div style="padding:14px;border-radius:8px;background:var(--card2);border-left:3px solid ' + pCol + ';">'
+      + '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">'
+      +   '<span style="font-size:11px;font-weight:700;color:' + pCol + ';text-transform:uppercase;letter-spacing:.06em;">' + p + '</span>'
+      +   '<span style="font-size:12px;font-weight:700;color:' + col + ';padding:2px 8px;border-radius:4px;background:' + bg + ';">' + dir + ' ' + sign + v.pct + '%</span>'
+      + '</div>'
+      + '<div style="display:flex;align-items:baseline;gap:8px;">'
+      +   '<span style="font-family:monospace;font-size:24px;font-weight:700;color:var(--text);">' + v.cur + '</span>'
+      +   '<span style="font-size:11px;color:var(--text3);">reuniones</span>'
+      + '</div>'
+      + '<div style="font-size:10px;color:var(--text3);margin-top:4px;">vs <strong>' + v.prev + '</strong> año anterior</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Cross-sell radar (alto contacto, pocos productos)
+// ══════════════════════════════════════════════════════════════════════════
+
+function renderCrossSell(d) {
+  var el = document.getElementById('cross-sell-list');
+  if (!el) return;
+  var list = d.crossSellRadar || [];
+  if (!list.length) {
+    el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">Sin oportunidades detectadas — todos los clientes con ≥3 reuniones ya discutieron varios productos</div>';
+    return;
+  }
+  var pC = { HP: '#1B4B9B', MP: '#2E6BAF', LP: '#5A93CC' };
+  el.innerHTML = list.map(function(c, i) {
+    var col = pC[c.prio] || '#7D93B5';
+    var prods = c.products && c.products.length ? c.products.join(' · ') : '<em style="color:var(--text3);">solo Follow Up / Catch Up</em>';
+    return '<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);">'
+      + '<span style="font-family:monospace;font-size:10px;color:var(--text3);min-width:20px;text-align:right;">' + (i + 1) + '</span>'
+      + '<span style="font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;background:' + col + '18;color:' + col + ';min-width:26px;text-align:center;">' + c.prio + '</span>'
+      + '<div style="flex:1;min-width:0;">'
+      +   '<div style="font-size:12px;font-weight:500;color:var(--text);">' + c.name + '</div>'
+      +   '<div style="font-size:10px;color:var(--text3);margin-top:2px;">Producto: ' + prods + '</div>'
+      + '</div>'
+      + '<div style="text-align:right;flex-shrink:0;min-width:60px;">'
+      +   '<span style="font-family:monospace;font-size:14px;font-weight:700;color:var(--text);">' + c.reun + '</span>'
+      +   '<div style="font-size:9px;color:var(--text3);">reuniones</div>'
+      + '</div>'
+      + '</div>';
+  }).join('');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -964,6 +1029,39 @@ def transform(html: str) -> str:
         html = html.replace(heatmap_old_legend, heatmap_new_legend, 1)
     else:
         print("  WARN: no encontré la leyenda del heatmap")
+
+    # 1.D) Insertar cards de COMPARATIVA Q YoY y CROSS-SELL RADAR
+    # Comparativa Q YoY al final del tab-resumen
+    comparativa_card = (
+        '\n  <!-- ── COMPARATIVA Q YoY POR PRIORIDAD (auto) ───── -->\n'
+        '  <div class="section-label" data-q-text="comparativa-section">Comparativa Q1 2026 vs Q1 2025 — por prioridad</div>\n'
+        '  <div class="card" style="margin-bottom:1.25rem;">\n'
+        '    <div class="card-title">Reuniones del trimestre completo · año actual vs año anterior</div>\n'
+        '    <div class="card-sub">Mismo período (mismos meses) comparado año contra año, separado por segmento de prioridad</div>\n'
+        '    <div id="comparativa-q-yoy" style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;"></div>\n'
+        '  </div>\n\n'
+    )
+    html = html.replace(
+        "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 2: REUNIONES -->",
+        comparativa_card + "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 2: REUNIONES -->",
+        1,
+    )
+
+    # Cross-sell radar al final del tab-clientes
+    crosssell_card = (
+        '\n  <!-- ── CROSS-SELL RADAR (auto) ───── -->\n'
+        '  <div class="section-label" data-q-text="crosssell-section">Oportunidades de cross-sell — alto contacto, pocos productos</div>\n'
+        '  <div class="card" style="margin-bottom:1.25rem;">\n'
+        '    <div class="card-title" data-q-text="crosssell-title">Clientes con ≥ 3 reuniones en 2026 y ≤ 1 producto distinto discutido (fuera de Follow Up)</div>\n'
+        '    <div class="card-sub">Posibles candidatos para ofertas cruzadas — la relación está, falta diversificar el portfolio</div>\n'
+        '    <div id="cross-sell-list" style="margin-top:10px;"></div>\n'
+        '  </div>\n\n'
+    )
+    html = html.replace(
+        "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->",
+        crosssell_card + "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->",
+        1,
+    )
 
     # setYoy: aceptar formato "YYYY-YYYY" además del legacy "2425"/"2526"
     html = html.replace(
