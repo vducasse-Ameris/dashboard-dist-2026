@@ -1030,38 +1030,10 @@ def transform(html: str) -> str:
     else:
         print("  WARN: no encontré la leyenda del heatmap")
 
-    # 1.D) Insertar cards de COMPARATIVA Q YoY y CROSS-SELL RADAR
-    # Comparativa Q YoY al final del tab-resumen
-    comparativa_card = (
-        '\n  <!-- ── COMPARATIVA Q YoY POR PRIORIDAD (auto) ───── -->\n'
-        '  <div class="section-label" data-q-text="comparativa-section">Comparativa Q1 2026 vs Q1 2025 — por prioridad</div>\n'
-        '  <div class="card" style="margin-bottom:1.25rem;">\n'
-        '    <div class="card-title">Reuniones del trimestre completo · año actual vs año anterior</div>\n'
-        '    <div class="card-sub">Mismo período (mismos meses) comparado año contra año, separado por segmento de prioridad</div>\n'
-        '    <div id="comparativa-q-yoy" style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;"></div>\n'
-        '  </div>\n\n'
-    )
-    html = html.replace(
-        "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 2: REUNIONES -->",
-        comparativa_card + "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 2: REUNIONES -->",
-        1,
-    )
-
-    # Cross-sell radar al final del tab-clientes
-    crosssell_card = (
-        '\n  <!-- ── CROSS-SELL RADAR (auto) ───── -->\n'
-        '  <div class="section-label" data-q-text="crosssell-section">Oportunidades de cross-sell — alto contacto, pocos productos</div>\n'
-        '  <div class="card" style="margin-bottom:1.25rem;">\n'
-        '    <div class="card-title" data-q-text="crosssell-title">Clientes con ≥ 3 reuniones en 2026 y ≤ 1 producto distinto discutido (fuera de Follow Up)</div>\n'
-        '    <div class="card-sub">Posibles candidatos para ofertas cruzadas — la relación está, falta diversificar el portfolio</div>\n'
-        '    <div id="cross-sell-list" style="margin-top:10px;"></div>\n'
-        '  </div>\n\n'
-    )
-    html = html.replace(
-        "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->",
-        crosssell_card + "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->",
-        1,
-    )
+    # 1.D) Las cards de COMPARATIVA Q YoY y CROSS-SELL RADAR se insertan
+    # AL FINAL (después de las eliminaciones de LISTA CRÍTICA y REUNIONES
+    # POR ÁREA), para que esos regex no se coman partes del card recién
+    # insertado. Ver el bloque marcado "1.D INSERT" más abajo.
 
     # setYoy: aceptar formato "YYYY-YYYY" además del legacy "2425"/"2526"
     html = html.replace(
@@ -1379,6 +1351,40 @@ def transform(html: str) -> str:
         close = html.find("})();", idx)
         if close >= 0:
             html = html[: close] + "} _renderCriticalList();" + html[close + len("})();") :]
+
+    # ─── 1.D INSERT: Cards Comparativa Q YoY + Cross-sell Radar ───────
+    # Se hace AQUÍ (después de las eliminaciones de las secciones viejas
+    # como LISTA CRÍTICA y REUNIONES POR ÁREA) para evitar que sus regex
+    # de eliminación se traguen partes de estos cards nuevos.
+    comparativa_card = (
+        '\n  <!-- ── COMPARATIVA Q YoY POR PRIORIDAD (auto) ───── -->\n'
+        '  <div class="section-label" data-q-text="comparativa-section">Comparativa Q1 2026 vs Q1 2025 — por prioridad</div>\n'
+        '  <div class="card" style="margin-bottom:1.25rem;">\n'
+        '    <div class="card-title">Reuniones del trimestre completo · año actual vs año anterior</div>\n'
+        '    <div class="card-sub">Mismo período (mismos meses) comparado año contra año, separado por segmento de prioridad</div>\n'
+        '    <div id="comparativa-q-yoy" style="margin-top:14px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;"></div>\n'
+        '  </div>\n\n'
+    )
+    html = html.replace(
+        "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 2: REUNIONES -->",
+        comparativa_card + "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 2: REUNIONES -->",
+        1,
+    )
+
+    crosssell_card = (
+        '\n  <!-- ── CROSS-SELL RADAR (auto) ───── -->\n'
+        '  <div class="section-label" data-q-text="crosssell-section">Oportunidades de cross-sell — alto contacto, pocos productos</div>\n'
+        '  <div class="card" style="margin-bottom:1.25rem;">\n'
+        '    <div class="card-title" data-q-text="crosssell-title">Clientes con ≥ 3 reuniones en 2026 y ≤ 1 producto distinto discutido (fuera de Follow Up)</div>\n'
+        '    <div class="card-sub">Posibles candidatos para ofertas cruzadas — la relación está, falta diversificar el portfolio</div>\n'
+        '    <div id="cross-sell-list" style="margin-top:10px;"></div>\n'
+        '  </div>\n\n'
+    )
+    html = html.replace(
+        "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->",
+        crosssell_card + "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->",
+        1,
+    )
 
     # 2) IDs / data-attributes para KPI + Q-rolling + activación + áreas
     html = add_kpi_attrs(html)
