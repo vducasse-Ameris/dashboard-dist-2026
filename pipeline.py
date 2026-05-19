@@ -20,6 +20,7 @@ módulo entrega data, el JS la inyecta en variables y re-renderiza.
 from __future__ import annotations
 
 import hashlib
+import re
 from datetime import date
 from io import BytesIO
 from pathlib import Path
@@ -174,6 +175,104 @@ def _top10(df: pd.DataFrame, cols: list[str]) -> list:
     return [[str(r["Cliente"]), int(r["_t"])] for _, r in top.iterrows() if r["_t"] > 0]
 
 
+class ExcelValidationError(Exception):
+    """Error que se muestra al usuario en la UI con un mensaje claro."""
+    pass
+
+
+def _validate_excel(xls: pd.ExcelFile, today_ts: pd.Timestamp) -> list[str]:
+    """
+    Valida que el Excel tenga la estructura mínima esperada.
+    - Lanza ExcelValidationError si falta algo crítico.
+    - Devuelve una lista de warnings (no críticos).
+    """
+    warnings: list[str] = []
+
+    # 1) Al menos una hoja "Clientes foto YYYY"
+    foto_years = sorted(
+        int(re.match(r"Clientes foto (\d{4})", s).group(1))
+        for s in xls.sheet_names if re.match(r"Clientes foto (\d{4})", s)
+    )
+    if not foto_years:
+        raise ExcelValidationError(
+            "No encontré ninguna hoja con el nombre 'Clientes foto YYYY' "
+            "(ej. 'Clientes foto 2026'). El Excel debe tener al menos una."
+        )
+
+    # 2) La hoja del año actual (o más reciente disponible) debe existir
+    cur_year = today_ts.year
+    if cur_year not in foto_years:
+        warnings.append(
+            f"No encontré 'Clientes foto {cur_year}'. Usando '{max(foto_years)}' "
+            f"como año más reciente — los datos pueden estar desactualizados."
+        )
+
+    # 3) Validar columnas críticas en la hoja del año más reciente
+    main_year = cur_year if cur_year in foto_years else max(foto_years)
+    main_sheet = f"Clientes foto {main_year}"
+    try:
+        df_main = pd.read_excel(xls, sheet_name=main_sheet, nrows=5)
+    except Exception as e:
+        raise ExcelValidationError(
+            f"No pude leer la hoja '{main_sheet}': {e}"
+        )
+    if "Cliente" not in df_main.columns:
+        raise ExcelValidationError(
+            f"La hoja '{main_sheet}' no tiene columna 'Cliente'. "
+            f"Columnas encontradas: {list(df_main.columns)[:8]}..."
+        )
+    if "Prioridad" not in df_main.columns:
+        warnings.append(
+            f"La hoja '{main_sheet}' no tiene columna 'Prioridad'. "
+            f"Las segmentaciones HP/MP/LP no van a funcionar."
+        )
+    # Verificar las filas separadoras "Distribuidores" / "Institucionales"
+    df_main_full = pd.read_excel(xls, sheet_name=main_sheet)
+    clientes_col = df_main_full["Cliente"].astype(str).str.strip().str.lower()
+    has_dist = clientes_col.str.contains("distribu", na=False).any()
+    has_inst = clientes_col.str.startswith("institucional", na=False).any()
+    if not has_dist:
+        warnings.append(
+            f"En '{main_sheet}' no encontré la fila separadora 'Distribuidores'. "
+            "Todos los clientes van a quedar etiquetados como Dist por default."
+        )
+    if not has_inst:
+        warnings.append(
+            f"En '{main_sheet}' no encontré la fila separadora 'Institucionales'. "
+            "La clasificación Dist/Inst puede estar mal."
+        )
+
+    # 4) Al menos una hoja Apuntes YYYY
+    apuntes_count = sum(1 for s in xls.sheet_names if re.match(r"Apuntes\s+\d{4}", s))
+    if apuntes_count == 0:
+        raise ExcelValidationError(
+            "No encontré ninguna hoja 'Apuntes YYYY' (ej. 'Apuntes  2026'). "
+            "El Excel debe tener al menos una para las reuniones."
+        )
+
+    # 5) Validar columnas críticas en Apuntes del año principal
+    ap_sheet = next(
+        (s for s in xls.sheet_names if re.match(rf"Apuntes\s+{main_year}\s*$", s)),
+        None,
+    )
+    if ap_sheet:
+        try:
+            df_ap = pd.read_excel(xls, sheet_name=ap_sheet, nrows=5)
+            crit_ap_cols = ["Fecha", "Empresa/Cliente", "Subtema"]
+            missing_ap = [c for c in crit_ap_cols if c not in df_ap.columns]
+            if missing_ap:
+                raise ExcelValidationError(
+                    f"La hoja '{ap_sheet}' no tiene columnas: {', '.join(missing_ap)}. "
+                    f"Esperaba: {', '.join(crit_ap_cols)}."
+                )
+        except ExcelValidationError:
+            raise
+        except Exception as e:
+            warnings.append(f"Error leyendo '{ap_sheet}': {e}")
+
+    return warnings
+
+
 def _foto_counts(df_f: pd.DataFrame, yr: int) -> dict:
     c = {}
     for _, row in df_f.iterrows():
@@ -205,20 +304,22 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
 
     today_ts = pd.Timestamp(today or date.today())
 
-    # ── LOAD ────────────────────────────────────────────────────────────
+    # ── LOAD + VALIDACIÓN ───────────────────────────────────────────────
     xls = pd.ExcelFile(xls_handle, engine="openpyxl")
+
+    # Validar estructura del Excel antes de procesar (lanza ExcelValidationError
+    # si falta algo crítico; warnings los retornamos en el dict de salida)
+    validation_warnings = _validate_excel(xls, today_ts)
 
     # Auto-detectar años disponibles desde los nombres de las hojas
     # "Clientes foto YYYY". Soporta cualquier año (2023, 2024, ... 2027, ...).
-    import re as _re
+    _re = re
     foto_sheets = {}
     for s in xls.sheet_names:
         m = _re.match(r"Clientes foto (\d{4})", s)
         if m:
             foto_sheets[int(m.group(1))] = s
     years_avail = sorted(foto_sheets.keys())
-    if not years_avail:
-        raise ValueError("No encontré ninguna hoja 'Clientes foto YYYY' en el Excel.")
 
     year_dfs = {yr: _load_foto(xls, foto_sheets[yr]) for yr in years_avail}
 
@@ -805,5 +906,6 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "n_clientes": int(len(df_cur)),
             "fecha_corte": str(today_ts.date()),
             "years_disponibles": years_avail,
+            "warnings": validation_warnings,
         },
     }

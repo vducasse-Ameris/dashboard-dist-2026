@@ -1969,6 +1969,38 @@ await micropip.install('openpyxl')
   }
 }
 
+// Extrae mensaje limpio del error Python en Pyodide (descarta el traceback)
+function _extractPyError(err) {
+  const msg = String(err && err.message ? err.message : err);
+  // Si es ExcelValidationError, viene como 'ExcelValidationError: msg\n' o anidado en traceback
+  let m = msg.match(/ExcelValidationError:\s*(.+?)(?:\n|$)/);
+  if (m) return { kind: 'validation', text: m[1].trim() };
+  // Otros errores Python: tomar la última línea no vacía
+  const lines = msg.split('\n').filter(l => l.trim());
+  if (lines.length) {
+    let last = lines[lines.length - 1];
+    let n = last.match(/^[A-Z]\w+(?:Error|Exception):\s*(.+)/);
+    if (n) return { kind: 'error', text: n[1].trim() };
+    return { kind: 'error', text: last.trim() };
+  }
+  return { kind: 'error', text: msg };
+}
+
+function _renderWarnings(warnings) {
+  const old = document.getElementById('ub-warnings');
+  if (old) old.remove();
+  if (!warnings || !warnings.length) return;
+  const bar = document.getElementById('upload-bar');
+  if (!bar) return;
+  const div = document.createElement('div');
+  div.id = 'ub-warnings';
+  div.style.cssText = 'width:100%;margin-top:8px;padding:8px 12px;background:#FEF3E2;border:1px solid #E8C77D;border-radius:6px;font-size:11px;color:#6B5100;';
+  div.innerHTML = '<strong>⚠ Advertencias del Excel:</strong><ul style="margin:4px 0 0 18px;padding:0;">'
+    + warnings.map(w => '<li>' + w + '</li>').join('')
+    + '</ul>';
+  bar.appendChild(div);
+}
+
 async function processExcel(file) {
   const py = await pyodideReady;
   const statusText = document.getElementById('upload-status-text');
@@ -1980,6 +2012,7 @@ async function processExcel(file) {
   spinner.style.display = '';
   btn.disabled = true;
   statusText.innerHTML = '<span class="ub-info">Procesando ' + file.name + '…</span>';
+  _renderWarnings([]); // limpiar warnings previos
 
   try {
     const buf = await file.arrayBuffer();
@@ -2000,17 +2033,22 @@ json.dumps(data, ensure_ascii=False, default=str)
     statusText.innerHTML =
       '<span class="ub-check">✓ ' + file.name + '</span>' +
       ' <span class="ub-meta">' + sizeKB + ' KB · ' + (data.meta && data.meta.n_clientes || '?') + ' clientes · corte ' + (data.meta && data.meta.fecha_corte || '?') + ' · cargado ' + hhmm + '</span>';
-    // Después del primer éxito, el botón pasa a modo "actualizar"
     btnIcon.textContent = '↻';
     btnText.textContent = 'Actualizar Excel';
+    _renderWarnings(data.meta && data.meta.warnings);
   } catch (err) {
     spinner.style.display = 'none';
-    statusText.innerHTML = '<span class="ub-error">Error procesando Excel: ' + (err.message || err) + '</span>';
+    const info = _extractPyError(err);
+    if (info.kind === 'validation') {
+      statusText.innerHTML =
+        '<span class="ub-error">✗ El Excel no tiene la estructura esperada</span> '
+        + '<span class="ub-info" style="display:block;margin-top:4px;">' + info.text + '</span>';
+    } else {
+      statusText.innerHTML = '<span class="ub-error">Error procesando Excel: ' + info.text + '</span>';
+    }
     console.error(err);
   } finally {
     btn.disabled = false;
-    // Reset del input para que el `change` event vuelva a disparar si
-    // el usuario re-selecciona el mismo archivo después de guardarlo.
     if (input) input.value = '';
   }
 }

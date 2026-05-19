@@ -31,28 +31,45 @@ Para actualizar datos, vuelve a subir el Excel.
 ## Estructura del repo
 
 ```
-dashboard-pages/
-├── index.html          ← dashboard (cargado por el browser)
-├── pipeline.py         ← procesa el Excel (corre en Pyodide)
+dashboard-pages/                ← repo de GitHub Pages (self-contained)
+├── index.html                  ← dashboard (cargado por el browser)
+├── pipeline.py                 ← procesa el Excel (corre en Pyodide)
 ├── README.md
-└── .gitignore
+├── .gitignore
+└── build/                      ← herramientas de construcción
+    ├── build_pyodide.py        ← regenera index.html
+    └── source.html             ← borrador del diseño (fuente de verdad visual)
 ```
 
-## Cómo actualizar el dashboard (mantenimiento)
+## Cómo regenerar `index.html` (mantenimiento)
 
-`index.html` se genera transformando el output de `generar_dashboard.py`
-(en la carpeta hermana `../dashboard/`):
+Si cambia el diseño o el código JS embebido, regenera el `index.html` así:
 
 ```powershell
-cd ../dashboard
-.\.venv\Scripts\python.exe build_pyodide.py
+# Desde la raíz del repo (cualquier persona con Python 3)
+python build/build_pyodide.py
 ```
 
-Eso lee `../dashboard_reuniones actualizado YYYY-MM-DD.html`, le quita la
-data inline, le inyecta el loader Pyodide + UI de upload + label rolling,
-y escribe el resultado en `dashboard-pages/index.html`.
+Solo necesita Python 3 estándar (sin pandas, sin librerías externas).
+Lee `build/source.html`, le inyecta toda la lógica Pyodide + Q-rolling +
+multi-año, y escribe `index.html` en la raíz.
 
 Después: `git add . && git commit -m "..." && git push`.
+
+## Validación automática del Excel
+
+Cuando subes un Excel, el pipeline valida primero la estructura:
+
+- **Errores críticos** (suben un mensaje rojo y detienen el procesamiento):
+  - Falta toda hoja `Clientes foto YYYY`
+  - Falta toda hoja `Apuntes YYYY`
+  - La hoja del año más reciente no tiene columna `Cliente`
+  - Apuntes no tiene columnas `Fecha`, `Empresa/Cliente` o `Subtema`
+
+- **Advertencias** (se muestran en banner amarillo después de cargar):
+  - No existe `Clientes foto {año actual}` — usa el más reciente
+  - Falta columna `Prioridad`
+  - Faltan filas separadoras `Distribuidores` / `Institucionales`
 
 ## Diseño para que perdure en el tiempo (2026 → 2027 → 2028…)
 
