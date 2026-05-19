@@ -1878,9 +1878,9 @@ function renderSubtemas(){
     h+='<div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden;"><div style="height:8px;width:'+pct+'%;background:'+col+';border-radius:4px;"></div></div></div>';
     if(isActive&&clients.length){
       h+='<div style="margin:0 2px;padding:10px 12px;background:var(--card2);border-radius:0 0 var(--r) var(--r);border:1px solid '+col+'40;border-top:none;">';
-      h+='<div style="font-size:10px;font-weight:600;color:'+col+';text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;">'+clients.length+' clientes</div>';
+      h+='<div style="font-size:10px;font-weight:600;color:'+col+';text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;"><span>'+clients.length+' clientes</span><span style="color:var(--text3);font-size:9px;">Reun.</span></div>';
       clients.forEach(function(cl,i){var cc=pC[cl.prio]||'#8FA3BE';
-        h+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:9px;color:var(--text3);min-width:16px;text-align:right;">'+(i+1)+'</span><span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+cc+'18;color:'+cc+';min-width:24px;text-align:center;">'+cl.prio+'</span><span style="flex:1;font-size:11px;color:var(--text);">'+cl.name+'</span><span style="font-family:monospace;font-size:11px;font-weight:600;color:var(--text);">'+cl.reun+'</span></div>';});
+        h+='<div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--border);"><span style="font-size:9px;color:var(--text3);min-width:16px;text-align:right;">'+(i+1)+'</span><span style="font-size:9px;font-weight:600;padding:1px 4px;border-radius:3px;background:'+cc+'18;color:'+cc+';min-width:24px;text-align:center;">'+cl.prio+'</span><span style="flex:1;font-size:11px;color:var(--text);">'+cl.name+'</span><span style="font-family:monospace;font-size:13px;font-weight:700;color:'+col+';min-width:28px;text-align:right;">'+cl.reun+'</span></div>';});
       h+='</div>';
     }
     h+='</div>';
