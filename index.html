@@ -275,7 +275,7 @@ footer {
     <div style="width:1px;height:32px;background:rgba(255,255,255,0.2);margin:0 4px;"></div>
     <div class="header-title">
       <h1>Área de Distribución</h1>
-      <p>Dashboard de seguimiento · 2024 – 2026</p>
+      <p data-q-text="header-years">Dashboard de seguimiento · 2024 – 2026</p>
     </div>
   </div>
   <div class="header-meta">
@@ -580,7 +580,7 @@ footer {
   <div style="background:var(--card2);border-radius:var(--rl);padding:14px 16px;margin-bottom:1rem;">
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
       <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">A&ntilde;o</span>
-      <div class="ftabs" style="margin:0;">
+      <div class="ftabs" style="margin:0;" data-q-buttons="vista-year">
         <button class="ftab active" data-yr="2026" onclick="setMonthYear('2026',this)">2026</button>
         <button class="ftab" data-yr="2025" onclick="setMonthYear('2025',this)">2025</button>
         <button class="ftab" data-yr="2024" onclick="setMonthYear('2024',this)">2024</button>
@@ -630,7 +630,7 @@ footer {
   <div style="background:var(--card2);border-radius:var(--rl);padding:14px 16px;margin-bottom:1rem;">
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
       <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">A&ntilde;o</span>
-      <div class="ftabs" style="margin:0;">
+      <div class="ftabs" style="margin:0;" data-q-buttons="subtema-year">
         <button class="ftab active" data-sub-yr="2026" onclick="setSubYear('2026',this)">2026</button>
         <button class="ftab" data-sub-yr="2025" onclick="setSubYear('2025',this)">2025</button>
         <button class="ftab" data-sub-yr="2024" onclick="setSubYear('2024',this)">2024</button>
@@ -647,7 +647,7 @@ footer {
         <button class="ftab" data-sub-mo="3" onclick="setSubMo('3',this)">Mar</button>
         <button class="ftab" data-sub-mo="4" onclick="setSubMo('4',this)">Abr</button>
         <button class="ftab" data-sub-mo="5" onclick="setSubMo('5',this)">May</button>
-        <button class="ftab" data-sub-mo="6" onclick="setSubMo('6',this)">Jun</button>
+        <button class="ftab" data-sub-mo="6" onclick="setSubMo('6',this)">Jun</button><button class="ftab" data-sub-mo="7" onclick="setSubMo('7',this)">Jul</button><button class="ftab" data-sub-mo="8" onclick="setSubMo('8',this)">Ago</button><button class="ftab" data-sub-mo="9" onclick="setSubMo('9',this)">Sep</button><button class="ftab" data-sub-mo="10" onclick="setSubMo('10',this)">Oct</button><button class="ftab" data-sub-mo="11" onclick="setSubMo('11',this)">Nov</button><button class="ftab" data-sub-mo="12" onclick="setSubMo('12',this)">Dic</button>
       </div>
     </div>
   </div>
@@ -695,7 +695,7 @@ footer {
   </div>
 
   <!-- ── TASA DE RECONTACTO ─────────────────────────────────────────── -->
-  <div class="section-label">Tasa de recontacto 2025 → 2026 YTD · click para ver detalle</div>
+  <div class="section-label" data-q-text="recontact-section">Tasa de recontacto 2025 → 2026 YTD · click para ver detalle</div>
   <div class="card" style="margin-bottom:1.25rem;">
     <div class="card-title">Clientes que tuvieron reunión en 2025 y ya fueron contactados en 2026 (Ene–May)</div>
     <div class="card-sub">Haz click en HP, MP o LP para ver qué clientes fueron o no fueron recontactados</div>
@@ -1280,15 +1280,15 @@ setYoy('2425', document.querySelector('[onclick*="setYoy"]'));
 function buildHeatmap() {
   var el=document.getElementById('heatmap'); if(!el) return;
   var allVals=[];
-  [2024,2025,2026].forEach(function(y){data[y].forEach(function(v){if(v>0)allVals.push(v);});});
+  (window.HEATMAP_YEARS||[2024,2025,2026]).forEach(function(y){(data[y]||[]).forEach(function(v){if(v>0)allVals.push(v);});});
   var max=Math.max.apply(null,allVals);
   function getColor(v){if(v===0)return '#F5F7FA';var t=Math.sqrt(v/max);if(t>0.85)return '#B33A2E';if(t>0.70)return '#D4890A';if(t>0.55)return '#0D2D6B';if(t>0.40)return '#1B4B9B';if(t>0.25)return '#3A7BC8';if(t>0.12)return '#7FB3E8';return '#C8DDF4';}
   function txtCol(v){return Math.sqrt(v/max)>0.40?'#fff':'#1B4B9B';}
   var html='<div class="heatmap-grid"><div class="hm-label"></div>';
   months.forEach(function(m){html+='<div class="hm-month">'+m+'</div>';});
-  [2024,2025,2026].forEach(function(y){
+  (window.HEATMAP_YEARS||[2024,2025,2026]).forEach(function(y){
     html+='<div class="hm-label">'+y+'</div>';
-    data[y].forEach(function(v){html+='<div class="hm-cell" style="background:'+getColor(v)+';color:'+(v>0?txtCol(v):'#B8C8DC')+'" title="'+v+' reuniones">'+(v>0?v:'')+'</div>';});
+    (data[y]||[]).forEach(function(v){html+='<div class="hm-cell" style="background:'+getColor(v)+';color:'+(v>0?txtCol(v):'#B8C8DC')+'" title="'+v+' reuniones">'+(v>0?v:'')+'</div>';});
   });
   html+='</div><div style="display:flex;align-items:center;gap:5px;margin-top:10px;font-size:10px;color:var(--text3);"><span>0</span>';
   ['#F5F7FA','#C8DDF4','#7FB3E8','#3A7BC8','#1B4B9B','#0D2D6B','#D4890A','#B33A2E'].forEach(function(col){html+='<span style="width:20px;height:11px;background:'+col+';border-radius:2px;display:inline-block"></span>';});
@@ -1837,7 +1837,7 @@ function setSubYear(yr,btn){
   document.querySelectorAll('[data-sub-yr]').forEach(function(t){t.classList.remove('active');}); btn.classList.add('active');
   window._SUB.yr=yr; window._SUB.mo='ALL'; window._SUB.activeSub=null;
   document.querySelectorAll('[data-sub-mo]').forEach(function(t){t.classList.remove('active');}); var a=document.querySelector('[data-sub-mo="ALL"]'); if(a) a.classList.add('active');
-  for(var mo=1;mo<=6;mo++){var b=document.querySelector('[data-sub-mo="'+mo+'"]');if(!b)continue;var has=yr!=='ALL'&&subtemaMoData[yr+'_'+mo]&&Object.keys(subtemaMoData[yr+'_'+mo]).length>0;b.style.opacity=has?'1':'0.3';b.style.pointerEvents=has?'auto':'none';}
+  for(var mo=1;mo<=12;mo++){var b=document.querySelector('[data-sub-mo="'+mo+'"]');if(!b)continue;var has=yr!=='ALL'&&subtemaMoData[yr+'_'+mo]&&Object.keys(subtemaMoData[yr+'_'+mo]).length>0;b.style.opacity=has?'1':'0.3';b.style.pointerEvents=has?'auto':'none';}
   renderSubtemas();
 }
 function setSubMo(mo,btn){
@@ -2135,6 +2135,13 @@ function applyData(d) {
       elBadge.textContent = cq.label + ' · ' + MES_FULL[mesIdx] + ' ' + parts2[0];
     }
 
+    // Header brand "Dashboard de seguimiento · YYYY – YYYY"
+    var yrsAsc = (d.years || [2024,2025,2026]).slice();
+    setText('[data-q-text="header-years"]', 'Dashboard de seguimiento · ' + yrsAsc[0] + ' – ' + yrsAsc[yrsAsc.length - 1]);
+
+    // Recontact section label: prev_year → current_year YTD
+    setText('[data-q-text="recontact-section"]', 'Tasa de recontacto ' + (cy - 1) + ' → ' + cy + ' YTD · click para ver detalle');
+
     // Activación de cartera (sección + 4 KPIs)
     setText('[data-q-text="activacion-section"]', 'Activación de cartera ' + cq.label + ' · click para ver detalle');
     setText('[data-q-text="reuniones-area-section"]', 'Reuniones ' + cq.label + ' por área / producto · click para ver clientes');
@@ -2201,6 +2208,9 @@ function applyData(d) {
              || document.querySelector('[onclick*="setPrioClients"]');
     if (btnHP && typeof setPrioClients === 'function') setPrioClients('HP', btnHP);
 
+    // Reconstruir tabs de año dinámicamente según data.years (multi-año)
+    rebuildYearTabs(d);
+
     if (typeof _renderCriticalList === 'function') _renderCriticalList();
     if (typeof _renderAreas === 'function')        _renderAreas();
     if (typeof renderRiesgo2026 === 'function')    renderRiesgo2026();
@@ -2208,6 +2218,46 @@ function applyData(d) {
     if (typeof renderSubtemas === 'function')      renderSubtemas();
     if (typeof buildHeatmap === 'function')        buildHeatmap();
   } catch (e) { console.warn('re-render fallo', e); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Rebuild de tabs de año (Vista mensual + Subtemas) — multi-año
+// ══════════════════════════════════════════════════════════════════════════
+
+function rebuildYearTabs(d) {
+  var yrs = (d.years || [2024, 2025, 2026]).slice().reverse(); // más reciente primero
+  var cy = d.currentYear || yrs[0];
+
+  // Vista mensual — año
+  var vm = document.querySelector('[data-q-buttons="vista-year"]');
+  if (vm) {
+    vm.innerHTML = yrs.map(function(yr) {
+      var active = (yr === cy) ? ' active' : '';
+      return '<button class="ftab' + active + '" data-yr="' + yr + '" '
+           + 'onclick="setMonthYear(\'' + yr + '\',this)">' + yr + '</button>';
+    }).join('');
+  }
+
+  // Subtemas — año (con "Todos" al final)
+  var st = document.querySelector('[data-q-buttons="subtema-year"]');
+  if (st) {
+    var btns = yrs.map(function(yr) {
+      var active = (yr === cy) ? ' active' : '';
+      return '<button class="ftab' + active + '" data-sub-yr="' + yr + '" '
+           + 'onclick="setSubYear(\'' + yr + '\',this)">' + yr + '</button>';
+    });
+    btns.push('<button class="ftab" data-sub-yr="ALL" onclick="setSubYear(\'ALL\',this)">Todos</button>');
+    st.innerHTML = btns.join('');
+  }
+
+  // Heatmap: 3 años más recientes (ascendente)
+  window.HEATMAP_YEARS = yrs.slice(0, 3).reverse();
+
+  // Disparar render inicial en el año actual
+  var elM = document.querySelector('[data-yr="' + cy + '"]');
+  if (elM && typeof setMonthYear === 'function') setMonthYear(String(cy), elM);
+  var elS = document.querySelector('[data-sub-yr="' + cy + '"]');
+  if (elS && typeof setSubYear === 'function') setSubYear(String(cy), elS);
 }
 
 // ══════════════════════════════════════════════════════════════════════════
