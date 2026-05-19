@@ -593,6 +593,126 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         for prio in ["HP", "MP", "LP"]
     }
 
+    # ── METAS AUM (parseado de hoja Metas{cur_year}) ────────────────────
+    # Auto-detecta la hoja Metas{cur_year} y extrae targets AUM por trimestre.
+    # Si la hoja no existe, deja aum_data/q_metas como None (el JS usará defaults).
+    aum_data = None
+    q_metas = None
+    metas_goals = {"nuevos_distribuidores_anual": None, "reuniones_socios_anual": None}
+    metas_sheet = next(
+        (s for s in xls.sheet_names if _re.match(rf"Metas\s*{cur_year}", s)),
+        None,
+    )
+    if metas_sheet:
+        try:
+            df_metas = pd.read_excel(xls, sheet_name=metas_sheet)
+            yy = str(cur_year)[-2:]
+            qs = [f"1T{yy}", f"2T{yy}", f"3T{yy}", f"4T{yy}"]
+            meta_alias = {
+                "Deuda": "deuda",
+                "Inmobiliario": "inm",
+                "Internacionales": "inter",
+                "Notas Estructuradas": "notas",
+            }
+            q_ranges = {
+                qs[0]: f"Ene – Mar {cur_year}",
+                qs[1]: f"Abr – Jun {cur_year}",
+                qs[2]: f"Jul – Sep {cur_year}",
+                qs[3]: f"Oct – Dic {cur_year}",
+            }
+            aum_rows = df_metas[df_metas["Tipo"] == "Aumento de Patrimonio"]
+            aum_data = {}
+            for q in qs:
+                d = {"deuda": 0.0, "inm": 0.0, "inter": 0.0, "notas": 0.0, "total": 0.0}
+                for _, r in aum_rows[aum_rows["Periodo"] == q].iterrows():
+                    key = meta_alias.get(str(r["Meta"]).strip())
+                    if key and pd.notna(r["Valor"]):
+                        d[key] = round(float(r["Valor"]) / 1e9, 3)
+                d["total"] = round(sum(d[k] for k in ["deuda", "inm", "inter", "notas"]), 3)
+                aum_data[q] = d
+
+            def _fmt_clp(v):
+                if v >= 1:
+                    return f"CLP {v:.2f}B"
+                return f"CLP {int(round(v * 1000))}M"
+
+            q_metas = {}
+            for i, q in enumerate(qs, 1):
+                d = aum_data[q]
+                q_metas[q] = {
+                    "deuda": _fmt_clp(d["deuda"]),
+                    "inm":   _fmt_clp(d["inm"]),
+                    "inter": _fmt_clp(d["inter"]),
+                    "notas": _fmt_clp(d["notas"]),
+                    "label": f"Q{i} {cur_year}",
+                    "range": q_ranges[q],
+                }
+
+            # Clientes / Aumento de Clientes — meta anual (fila con Periodo == cur_year)
+            cli_rows = df_metas[
+                (df_metas["Tipo"] == "Clientes")
+                & (df_metas["Periodo"].astype(str) == str(cur_year))
+            ]
+            if not cli_rows.empty:
+                metas_goals["nuevos_distribuidores_anual"] = int(cli_rows.iloc[0]["Valor"])
+
+            soc_rows = df_metas[
+                (df_metas["Tipo"] == "Mantención y Fidelización")
+                & (df_metas["Periodo"].astype(str) == str(cur_year))
+            ]
+            if not soc_rows.empty:
+                metas_goals["reuniones_socios_anual"] = int(soc_rows.iloc[0]["Valor"])
+        except Exception as e:
+            print(f"[metas] error parseando {metas_sheet}: {e}")
+
+    # ── NUEVOS DISTRIBUIDORES (vs año anterior) ─────────────────────────
+    # Distribuidores que están en la sección 'Distribuidores' del foto del año
+    # actual, pero NO estaban en el foto del año anterior, Y tuvieron al menos
+    # una reunión en el año actual. Para cada uno, buscamos el subtema/fondo
+    # de su primera reunión.
+    nuevos_distribuidores = []
+    if "_tipo" in df_cur.columns and not df_p1.empty and "_tipo" in df_p1.columns:
+        dist_cur_set  = set(df_cur[df_cur["_tipo"] == "Dist"]["_cn"])
+        dist_prev_set = set(df_p1[df_p1["_tipo"] == "Dist"]["_cn"])
+        candidatos = sorted(dist_cur_set - dist_prev_set)
+        for cn in candidatos:
+            row_arr = df_cur[df_cur["_cn"] == cn]
+            if row_arr.empty:
+                continue
+            row = row_arr.iloc[0]
+            # ¿Tuvo reunión en algún mes del año actual?
+            primera_mes = None
+            for i, m in enumerate(MESES, 1):
+                if m in df_cur.columns and float(row.get(m, 0) or 0) > 0:
+                    primera_mes = i
+                    break
+            if primera_mes is None:
+                continue
+            # Subtema / fondo de la primera reunión en apuntes (si existe)
+            fondo = "—"
+            ap_cn = df_ap[(df_ap["cn"] == cn) & (df_ap["year_num"] == cur_year)].sort_values("Fecha") \
+                    if len(df_ap) else pd.DataFrame()
+            if not ap_cn.empty:
+                # Primer subtema "limpio" disponible
+                for _, ap_row in ap_cn.iterrows():
+                    s = _clean_sub(ap_row.get("Subtema"))
+                    if s and s != "Follow Up / Catch Up":
+                        fondo = s
+                        break
+                if fondo == "—":
+                    # Si todos son Follow Up, usar Follow Up
+                    s = _clean_sub(ap_cn.iloc[0].get("Subtema"))
+                    if s:
+                        fondo = s
+            q_num = (primera_mes - 1) // 3 + 1
+            nuevos_distribuidores.append({
+                "name":   str(row["Cliente"]),
+                "fondo":  fondo,
+                "q":      f"Q{q_num}",
+                "q_num":  q_num,
+                "mes":    primera_mes,
+            })
+
     # ── ÁREAS / PRODUCTOS (subtemas del año actual) ─────────────────────
     year_str = str(cur_year)
     sa_year = sa.get(year_str, {})
@@ -643,6 +763,10 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "activationData": activation_data,
         "activationCounts": activation_counts,
         "areasData": areas_data,
+        "aumData": aum_data,
+        "qMetas": q_metas,
+        "metasGoals": metas_goals,
+        "nuevosDistribuidores": nuevos_distribuidores,
         "recentLabels": recent_labels,
         "recentVals": recent_vals,
         "years": years_avail,

@@ -313,9 +313,9 @@ footer {
       <div class="kpi-sub">reuniones por semana en Q1 (13 sem.)</div>
     </div>
     <div class="kpi">
-      <div class="kpi-label">Nuevos distribuidores Q1 2026</div>
-      <div class="kpi-value pos">4</div>
-      <div class="kpi-sub">FYNSA AGF · XIM · Investera · Vizcaya · Meta anual: 8</div>
+      <div class="kpi-label" data-q-text="nuevos-kpi-label">Nuevos distribuidores Q1 2026</div>
+      <div class="kpi-value pos" data-q-text="nuevos-kpi-value"> -</div>
+      <div class="kpi-sub" data-q-text="nuevos-kpi-sub">FYNSA AGF · XIM · Investera · Vizcaya · Meta anual: 8</div>
     </div>
   
     <div class="kpi" style="border-left:3px solid #0E7A4E;">
@@ -324,7 +324,7 @@ footer {
       <div class="kpi-sub pos" data-kpi="ytd-sub">Q1: 109 &nbsp;&middot;&nbsp; Abr: 19</div>
     </div></div>
 
-  <div class="section-label">Nuevos distribuidores Q1 2026 — detalle</div>
+  <div class="section-label" data-q-text="nuevos-section" id="nuevos-section-label">Nuevos distribuidores Q1 2026 — detalle</div>
   <div class="card" style="margin-bottom:1.25rem;">
     <div class="card-title">Clientes nuevos incorporados en Q1 2026</div>
     <div class="card-sub">Distribuidores que realizaron su primera inversión con Ameris en 2026</div>
@@ -336,30 +336,9 @@ footer {
           <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;border-radius:0 4px 0 0;">Trimestre</th>
         </tr>
       </thead>
-      <tbody>
-        <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:8px 12px;font-weight:500;color:var(--text);">FYNSA AGF</td>
-          <td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">FCP</span></td>
-          <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:#0E7A4E;font-weight:600;">Q1</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:8px 12px;font-weight:500;color:var(--text);">XIM</td>
-          <td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">ADI 6</span></td>
-          <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:#0E7A4E;font-weight:600;">Q1</td>
-        </tr>
-        <tr style="border-bottom:1px solid var(--border);">
-          <td style="padding:8px 12px;font-weight:500;color:var(--text);">Investera</td>
-          <td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">Fogape</span></td>
-          <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:#0E7A4E;font-weight:600;">Q1</td>
-        </tr>
-        <tr>
-          <td style="padding:8px 12px;font-weight:500;color:var(--text);">Vizcaya</td>
-          <td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">FCP</span></td>
-          <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:#0E7A4E;font-weight:600;">Q1</td>
-        </tr>
-      </tbody>
+      <tbody id="nuevos-tbody"></tbody>
     </table>
-    <div style="margin-top:8px;font-size:10px;color:var(--text3);">* Cliente nuevo = distribuidor que ha invertido en Ameris por primera vez en 2026 · Meta anual: 8 nuevos (2 por trimestre)</div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3);" data-q-text="nuevos-footer">* Cliente nuevo = distribuidor que ha invertido en Ameris por primera vez en 2026 · Meta anual: 8 nuevos (2 por trimestre)</div>
   </div>
 
   <div class="section-label">Consolidado Q1 2026 — progreso del año por segmento</div>
@@ -2141,6 +2120,54 @@ function applyData(d) {
 
     // Recontact section label: prev_year → current_year YTD
     setText('[data-q-text="recontact-section"]', 'Tasa de recontacto ' + (cy - 1) + ' → ' + cy + ' YTD · click para ver detalle');
+
+    // AUM data + qMetas (de la hoja Metas{cur_year}). Reset del flag para
+    // que initAumCharts() reconstruya con la data nueva en próxima vista.
+    if (d.aumData)  window.aumData  = d.aumData;
+    if (d.qMetas)   window.qMetas   = d.qMetas;
+    window.aumChartsInited = false;
+
+    // Nuevos distribuidores
+    var nd = d.nuevosDistribuidores || [];
+    var ndGoal = (d.metasGoals && d.metasGoals.nuevos_distribuidores_anual) || null;
+    var ndKpiVal = document.querySelector('[data-q-text="nuevos-kpi-value"]');
+    if (ndKpiVal) ndKpiVal.textContent = nd.length;
+    setText('[data-q-text="nuevos-kpi-label"]', 'Nuevos distribuidores ' + cy);
+    var ndSubEl = document.querySelector('[data-q-text="nuevos-kpi-sub"]');
+    if (ndSubEl) {
+      var names = nd.slice(0, 4).map(function(n){return n.name;}).join(' · ');
+      var goalTxt = ndGoal ? ' · Meta anual: ' + ndGoal : '';
+      ndSubEl.textContent = (names || 'sin nuevos a la fecha') + goalTxt;
+    }
+    setText('[data-q-text="nuevos-section"]', 'Nuevos distribuidores ' + cy + ' — detalle');
+    setText('[data-q-text="nuevos-footer"]',
+      '* Cliente nuevo = distribuidor presente en el foto ' + cy + ' que no estaba en ' + (cy - 1) +
+      (ndGoal ? ' · Meta anual: ' + ndGoal + ' nuevos (' + Math.round(ndGoal / 4) + ' por trimestre)' : ''));
+    var ndTbody = document.getElementById('nuevos-tbody');
+    if (ndTbody) {
+      if (nd.length === 0) {
+        // Sin nuevos: esconder la sección entera
+        var sectLbl = document.getElementById('nuevos-section-label');
+        if (sectLbl) sectLbl.style.display = 'none';
+        var card = ndTbody.closest('.card');
+        if (card) card.style.display = 'none';
+      } else {
+        var sectLbl2 = document.getElementById('nuevos-section-label');
+        if (sectLbl2) sectLbl2.style.display = '';
+        var card2 = ndTbody.closest('.card');
+        if (card2) card2.style.display = '';
+        ndTbody.innerHTML = nd.map(function(n, i) {
+          var isLast = (i === nd.length - 1);
+          return '<tr' + (isLast ? '' : ' style="border-bottom:1px solid var(--border);"') + '>'
+            + '<td style="padding:8px 12px;font-weight:500;color:var(--text);">' + n.name + '</td>'
+            + '<td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">'
+            + (n.fondo || '—') + '</span></td>'
+            + '<td style="text-align:center;padding:8px 12px;font-family:\'IBM Plex Mono\',monospace;color:#0E7A4E;font-weight:600;">'
+            + (n.q || '—') + '</td>'
+            + '</tr>';
+        }).join('');
+      }
+    }
 
     // Activación de cartera (sección + 4 KPIs)
     setText('[data-q-text="activacion-section"]', 'Activación de cartera ' + cq.label + ' · click para ver detalle');
