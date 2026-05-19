@@ -616,7 +616,7 @@ footer {
     </div>
   </div>
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px;">
+    <div onclick="toggleVistaM(event)" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px;cursor:pointer;user-select:none;">
       <div id="monthly-summary" style="font-size:11px;color:var(--text2);"></div>
       <button onclick="toggleVistaM(event)" id="vista-m-btn" style="font-size:10px;color:var(--text3);padding:2px 8px;border-radius:4px;background:var(--card2);border:1px solid var(--border);cursor:pointer;white-space:nowrap;flex-shrink:0;">&#9660; expandir</button>
     </div>
@@ -652,7 +652,7 @@ footer {
     </div>
   </div>
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px;">
+    <div onclick="toggleSubtemaChart(event)" style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px;cursor:pointer;user-select:none;">
       <div style="display:flex;align-items:center;gap:8px;">
         <span style="font-size:12px;font-weight:600;color:var(--text);">Reuniones por subtema</span>
         <div id="subtema-summary" style="font-size:11px;color:var(--text3);"></div>
@@ -765,13 +765,7 @@ footer {
   </div>
   <div id="activation-detail" style="display:none;margin-bottom:1.25rem;"></div>
 
-  <!-- ── REUNIONES POR ÁREA ──────────────────────────────────────────── -->
-  <div class="section-label" data-q-text="reuniones-area-section">Reuniones Q1 2026 por área / producto · click para ver clientes</div>
-  <div class="card" style="margin-bottom:1.25rem;">
-    <div class="card-title">Desglose de reuniones por fondo o producto discutido</div>
-    <div class="card-sub">Basado en el subtema de cada reunión registrada en la hoja Fechas 2025+ · Un cliente puede aparecer en más de un área</div>
-    <div id="areas-container" style="margin-top:4px;"></div>
-  </div>
+  
 
   </div>
 
@@ -2019,20 +2013,7 @@ data = pipeline.compute_data(xlsm_bytes)
 json.dumps(data, ensure_ascii=False, default=str)
 `);
     const data = JSON.parse(jsonStr);
-    console.log('[debug] activationData counts:',
-      data.activationData ? {
-        nunca: (data.activationData.nunca||{}).items?.length,
-        nuevos: (data.activationData.nuevos||{}).items?.length,
-        reactiv: (data.activationData.reactiv||{}).items?.length,
-        inactivos: (data.activationData.inactivos||{}).items?.length,
-      } : 'AUSENTE');
-    console.log('[debug] areasData length:', (data.areasData||[]).length);
-    console.log('[debug] areasData primera:', (data.areasData||[])[0]);
     applyData(data);
-    setTimeout(function(){
-      console.log('[debug] window.areasData.length post-apply:', (window.areasData||[]).length);
-      console.log('[debug] document area chips count:', document.querySelectorAll('#areas-container > div').length);
-    }, 100);
     document.body.classList.remove('no-data');
     spinner.style.display = 'none';
     const sizeKB = (file.size / 1024).toFixed(0);
