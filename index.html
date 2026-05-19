@@ -2019,7 +2019,20 @@ data = pipeline.compute_data(xlsm_bytes)
 json.dumps(data, ensure_ascii=False, default=str)
 `);
     const data = JSON.parse(jsonStr);
+    console.log('[debug] activationData counts:',
+      data.activationData ? {
+        nunca: (data.activationData.nunca||{}).items?.length,
+        nuevos: (data.activationData.nuevos||{}).items?.length,
+        reactiv: (data.activationData.reactiv||{}).items?.length,
+        inactivos: (data.activationData.inactivos||{}).items?.length,
+      } : 'AUSENTE');
+    console.log('[debug] areasData length:', (data.areasData||[]).length);
+    console.log('[debug] areasData primera:', (data.areasData||[])[0]);
     applyData(data);
+    setTimeout(function(){
+      console.log('[debug] window.areasData.length post-apply:', (window.areasData||[]).length);
+      console.log('[debug] document area chips count:', document.querySelectorAll('#areas-container > div').length);
+    }, 100);
     document.body.classList.remove('no-data');
     spinner.style.display = 'none';
     const sizeKB = (file.size / 1024).toFixed(0);
