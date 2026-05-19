@@ -740,33 +740,33 @@ footer {
   </div>
 
   <!-- ── ACTIVACIÓN DE CARTERA ──────────────────────────────────────── -->
-  <div class="section-label">Activación de cartera Q1 2026 · click para ver detalle</div>
+  <div class="section-label" data-q-text="activacion-section">Activación de cartera Q1 2026 · click para ver detalle</div>
   <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
     <div class="kpi" style="cursor:pointer;transition:box-shadow .15s;" onmouseenter="this.style.boxShadow='0 4px 16px rgba(27,75,155,0.15)'" onmouseleave="this.style.boxShadow=''" onclick="toggleActivation('nunca')">
-      <div class="kpi-label">Nunca contactados (HP)</div>
-      <div class="kpi-value neg">12</div>
-      <div class="kpi-sub" style="color:var(--text3);">AFPs + seguros sin historial · ▼ ver lista</div>
+      <div class="kpi-label" data-act-label="nunca">Nunca contactados (HP)</div>
+      <div class="kpi-value neg" data-act-value="nunca">12</div>
+      <div class="kpi-sub" style="color:var(--text3);" data-act-sub="nunca">AFPs + seguros sin historial · ▼ ver lista</div>
     </div>
     <div class="kpi" style="cursor:pointer;transition:box-shadow .15s;" onmouseenter="this.style.boxShadow='0 4px 16px rgba(14,122,78,0.15)'" onmouseleave="this.style.boxShadow=''" onclick="toggleActivation('nuevos')">
-      <div class="kpi-label">Nuevos activados Q1</div>
-      <div class="kpi-value pos">17</div>
-      <div class="kpi-sub" style="color:var(--text3);">Primera reunión en 2026 · ▼ ver lista</div>
+      <div class="kpi-label" data-act-label="nuevos">Nuevos activados Q1</div>
+      <div class="kpi-value pos" data-act-value="nuevos">17</div>
+      <div class="kpi-sub" style="color:var(--text3);" data-act-sub="nuevos">Primera reunión en 2026 · ▼ ver lista</div>
     </div>
     <div class="kpi" style="cursor:pointer;transition:box-shadow .15s;" onmouseenter="this.style.boxShadow='0 4px 16px rgba(14,122,78,0.15)'" onmouseleave="this.style.boxShadow=''" onclick="toggleActivation('reactiv')">
-      <div class="kpi-label">Reactivados (dormant 2025)</div>
-      <div class="kpi-value">2</div>
-      <div class="kpi-sub" style="color:var(--text3);">Tenían historial, sin reunión en 2025 · ▼ ver lista</div>
+      <div class="kpi-label" data-act-label="reactiv">Reactivados (dormant 2025)</div>
+      <div class="kpi-value" data-act-value="reactiv">2</div>
+      <div class="kpi-sub" style="color:var(--text3);" data-act-sub="reactiv">Tenían historial, sin reunión en 2025 · ▼ ver lista</div>
     </div>
     <div class="kpi" style="cursor:pointer;transition:box-shadow .15s;" onmouseenter="this.style.boxShadow='0 4px 16px rgba(179,58,46,0.15)'" onmouseleave="this.style.boxShadow=''" onclick="toggleActivation('inactivos')">
-      <div class="kpi-label">Sin reunión 2025 ni 2026</div>
-      <div class="kpi-value neg">49</div>
-      <div class="kpi-sub" style="color:var(--text3);">HP:12 · MP:3 · LP:34 · ▼ ver lista</div>
+      <div class="kpi-label" data-act-label="inactivos">Sin reunión 2025 ni 2026</div>
+      <div class="kpi-value neg" data-act-value="inactivos">49</div>
+      <div class="kpi-sub" style="color:var(--text3);" data-act-sub="inactivos">HP:12 · MP:3 · LP:34 · ▼ ver lista</div>
     </div>
   </div>
   <div id="activation-detail" style="display:none;margin-bottom:1.25rem;"></div>
 
   <!-- ── REUNIONES POR ÁREA ──────────────────────────────────────────── -->
-  <div class="section-label">Reuniones Q1 2026 por área / producto · click para ver clientes</div>
+  <div class="section-label" data-q-text="reuniones-area-section">Reuniones Q1 2026 por área / producto · click para ver clientes</div>
   <div class="card" style="margin-bottom:1.25rem;">
     <div class="card-title">Desglose de reuniones por fondo o producto discutido</div>
     <div class="card-sub">Basado en el subtema de cada reunión registrada en la hoja Fechas 2025+ · Un cliente puede aparecer en más de un área</div>
@@ -1498,8 +1498,9 @@ function toggleActivation(type) {
   el.scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-(function(){
+function _renderAreas(){
   var el=document.getElementById('areas-container'); if(!el) return;
+  if (!Array.isArray(areasData) || !areasData.length) { el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);font-size:11px;">Sin datos</div>'; return; }
   var maxReun=0; areasData.forEach(function(a){if(a.reun>maxReun)maxReun=a.reun;});
   el.innerHTML=areasData.map(function(area,idx){
     var chips=area.clientes.map(function(n){return '<span style="display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;margin:2px;background:var(--card);border:1px solid var(--border);color:var(--text2);">'+n+'</span>';}).join('');
@@ -1514,7 +1515,7 @@ function toggleActivation(type) {
       +'<div id="area-'+idx+'" style="display:none;padding:8px 10px;background:var(--card2);border-radius:6px;margin-top:4px;">'
       +'<div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px;">'+area.cp+' contrapartes</div>'+chips+'</div></div>';
   }).join('');
-})();
+} _renderAreas();
 
 function toggleArea(id){var el=document.getElementById(id);if(!el)return;el.style.display=el.style.display==='none'?'block':'none';}
 
@@ -2048,7 +2049,10 @@ json.dumps(data, ensure_ascii=False, default=str)
 
 function applyData(d) {
   // 1) Globales que el resto del JS consume
-  window.data              = { 2024: d.data['2024'], 2025: d.data['2025'], 2026: d.data['2026'] };
+  // `data` se setea como objeto con keys numéricas para compat con código viejo (data[2026]).
+  var dataNumKeys = {};
+  Object.keys(d.data || {}).forEach(function(k){ dataNumKeys[k] = d.data[k]; dataNumKeys[parseInt(k,10)] = d.data[k]; });
+  window.data              = dataNumKeys;
   window.prioData          = d.prioData;
   window.clientsData       = d.clientsData;
   window.recontactData     = d.recontactData;
@@ -2061,6 +2065,8 @@ function applyData(d) {
   window.subtemasClientsM  = d.subtemasClientsM;
   window.subtemasClientsA  = d.subtemasClientsA;
   window.riskData2026      = d.riskData2026;
+  window.activationData    = d.activationData    || {};
+  window.areasData         = d.areasData         || [];
   // Estos quedan idénticos a los inline (no son data sensible — son aliases JS):
   window.data2024 = d.data['2024']; window.data2025 = d.data['2025']; window.data2026 = d.data['2026'];
 
@@ -2134,6 +2140,19 @@ function applyData(d) {
       var mesIdx = parseInt(parts2[1], 10) - 1;
       elBadge.textContent = cq.label + ' · ' + MES_FULL[mesIdx] + ' ' + parts2[0];
     }
+
+    // Activación de cartera (sección + 4 KPIs)
+    setText('[data-q-text="activacion-section"]', 'Activación de cartera ' + cq.label + ' · click para ver detalle');
+    setText('[data-q-text="reuniones-area-section"]', 'Reuniones ' + cq.label + ' por área / producto · click para ver clientes');
+    if (d.activationData) {
+      ['nunca','nuevos','reactiv','inactivos'].forEach(function(t){
+        var info = d.activationData[t]; if (!info) return;
+        setText('[data-act-label="' + t + '"]', info.kpi_label || '');
+        var elV = document.querySelector('[data-act-value="' + t + '"]');
+        if (elV) elV.textContent = (info.items || []).length;
+        setText('[data-act-sub="' + t + '"]', info.kpi_sub || '');
+      });
+    }
   } catch (e) { console.warn('KPI/Q-label update fallo', e); }
 
   // 4) Recontact bars (texto + barra + %)
@@ -2189,6 +2208,7 @@ function applyData(d) {
     if (btnHP && typeof setPrioClients === 'function') setPrioClients('HP', btnHP);
 
     if (typeof _renderCriticalList === 'function') _renderCriticalList();
+    if (typeof _renderAreas === 'function')        _renderAreas();
     if (typeof renderRiesgo2026 === 'function')    renderRiesgo2026();
     if (typeof renderMonthly === 'function')       renderMonthly();
     if (typeof renderSubtemas === 'function')      renderSubtemas();

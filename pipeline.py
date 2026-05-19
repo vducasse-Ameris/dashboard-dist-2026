@@ -500,6 +500,78 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     else:
         sub_colors = {}
 
+    # ── ACTIVACIÓN DE CARTERA (4 categorías derivadas del histórico) ────
+    def _cn_with_reuniones(df_in, months=None):
+        if df_in is None or df_in.empty:
+            return set()
+        cols = [m for m in (months or MESES) if m in df_in.columns]
+        if not cols:
+            return set()
+        totals = df_in[cols].sum(axis=1)
+        return set(df_in[totals > 0]["_cn"])
+
+    cur_q_cn = _cn_with_reuniones(df_cur, last_q_month_names) if last_q_year == cur_year else set()
+    cur_any_cn = _cn_with_reuniones(df_cur)
+    prev_any_cn = _cn_with_reuniones(df_p1)
+    older_any_cn = _cn_with_reuniones(df_p2) | _cn_with_reuniones(df_p3)
+
+    # nunca: HP sin ningún historial de contacto
+    nunca_items = []
+    if "Prioridad" in df_cur.columns:
+        for _, row in df_cur[df_cur["Prioridad"] == "HP"].iterrows():
+            cn = row["_cn"]
+            if cn not in cur_any_cn and cn not in prev_any_cn and cn not in older_any_cn:
+                nunca_items.append([str(row["Cliente"]), "HP"])
+
+    # nuevos: primera reunión EVER en el Q actual (no historial antes)
+    nuevos_items = []
+    for cn in sorted(cur_q_cn):
+        if cn not in prev_any_cn and cn not in older_any_cn:
+            nuevos_items.append([name_dict.get(cn, cn.title()), prio_dict.get(cn, "?")])
+
+    # reactiv: reunión en el Q actual, sin reunión en año anterior, pero con historial previo
+    reactiv_items = []
+    for cn in sorted(cur_q_cn):
+        if cn not in prev_any_cn and cn in older_any_cn:
+            reactiv_items.append([name_dict.get(cn, cn.title()), prio_dict.get(cn, "?")])
+
+    # inactivos: sin reunión en año anterior NI en año actual (todo el año hasta hoy)
+    inactivos_items = []
+    inactivos_by_prio = {"HP": 0, "MP": 0, "LP": 0}
+    for _, row in df_cur.iterrows():
+        cn = row["_cn"]
+        if cn not in cur_any_cn and cn not in prev_any_cn:
+            prio = prio_dict.get(cn, "?")
+            inactivos_items.append([str(row["Cliente"]), prio])
+            if prio in inactivos_by_prio:
+                inactivos_by_prio[prio] += 1
+
+    activation_data = {
+        "nunca":     {"label": f"HP sin historial de contacto ({len(nunca_items)})",
+                      "color": "#B33A2E", "items": nunca_items,
+                      "kpi_label": "Nunca contactados (HP)",
+                      "kpi_sub": "HP sin historial · ▼ ver lista"},
+        "nuevos":    {"label": f"Nuevos activados {last_q_label} ({len(nuevos_items)})",
+                      "color": "#0E7A4E", "items": nuevos_items,
+                      "kpi_label": f"Nuevos activados {last_q_label.split()[0]}",
+                      "kpi_sub": f"Primera reunión en {cur_year} · ▼ ver lista"},
+        "reactiv":   {"label": f"Reactivados {last_q_label} ({len(reactiv_items)})",
+                      "color": "#0E7A4E", "items": reactiv_items,
+                      "kpi_label": f"Reactivados (dormant {cur_year - 1})",
+                      "kpi_sub": f"Tenían historial, sin reunión en {cur_year - 1} · ▼ ver lista"},
+        "inactivos": {"label": f"Sin reunión en {cur_year - 1} ni {cur_year} ({len(inactivos_items)})",
+                      "color": "#B33A2E", "items": inactivos_items,
+                      "kpi_label": f"Sin reunión {cur_year - 1} ni {cur_year}",
+                      "kpi_sub": f"HP:{inactivos_by_prio['HP']} · MP:{inactivos_by_prio['MP']} · LP:{inactivos_by_prio['LP']} · ▼ ver lista"},
+    }
+    activation_counts = {
+        "nunca": len(nunca_items),
+        "nuevos": len(nuevos_items),
+        "reactiv": len(reactiv_items),
+        "inactivos": len(inactivos_items),
+        "inactivos_by_prio": inactivos_by_prio,
+    }
+
     # ── RECENT 5 LABELS / VALS (para el peakChart) ──────────────────────
     # Toma los 5 meses anteriores al mes en curso (incluyendo si cruza años).
     MES_ABBR = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"]
@@ -520,6 +592,21 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         prio: sum(int(r["reun26"]) for r in risk_cur[prio])
         for prio in ["HP", "MP", "LP"]
     }
+
+    # ── ÁREAS / PRODUCTOS (subtemas del año actual) ─────────────────────
+    year_str = str(cur_year)
+    sa_year = sa.get(year_str, {})
+    sca_year = sca.get(year_str, {})
+    areas_data = []
+    for sub_name, count in sorted(sa_year.items(), key=lambda x: -x[1]):
+        clientes_list = sca_year.get(sub_name, [])
+        areas_data.append({
+            "name": sub_name,
+            "reun": int(count),
+            "cp": len(clientes_list),
+            "color": sub_colors.get(sub_name, "#7D93B5"),
+            "clientes": [c["name"] for c in clientes_list],
+        })
 
     # ── RESULT ──────────────────────────────────────────────────────────
     # data y clientsData keyed por año (string) — dinámico según años disponibles.
@@ -553,6 +640,9 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "riskData2026": risk_cur,  # legacy key
         "riskCurrent": risk_cur,
         "topClientesQ": clients_q,
+        "activationData": activation_data,
+        "activationCounts": activation_counts,
+        "areasData": areas_data,
         "recentLabels": recent_labels,
         "recentVals": recent_vals,
         "years": years_avail,
