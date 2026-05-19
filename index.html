@@ -326,7 +326,7 @@ footer {
 
   <div class="section-label" data-q-text="nuevos-section" id="nuevos-section-label">Nuevos distribuidores Q1 2026 — detalle</div>
   <div class="card" style="margin-bottom:1.25rem;">
-    <div class="card-title">Clientes nuevos incorporados en Q1 2026</div>
+    <div class="card-title" data-q-text="nuevos-card-title">Clientes nuevos incorporados en Q1 2026</div>
     <div class="card-sub">Distribuidores que realizaron su primera inversión con Ameris en 2026</div>
     <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;">
       <thead>
@@ -341,7 +341,7 @@ footer {
     <div style="margin-top:8px;font-size:10px;color:var(--text3);" data-q-text="nuevos-footer">* Cliente nuevo = distribuidor que ha invertido en Ameris por primera vez en 2026 · Meta anual: 8 nuevos (2 por trimestre)</div>
   </div>
 
-  <div class="section-label">Consolidado Q1 2026 — progreso del año por segmento</div>
+  <div class="section-label" data-q-text="consolidado-section">Consolidado Q1 2026 — progreso del año por segmento</div>
   <div class="card" style="margin-bottom:1.25rem;overflow-x:auto;">
     <div class="card-title">Reuniones y contrapartes por trimestre 2026</div>
     <div class="card-sub">"Reun." = total de reuniones · "CP" = contrapartes distintas (clientes únicos contactados) · Q2–Q4 se completarán durante el año · Proy. = Q1 × 4</div>
@@ -350,10 +350,10 @@ footer {
         <tr style="background:#1B4B9B;">
           <th style="padding:8px 10px;text-align:left;color:#fff;font-weight:500;border-radius:4px 0 0 0;" rowspan="2">Seg.</th>
           <th style="padding:8px 10px;text-align:center;color:#fff;font-weight:500;" rowspan="2">Clientes</th>
-          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.95);font-weight:600;background:#0D2D6B;border-left:1px solid rgba(255,255,255,0.2);" colspan="2">Q1 2026 ✓</th>
-          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2">Q2 2026 (YTD)</th>
-          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2">Q3 2026</th>
-          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2">Q4 2026</th>
+          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.95);font-weight:600;background:#0D2D6B;border-left:1px solid rgba(255,255,255,0.2);" colspan="2"><span data-q-th="1">Q1 2026 ✓</span></th>
+          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2"><span data-q-th="2">Q2 2026 (YTD)</span></th>
+          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2"><span data-q-th="3">Q3 2026</span></th>
+          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2"><span data-q-th="4">Q4 2026</span></th>
           <th style="padding:8px 10px;text-align:center;color:#fff;font-weight:500;border-left:1px solid rgba(255,255,255,0.2);" rowspan="2">Total</th>
           <th style="padding:8px 10px;text-align:center;color:#fff;font-weight:500;border-radius:0 4px 0 0;" rowspan="2">Proy.</th>
         </tr>
@@ -432,7 +432,7 @@ footer {
 
   <!-- Semáforo -->
   <div class="card">
-    <div class="card-title">Semáforo de contacto 2026 YTD — por segmento</div>
+    <div class="card-title" data-q-text="semaforo-title">Semáforo de contacto 2026 YTD — por segmento</div>
     <div class="card-sub">HP: ≥ 2 reuniones = en meta · 1 reunión = parcial · 0 = sin contacto &nbsp;·&nbsp; MP/LP: ≥ 1 reunión = en meta · 0 = sin contacto &nbsp;·&nbsp; <strong>YTD Ene–May 2026</strong></div>
     <div class="chart-wrap" style="height:200px;"><canvas id="semaforoChart"></canvas></div>
     <div id="semaforo-leg" class="legend" style="margin-top:8px;"></div>
@@ -514,8 +514,7 @@ footer {
     <div class="card">
       <div class="card-title">Comparativo año a año por mes</div>
       <div class="card-sub">Barras dobles: año anterior (tenue) vs año siguiente</div>
-      <div class="ftabs">
-        <button class="ftab active" onclick="setYoy('2425',this)">2024 vs 2025</button>
+      <div class="ftabs" data-q-buttons="yoy-pairs"><button class="ftab active" onclick="setYoy('2425',this)">2024 vs 2025</button>
         <button class="ftab" onclick="setYoy('2526',this)">2025 vs 2026</button>
       </div>
       <div id="yoy-container"></div>
@@ -546,7 +545,7 @@ footer {
       <div class="kpi-sub pos">+25% vs Q1 2024</div>
     </div>
     <div class="kpi accent">
-      <div class="kpi-label">Q1 2026</div>
+      <div class="kpi-label"><span data-q-text="kpi-q-current">Q1 2026</span></div>
       <div class="kpi-value">109</div>
       <div class="kpi-sub pos">+5% vs Q1 2025</div>
     </div>
@@ -1076,7 +1075,7 @@ footer {
 </div>
 <footer>
   <span>Fuente: Consolidado_Follow-Ups_metas_dist.xlsx</span>
-  <span id="footer-date">Q1 2026 · 2024–2026 · Perú incluido</span>
+  <span id="footer-date" data-q-text="footer-date">Q1 2026 · 2024–2026 · Perú incluido</span>
 </footer>
 
 <script>
@@ -1214,7 +1213,7 @@ var lineChart = new Chart(document.getElementById('lineChart'), {
 function setYoy(pair, btn) {
   document.querySelectorAll('[onclick*="setYoy"]').forEach(function(t){t.classList.remove('active');});
   btn.classList.add('active');
-  var years = pair==='2425'?[2024,2025]:[2025,2026];
+  var years; if (pair.indexOf('-')>=0) { var p=pair.split('-'); years=[parseInt(p[0],10),parseInt(p[1],10)]; } else { years = pair==='2425'?[2024,2025]:[2025,2026]; }
   var c1 = pair==='2425'?'#E84C3D':'#F59E0B', c2 = pair==='2425'?'#F59E0B':'#1B4B9B';
   var d1=data[years[0]], d2=data[years[1]];
   var max=Math.max.apply(null,d1.concat(d2.filter(function(v){return v>0;})));
@@ -1341,7 +1340,7 @@ function initAumCharts() {
 
   var elQ = document.getElementById('aumQChart');
   if (elQ) {
-    var quarters=['Q1 2026','Q2 2026','Q3 2026','Q4 2026'];
+    var quarters=(window.AUM_QUARTERS||['Q1 2026','Q2 2026','Q3 2026','Q4 2026']);
     var keys=['deuda','inm','inter','notas'];
     var colors=['rgba(27,75,155,0.85)','rgba(46,107,175,0.85)','rgba(90,147,204,0.85)','rgba(168,197,224,0.85)'];
     var labels=['Deuda Directa','Inmobiliario','Internacionales','Notas Estr.'];
@@ -2166,6 +2165,51 @@ function applyData(d) {
             + (n.q || '—') + '</td>'
             + '</tr>';
         }).join('');
+      }
+    }
+
+    // Labels Q/año restantes (Consolidado, Semáforo, Footer, AUM, setYoy)
+    setText('[data-q-text="nuevos-card-title"]', 'Clientes nuevos incorporados en ' + cy);
+    setText('[data-q-text="consolidado-section"]', 'Consolidado ' + cq.label + ' — progreso del año por segmento');
+    setText('[data-q-text="semaforo-title"]', 'Semáforo de contacto ' + cy + ' YTD — por segmento');
+    setText('[data-q-text="kpi-q-current"]', cq.label);
+    setText('[data-q-text="footer-date"]', cq.label + ' · ' + yrsAsc[0] + '–' + yrsAsc[yrsAsc.length - 1]);
+
+    // Tabla Consolidado: marcar Q completados con ✓, Q en curso con (YTD)
+    for (var qi = 1; qi <= 4; qi++) {
+      var el = document.querySelector('[data-q-th="' + qi + '"]');
+      if (!el) continue;
+      var lbl = 'Q' + qi + ' ' + cy;
+      if (qi < cq.q || (qi === cq.q && cq.q < 4)) lbl += ' ✓';
+      else if (qi === cq.q + 1) lbl += ' (YTD)';
+      el.textContent = lbl;
+    }
+
+    // AUM: actualizar quarters dinámicos para charts y labels visibles
+    var yy = String(cy).slice(-2);
+    window.AUM_QUARTERS = ['Q1 ' + cy, 'Q2 ' + cy, 'Q3 ' + cy, 'Q4 ' + cy];
+    var qCurEl = document.getElementById('q-current-label');
+    if (qCurEl) qCurEl.textContent = cq.label;
+    var qSecEl = document.getElementById('q-section-label');
+    if (qSecEl) qSecEl.textContent = 'Desglose por instrumento · ' + cq.label;
+
+    // setYoy buttons: rebuild dinámico con los últimos 3 años → 2 pares
+    var yoyContainer = document.querySelector('[data-q-buttons="yoy-pairs"]');
+    if (yoyContainer && yrsAsc.length >= 2) {
+      var last3 = yrsAsc.slice(-3);
+      var pairs = [];
+      if (last3.length >= 3) pairs.push([last3[0], last3[1]]);
+      pairs.push([last3[last3.length - 2], last3[last3.length - 1]]);
+      yoyContainer.innerHTML = pairs.map(function(p, i) {
+        var active = (i === pairs.length - 1) ? ' active' : '';
+        var key = p[0] + '-' + p[1];
+        return '<button class="ftab' + active + '" onclick="setYoy(\'' + key + '\',this)">' + p[0] + ' vs ' + p[1] + '</button>';
+      }).join('');
+      // Disparar render inicial con el par más reciente
+      var activeYoyBtn = yoyContainer.querySelector('.active');
+      if (activeYoyBtn && typeof setYoy === 'function') {
+        var k = activeYoyBtn.getAttribute('onclick').match(/setYoy\('([^']+)'/);
+        if (k) setYoy(k[1], activeYoyBtn);
       }
     }
 

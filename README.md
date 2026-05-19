@@ -1,50 +1,46 @@
-# Dashboard Reuniones — Distribución Ameris 2026
+# Dashboard Reuniones — Distribución Ameris
 
-Dashboard estático para el seguimiento de reuniones con clientes del área
-de Distribución. **El procesamiento del Excel ocurre 100% en el navegador**
+Dashboard estático del seguimiento de reuniones con clientes del área de
+Distribución. **El procesamiento del Excel ocurre 100% en el navegador**
 (via Pyodide — Python compilado a WebAssembly). Nada se sube a un servidor.
 
 ## Link público
-
-Una vez activado GitHub Pages (Settings → Pages → Source: `main` / root):
 
 ```
 https://<org>.github.io/<repo>/
 ```
 
-## Cómo se usa
+## Cómo se usa (todos los usuarios)
 
 1. Abrir el link en cualquier navegador moderno.
-2. Esperar ~15-30 s la primera vez mientras descarga Pyodide + pandas
-   + openpyxl (~30 MB). Después queda en cache del browser.
+2. Esperar ~15-30 s la primera vez mientras descarga Pyodide + pandas +
+   openpyxl (~30 MB). Después queda en cache.
 3. Click **↑ Subir Excel** → seleccionar `Follow Up clientes_2026.xlsm`
    (cerrar el archivo en Excel antes — Windows lo bloquea si está abierto).
-4. El dashboard se rellena en ~3-5 s. Listo.
+4. El dashboard se rellena en ~3-5 s.
 
-Cada vez que quieran ver datos actualizados, vuelven a subir el Excel.
-El archivo nunca sale del navegador.
+Para actualizar datos, vuelve a subir el Excel.
 
 ## Privacidad
 
-- El repo (público) **no contiene data de clientes**. Sólo el código del
-  dashboard y el pipeline Python.
-- El Excel se procesa en memoria del navegador. Cuando cerrás la pestaña,
-  los datos se borran.
-- Nadie tercero ve la data: no hay backend, no hay logs, no hay telemetría.
+- El repo **no contiene data de clientes** — sólo el código.
+- El Excel se procesa en memoria del navegador. Al cerrar la pestaña, los
+  datos se borran.
+- No hay backend, logs ni telemetría.
 
-## Estructura
+## Estructura del repo
 
 ```
 dashboard-pages/
-├── index.html         ← dashboard (cargado por el browser)
-├── pipeline.py        ← procesa el Excel con pandas (corre en Pyodide)
+├── index.html          ← dashboard (cargado por el browser)
+├── pipeline.py         ← procesa el Excel (corre en Pyodide)
 ├── README.md
 └── .gitignore
 ```
 
-## Cómo regenerar `index.html`
+## Cómo actualizar el dashboard (mantenimiento)
 
-El `index.html` se genera transformando el output de `generar_dashboard.py`
+`index.html` se genera transformando el output de `generar_dashboard.py`
 (en la carpeta hermana `../dashboard/`):
 
 ```powershell
@@ -52,21 +48,66 @@ cd ../dashboard
 .\.venv\Scripts\python.exe build_pyodide.py
 ```
 
-Esto toma `dashboard_reuniones actualizado YYYY-MM-DD.html`, le saca toda
-la data inline, le inyecta el cargador Pyodide + UI de upload, y escribe el
-resultado en `dashboard-pages/index.html`.
+Eso lee `../dashboard_reuniones actualizado YYYY-MM-DD.html`, le quita la
+data inline, le inyecta el loader Pyodide + UI de upload + label rolling,
+y escribe el resultado en `dashboard-pages/index.html`.
+
+Después: `git add . && git commit -m "..." && git push`.
+
+## Diseño para que perdure en el tiempo (2026 → 2027 → 2028…)
+
+El dashboard auto-detecta años desde el Excel y rola sus labels solo.
+
+### Lo que rola automáticamente al subir un Excel nuevo
+
+| Componente | Cómo rola |
+|---|---|
+| KPIs de Q (Reuniones Q1, Top Clientes Q, Activación Q…) | Pipeline calcula el **último trimestre completo** según `today` |
+| YTD del año actual | Suma de los meses transcurridos hasta hoy |
+| Comparaciones vs año anterior | Pipeline lee la hoja `Clientes foto YYYY-1` |
+| Tabs de año (Vista mensual / Subtemas) | Reconstruidos desde la lista de hojas `Clientes foto YYYY` |
+| Heatmap | Usa los 3 años más recientes |
+| Metas AUM | Parsea la hoja `Metas{cur_year}` |
+| Nuevos distribuidores | Compara `Clientes foto cur_year` vs `…cur_year-1` (sección Distribuidores). Si no hay nuevos, esconde la sección. |
+| Header / Footer / Consolidado / Semáforo / setYoy | Labels Q-relativos rolan via JS |
+
+### Lo que hay que hacer en 2027 (sin tocar código)
+
+1. **Agregar al Excel las hojas nuevas** (manteniendo el formato exacto):
+   - `Clientes foto 2027` (con filas "Distribuidores" / "Institucionales"
+     como separadores)
+   - `Apuntes  2027` (con dos espacios entre "Apuntes" y el año, como las
+     demás)
+   - `Metas2027` (con las metas Q por Q, mismo formato que `Metas2026`)
+2. Subir el Excel al dashboard. Todo rola solo:
+   - Año actual pasa a 2027
+   - Top Clientes Q1 2026 → Top Clientes QX 2027 (según el trimestre)
+   - Tabs muestran 2027 y los 3 años anteriores
+   - Comparativas YoY usan 2026 vs 2027
+
+### Si algún día hay que cambiar el diseño del dashboard
+
+El "borrador" (`../dashboard_reuniones actualizado 13 mayo 2026.html`) es
+la fuente del diseño. Para cambios visuales:
+
+1. Modificar `../dashboard/generar_dashboard.py` (o el HTML borrador directo).
+2. Regenerar el output.
+3. Correr `build_pyodide.py` para que tome la nueva versión.
+4. Push.
 
 ## Stack
 
 - **Pyodide v0.26.2** — Python 3.11 en WebAssembly.
-- **pandas + openpyxl** — lee y procesa el Excel.
+- **pandas + openpyxl** — leer y procesar el Excel.
 - **Chart.js 4.4** — gráficos.
 - **HTML/CSS plano** — sin frameworks JS.
 
 ## Limitaciones conocidas
 
-- Las tablas "Activación Q1 2026" y "Áreas / Productos" del Resumen
-  quedan vacías — no son derivables del Excel automáticamente. Si las
-  queremos, hay que extender `pipeline.py`.
-- Primera carga lenta (~15-30 s) por el peso de Pyodide. Después es
-  instantáneo (browser cachea).
+- Primera carga del browser ~15-30s. Después es instantáneo (cache).
+- Si el Excel cambia su estructura (renombrar columnas críticas como
+  `Cliente`, `Prioridad`, `Fecha`, `Empresa/Cliente`, `Subtema`), hay que
+  actualizar `pipeline.py`.
+- El detector de Distribuidor vs Institucional depende de las filas
+  separadoras "Distribuidores" y "Institucionales" en la columna `Cliente`.
+  Si se renombran o eliminan, todos quedan clasificados como "Dist".
