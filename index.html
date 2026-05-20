@@ -592,6 +592,16 @@ footer {
         <button class="ftab" data-mo="12" onclick="setMonthMo(12,this)">Dic</button>
       </div>
     </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Tipo</span>
+      <div class="ftabs" style="margin:0;">
+        <button class="ftab active" data-mtipo="ALL" onclick="setMonthTipo('ALL',this)">Todos</button><button class="ftab" data-mtipo="Dist" onclick="setMonthTipo('Dist',this)">Distribuidor</button><button class="ftab" data-mtipo="Inst" onclick="setMonthTipo('Inst',this)">Institucional</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Buscar</span>
+      <input type="text" id="monthly-search" placeholder="Nombre del cliente..." oninput="setMonthSearch(this.value)" style="flex:1;min-width:200px;max-width:400px;padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);outline:none;font-family:inherit;">
+    </div>
     <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
       <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Prio</span>
       <div class="ftabs" style="margin:0;">
@@ -1780,7 +1790,7 @@ var subtemasClientsM = {};
 var subtemasClientsA = {};
 var riskData2026 = { HP:[], MP:[], LP:[] };
 
-window._MONTH = window._MONTH || {yr:'2026',mo:null,prio:'ALL'};
+window._MONTH = window._MONTH || {yr:'2026',mo:null,prio:'ALL',tipo:'ALL',search:''};
 window._SUB   = window._SUB   || {yr:'2026',mo:'ALL',activeSub:null};
 
 function setMonthYear(yr,btn){
@@ -1799,6 +1809,19 @@ function setMonthPrio(prio,btn){
   document.querySelectorAll('[data-mprio]').forEach(function(t){t.classList.remove('active');}); btn.classList.add('active');
   window._MONTH.prio=prio; renderMonthly();
 }
+function setMonthTipo(tipo,btn){
+  document.querySelectorAll('[data-mtipo]').forEach(function(t){t.classList.remove('active');});btn.classList.add('active');
+  window._MONTH.tipo=tipo; _autoExpandVistaM(); renderMonthly();
+}
+function setMonthSearch(val){
+  window._MONTH.search=(val||'').toLowerCase().trim();
+  if (window._MONTH.search) _autoExpandVistaM();
+  renderMonthly();
+}
+function _autoExpandVistaM(){
+  var t=document.getElementById('monthly-table'),b=document.getElementById('vista-m-btn');
+  if(t&&b&&t.style.display==='none'){t.style.display='';b.innerHTML='&#9650; colapsar';}
+}
 function renderMonthly(){
   var el=document.getElementById('monthly-table'); var es=document.getElementById('monthly-summary'); if(!el) return;
   var st=window._MONTH; var MN=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
@@ -1807,7 +1830,7 @@ function renderMonthly(){
     var map={}; for(var mo=1;mo<=12;mo++){(monthlyDetailData[st.yr+'_'+mo]||[]).forEach(function(r){if(!map[r.nombre])map[r.nombre]={nombre:r.nombre,prio:r.prio,tipo:r.tipo,reun:0,subtemas:[]};map[r.nombre].reun+=r.reun;(r.subtemas||[]).forEach(function(s){if(map[r.nombre].subtemas.indexOf(s)<0)map[r.nombre].subtemas.push(s);});});}
     rows=Object.values(map); titleStr=st.yr+' &mdash; Todo el a&ntilde;o';
   } else { rows=monthlyDetailData[st.yr+'_'+st.mo]||[]; titleStr=MN[st.mo]+' '+st.yr; }
-  rows=rows.filter(function(r){return st.prio==='ALL'||r.prio===st.prio;});
+  rows=rows.filter(function(r){if(st.prio!=='ALL'&&r.prio!==st.prio)return false;if(st.tipo&&st.tipo!=='ALL'&&r.tipo!==st.tipo)return false;if(st.search&&r.nombre.toLowerCase().indexOf(st.search)<0)return false;return true;});
   // All-year view: sort purely by reuniones desc; monthly view: by prio then reun
   if(!st.mo){
     rows.sort(function(a,b){return b.reun-a.reun;});

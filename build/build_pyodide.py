@@ -1202,6 +1202,74 @@ def transform(html: str) -> str:
         1,
     )
 
+    # 1.E) Vista mensual: agregar filtro de Tipo (Dist/Inst) + barra de búsqueda
+    vm_filter_old = (
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">\n'
+        '      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Prio</span>\n'
+        '      <div class="ftabs" style="margin:0;">\n'
+        "        <button class=\"ftab active\" data-mprio=\"ALL\" onclick=\"setMonthPrio('ALL',this)\">Todos</button>"
+    )
+    vm_filter_new = (
+        '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">\n'
+        '      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Tipo</span>\n'
+        '      <div class="ftabs" style="margin:0;">\n'
+        "        <button class=\"ftab active\" data-mtipo=\"ALL\" onclick=\"setMonthTipo('ALL',this)\">Todos</button>"
+        "<button class=\"ftab\" data-mtipo=\"Dist\" onclick=\"setMonthTipo('Dist',this)\">Distribuidor</button>"
+        "<button class=\"ftab\" data-mtipo=\"Inst\" onclick=\"setMonthTipo('Inst',this)\">Institucional</button>\n"
+        '      </div>\n'
+        '    </div>\n'
+        '    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">\n'
+        '      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Buscar</span>\n'
+        "      <input type=\"text\" id=\"monthly-search\" placeholder=\"Nombre del cliente...\" oninput=\"setMonthSearch(this.value)\""
+        " style=\"flex:1;min-width:200px;max-width:400px;padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);outline:none;font-family:inherit;\">\n"
+        '    </div>\n'
+        '    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">\n'
+        '      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Prio</span>\n'
+        '      <div class="ftabs" style="margin:0;">\n'
+        "        <button class=\"ftab active\" data-mprio=\"ALL\" onclick=\"setMonthPrio('ALL',this)\">Todos</button>"
+    )
+    if vm_filter_old in html:
+        html = html.replace(vm_filter_old, vm_filter_new, 1)
+    else:
+        print("  WARN: no encontré el filtro de Prio en Vista mensual")
+
+    # Extender el estado _MONTH con tipo y search
+    html = html.replace(
+        "window._MONTH = window._MONTH || {yr:'2026',mo:null,prio:'ALL'};",
+        "window._MONTH = window._MONTH || {yr:'2026',mo:null,prio:'ALL',tipo:'ALL',search:''};",
+        1,
+    )
+
+    # Agregar setMonthTipo + setMonthSearch como funciones nuevas, justo antes de renderMonthly
+    new_setters = (
+        "function setMonthTipo(tipo,btn){\n"
+        "  document.querySelectorAll('[data-mtipo]').forEach(function(t){t.classList.remove('active');});btn.classList.add('active');\n"
+        "  window._MONTH.tipo=tipo; _autoExpandVistaM(); renderMonthly();\n"
+        "}\n"
+        "function setMonthSearch(val){\n"
+        "  window._MONTH.search=(val||'').toLowerCase().trim();\n"
+        "  if (window._MONTH.search) _autoExpandVistaM();\n"
+        "  renderMonthly();\n"
+        "}\n"
+        "function _autoExpandVistaM(){\n"
+        "  var t=document.getElementById('monthly-table'),b=document.getElementById('vista-m-btn');\n"
+        "  if(t&&b&&t.style.display==='none'){t.style.display='';b.innerHTML='&#9650; colapsar';}\n"
+        "}\n"
+        "function renderMonthly()"
+    )
+    html = html.replace("function renderMonthly()", new_setters, 1)
+
+    # Extender el filtro de rows en renderMonthly para incluir tipo y search
+    html = html.replace(
+        "rows=rows.filter(function(r){return st.prio==='ALL'||r.prio===st.prio;});",
+        "rows=rows.filter(function(r){"
+        "if(st.prio!=='ALL'&&r.prio!==st.prio)return false;"
+        "if(st.tipo&&st.tipo!=='ALL'&&r.tipo!==st.tipo)return false;"
+        "if(st.search&&r.nombre.toLowerCase().indexOf(st.search)<0)return false;"
+        "return true;});",
+        1,
+    )
+
     # 1a0) Hacer toda la fila del header clickeable para expandir Vista mensual
     # y Reuniones por subtema (más intuitivo que el botón chico a la derecha).
     vm_old = (
