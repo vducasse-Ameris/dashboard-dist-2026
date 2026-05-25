@@ -992,6 +992,44 @@ def transform(html: str) -> str:
         1,
     )
 
+    # 1.E) Contraste en KPI cards — borde más fuerte + sombra suave + hover
+    kpi_css_old = (
+        ".kpi {\n"
+        "  background:var(--card); border:1px solid var(--border);\n"
+        "  border-radius:var(--r); padding:16px 18px;\n"
+        "}"
+    )
+    kpi_css_new = (
+        ".kpi {\n"
+        "  background:var(--card); border:1px solid var(--border2);\n"
+        "  border-radius:var(--r); padding:16px 18px;\n"
+        "  box-shadow:0 1px 4px rgba(11,30,61,0.06);\n"
+        "  transition:box-shadow .2s, transform .2s;\n"
+        "}\n"
+        ".kpi:hover { box-shadow:0 6px 18px rgba(11,30,61,0.1); transform:translateY(-1px); }"
+    )
+    if kpi_css_old in html:
+        html = html.replace(kpi_css_old, kpi_css_new, 1)
+    else:
+        print("  WARN: no encontré el CSS de .kpi")
+
+    # También fortalecer .card (cards más grandes)
+    card_css_old = (
+        ".card {\n"
+        "  background:var(--card); border:1px solid var(--border);\n"
+        "  border-radius:var(--rl); padding:18px 20px;"
+    )
+    card_css_new = (
+        ".card {\n"
+        "  background:var(--card); border:1px solid var(--border2);\n"
+        "  border-radius:var(--rl); padding:18px 20px;\n"
+        "  box-shadow:0 1px 4px rgba(11,30,61,0.05);"
+    )
+    if card_css_old in html:
+        html = html.replace(card_css_old, card_css_new, 1)
+    else:
+        print("  WARN: no encontré el CSS de .card")
+
     # 1a) Heatmap con más contraste — escala sqrt y paleta blue→amber→red para
     # que los meses de alta concentración salten visualmente vs los de baja.
     heatmap_old_color = (

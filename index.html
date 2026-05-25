@@ -80,9 +80,12 @@ body { font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(-
 .kpi-row-5 { grid-template-columns: repeat(5,1fr); }
 
 .kpi {
-  background:var(--card); border:1px solid var(--border);
+  background:var(--card); border:1px solid var(--border2);
   border-radius:var(--r); padding:16px 18px;
+  box-shadow:0 1px 4px rgba(11,30,61,0.06);
+  transition:box-shadow .2s, transform .2s;
 }
+.kpi:hover { box-shadow:0 6px 18px rgba(11,30,61,0.1); transform:translateY(-1px); }
 .kpi.accent { background:var(--a1); border-color:transparent; }
 .kpi-label { font-size:10px; font-weight:500; letter-spacing:.07em; text-transform:uppercase; color:var(--text3); margin-bottom:7px; }
 .kpi.accent .kpi-label { color:rgba(255,255,255,0.6); }
@@ -95,8 +98,9 @@ body { font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(-
 .warn{ color:var(--amber) !important; }
 
 .card {
-  background:var(--card); border:1px solid var(--border);
+  background:var(--card); border:1px solid var(--border2);
   border-radius:var(--rl); padding:18px 20px;
+  box-shadow:0 1px 4px rgba(11,30,61,0.05);
 }
 .card-title { font-size:12px; font-weight:600; color:var(--text); margin-bottom:3px; }
 .card-sub   { font-size:11px; color:var(--text3); margin-bottom:14px; line-height:1.4; }
