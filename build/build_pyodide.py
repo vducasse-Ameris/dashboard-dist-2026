@@ -211,49 +211,96 @@ function _fmtB(v) {
   return 'CLP ' + Math.round(v).toLocaleString('es-CL');
 }
 
-function renderMetasAvance(res) {
-  var body = document.getElementById('avance-metas-body');
-  if (!body) return;
-  var bp = (res && res.byPeriodo) || {};
-  var instr = (res && res.instrumentos) || { deuda: 'Deuda Privada', inm: 'Inmobiliario', inter: 'Internacionales', notas: 'Notas Estructuradas' };
-  var cq = window.__CURRENT_Q__ || { q: 1, year: 2026, label: 'Q1 2026' };
-  var yy = String(cq.year).slice(-2);
-  var qKey = cq.q + 'T' + yy;
-  var annualKey = String(cq.year);
+// Devuelve {txt, color} para un logro dado su target (maneja negativos)
+function _logroDisplay(logro, target) {
+  var neg = logro < 0;
+  var pct = target > 0 ? Math.round(logro / target * 100) : 0;
+  if (neg) return { txt: _fmtB(logro) + ' · rescate neto', color: '#B33A2E', pct: pct, neg: true };
+  return {
+    txt: _fmtB(logro) + ' · ' + pct + '%',
+    color: pct >= 100 ? '#0E7A4E' : 'var(--text2)',
+    pct: pct, neg: false,
+  };
+}
 
-  function block(title, periodKey) {
-    var data = bp[periodKey];
-    if (!data) return '';
-    var h = '<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px;">' + title + '</div>';
-    ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
-      var d = data[k]; if (!d) return;
-      var pct = d.target > 0 ? (d.logro / d.target * 100) : 0;
-      var neg = d.logro < 0;
-      var barW = Math.max(0, Math.min(100, pct));
-      var barColor = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : '#1B4B9B');
-      var pctTxt = neg ? 'rescate neto' : Math.round(pct) + '%';
-      var pctCol = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : 'var(--text2)');
-      h += '<div style="margin-bottom:11px;">'
-        + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;flex-wrap:wrap;gap:4px;">'
-        +   '<span style="font-size:12px;font-weight:500;color:var(--text);">' + (instr[k] || k) + '</span>'
-        +   '<span style="font-size:11px;color:var(--text3);">Meta: ' + _fmtB(d.target)
-        +     ' · Real: <strong style="color:' + (neg ? '#B33A2E' : 'var(--text)') + ';">' + _fmtB(d.logro) + '</strong>'
-        +     ' · <span style="color:' + pctCol + ';font-weight:600;">' + pctTxt + '</span></span>'
-        + '</div>'
-        + '<div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden;"><div style="height:8px;width:' + barW + '%;background:' + barColor + ';border-radius:4px;"></div></div>'
-        + '</div>';
+// Actualiza los logros de las cards trimestrales para el trimestre `q` (ej "1T26")
+function _updateAumLogrosQ(q, targets) {
+  var res = window.__METAS_RESULTS__;
+  var ids = { deuda: 'q-deuda-logro', inm: 'q-inm-logro', inter: 'q-inter-logro', notas: 'q-notas-logro' };
+  var totalEl = document.getElementById('q-total-logro');
+  var data = res && res.byPeriodo && res.byPeriodo[q];
+  if (!data) {
+    Object.keys(ids).forEach(function(k) {
+      var el = document.getElementById(ids[k]);
+      if (el) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; }
     });
-    return h;
+    if (totalEl) { totalEl.textContent = '— pendiente'; totalEl.style.color = 'var(--text3)'; }
+    return;
   }
+  var totalLogro = 0;
+  ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
+    var el = document.getElementById(ids[k]);
+    if (!el) return;
+    var d = data[k];
+    if (!d) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; return; }
+    totalLogro += d.logro;
+    var disp = _logroDisplay(d.logro, d.target);
+    el.textContent = disp.txt;
+    el.style.color = disp.color;
+  });
+  if (totalEl) {
+    var tgtTotal = (targets && targets.total ? targets.total * 1e9 : 0);
+    totalEl.textContent = _fmtB(totalLogro);
+    totalEl.style.color = totalLogro < 0 ? '#B33A2E' : (tgtTotal && totalLogro >= tgtTotal ? '#0E7A4E' : 'var(--text)');
+  }
+}
 
-  var html = block('Trimestre actual · ' + cq.label, qKey) + block('Acumulado anual · ' + cq.year, annualKey);
-  body.innerHTML = html || '<div style="padding:14px;color:var(--text3);font-size:11px;">No encontré datos de AUM para ' + cq.label + ' en el archivo.</div>';
+// Actualiza el sub-panel anual (YTD): KPI + celdas de la tabla
+function _updateAumYTD() {
+  var res = window.__METAS_RESULTS__;
+  var cy = (window.__CURRENT_Q__ && window.__CURRENT_Q__.year) || 2026;
+  var data = res && res.byPeriodo && res.byPeriodo[String(cy)];
+  var ids = { deuda: 'ytd-deuda-logro', inm: 'ytd-inm-logro', inter: 'ytd-inter-logro', notas: 'ytd-notas-logro' };
+  var kpiEl = document.getElementById('ytd-kpi-logro');
+  var totalEl = document.getElementById('ytd-total-logro');
+  if (!data) return;
+  var totalLogro = 0;
+  ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
+    var el = document.getElementById(ids[k]);
+    var d = data[k];
+    if (d) totalLogro += d.logro;
+    if (!el || !d) return;
+    var disp = _logroDisplay(d.logro, d.target);
+    el.textContent = disp.txt;
+    el.style.color = disp.color;
+    el.style.fontStyle = 'normal';
+  });
+  if (totalEl) {
+    totalEl.textContent = _fmtB(totalLogro);
+    totalEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--text)';
+    totalEl.style.fontStyle = 'normal';
+  }
+  if (kpiEl) {
+    kpiEl.textContent = _fmtB(totalLogro);
+    kpiEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--green)';
+  }
+}
 
-  var lbl = document.getElementById('avance-metas-label');
-  if (lbl) lbl.textContent = 'Avance real de AUM · ' + cq.label;
-  var sub = document.getElementById('avance-metas-sub');
-  if (sub && res && res.corte) {
-    sub.innerHTML = 'Distribuidores · fuente Britech · corte <strong>' + res.corte + '</strong> · valores negativos = rescate neto · la data vive sólo en tu navegador';
+// Refresca todo el tab AUM con los resultados cargados
+function renderMetasAvance(res) {
+  // Re-disparar el trimestre activo (para actualizar las cards trimestrales)
+  var activeQ = document.querySelector('[id^="qsel-"].active');
+  if (activeQ && typeof selectQuarter === 'function') {
+    var qm = activeQ.getAttribute('onclick').match(/selectQuarter\('([^']+)'/);
+    if (qm) selectQuarter(qm[1], activeQ);
+  }
+  _updateAumYTD();
+  // Actualizar el banner de aviso para reflejar que ya hay datos cargados
+  var banner = document.getElementById('aum-aviso-text');
+  if (banner && res && res.corte) {
+    banner.innerHTML = '✓ <strong>Resultados reales cargados</strong> (fuente Britech, corte ' + res.corte +
+      '). Las barras y los logros reflejan el avance real. Valores negativos = rescate neto. ' +
+      'La data vive sólo en tu navegador.';
   }
 }
 
@@ -1589,24 +1636,46 @@ def transform(html: str) -> str:
         1,
     )
 
-    # 1.F) Sección "Avance real de AUM" en el tab Metas AUM (después del aviso)
-    avance_anchor = (
-        "Las Internacionales tienen distribución trimestral irregular "
-        "(Q3 concentra el mayor volumen).</div>\n    </div>\n  </div>"
+    # 1.F) AUM: conectar la UI existente (cards trimestrales + tabla YTD) a los
+    # logros reales del archivo de resultados. Añadimos IDs a las celdas "Logro
+    # YTD" de la tabla anual y al KPI "Logro YTD" para que el JS las actualice.
+    # KPI "Logro YTD" (sub-panel anual)
+    html = html.replace(
+        '<div class="kpi-label">Logro YTD</div>\n'
+        '        <div class="kpi-value" style="font-size:18px;color:var(--text3);">— pendiente</div>',
+        '<div class="kpi-label">Logro YTD</div>\n'
+        '        <div class="kpi-value" id="ytd-kpi-logro" style="font-size:18px;color:var(--text3);">— pendiente</div>',
+        1,
     )
-    avance_section = (
-        '\n\n  <!-- ── AVANCE REAL DE AUM (auto, desde archivo de resultados) ── -->\n'
-        '  <div class="section-label" id="avance-metas-label">Avance real de AUM — subí el archivo de resultados</div>\n'
-        '  <div class="card" style="margin-bottom:1.25rem;">\n'
-        '    <div class="card-title">Meta vs resultado real · Distribuidores · fuente Britech</div>\n'
-        '    <div class="card-sub" id="avance-metas-sub">Usá el botón <strong>↑ Resultados metas</strong> arriba para cargar el archivo. Valores negativos = rescate neto. La data vive sólo en tu navegador — no se guarda en ningún lado.</div>\n'
-        '    <div id="avance-metas-body" style="margin-top:14px;"><div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">Sin resultados cargados todavía.</div></div>\n'
-        '  </div>\n'
+    # Celdas "Logro YTD" de la tabla anual: la última <td> de cada fila de
+    # instrumento + la del Total. Las marcamos por orden con un contador.
+    _ytd_ids = ['ytd-deuda-logro', 'ytd-inm-logro', 'ytd-inter-logro', 'ytd-notas-logro', 'ytd-total-logro']
+    _ytd_i = [0]
+    def _mark_ytd_cell(m):
+        if _ytd_i[0] >= len(_ytd_ids):
+            return m.group(0)
+        cid = _ytd_ids[_ytd_i[0]]
+        _ytd_i[0] += 1
+        return m.group(1) + f' id="{cid}"' + m.group(2)
+    html = re.sub(
+        r'(<td style="text-align:center;padding:8px 12px;color:var\(--text3\);font-style:italic;)(">pendiente</td>)',
+        _mark_ytd_cell, html,
     )
-    if avance_anchor in html:
-        html = html.replace(avance_anchor, avance_anchor + avance_section, 1)
-    else:
-        print("  WARN: no encontré el aviso de Metas AUM para insertar el avance")
+
+    # Marcar el texto del banner de aviso para poder actualizarlo al cargar resultados
+    html = html.replace(
+        '<div style="font-size:11px;color:var(--text2);line-height:1.6;">Solo se muestran metas de <strong>Aumento de Patrimonio (AUM)</strong>.',
+        '<div style="font-size:11px;color:var(--text2);line-height:1.6;" id="aum-aviso-text">Solo se muestran metas de <strong>Aumento de Patrimonio (AUM)</strong>.',
+        1,
+    )
+
+    # Patch selectQuarter: que actualice los logros trimestrales al cambiar de Q
+    html = html.replace(
+        "['deuda','inm','inter','notas'].forEach(function(f){document.getElementById('q-'+f+'-meta').textContent=m[f];});",
+        "['deuda','inm','inter','notas'].forEach(function(f){document.getElementById('q-'+f+'-meta').textContent=m[f];});"
+        " if (typeof _updateAumLogrosQ === 'function') _updateAumLogrosQ(q, d);",
+        1,
+    )
 
     # 2) IDs / data-attributes para KPI + Q-rolling + activación + áreas
     html = add_kpi_attrs(html)

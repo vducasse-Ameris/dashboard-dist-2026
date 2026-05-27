@@ -792,18 +792,9 @@ footer {
     <span style="font-size:20px;opacity:.5;">◎</span>
     <div>
       <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;">Metas planteadas · Logros pendientes de información</div>
-      <div style="font-size:11px;color:var(--text2);line-height:1.6;">Solo se muestran metas de <strong>Aumento de Patrimonio (AUM)</strong>. Las barras de progreso se activarán cuando se provea información real desde Britech. Las Internacionales tienen distribución trimestral irregular (Q3 concentra el mayor volumen).</div>
+      <div style="font-size:11px;color:var(--text2);line-height:1.6;" id="aum-aviso-text">Solo se muestran metas de <strong>Aumento de Patrimonio (AUM)</strong>. Las barras de progreso se activarán cuando se provea información real desde Britech. Las Internacionales tienen distribución trimestral irregular (Q3 concentra el mayor volumen).</div>
     </div>
   </div>
-
-  <!-- ── AVANCE REAL DE AUM (auto, desde archivo de resultados) ── -->
-  <div class="section-label" id="avance-metas-label">Avance real de AUM — subí el archivo de resultados</div>
-  <div class="card" style="margin-bottom:1.25rem;">
-    <div class="card-title">Meta vs resultado real · Distribuidores · fuente Britech</div>
-    <div class="card-sub" id="avance-metas-sub">Usá el botón <strong>↑ Resultados metas</strong> arriba para cargar el archivo. Valores negativos = rescate neto. La data vive sólo en tu navegador — no se guarda en ningún lado.</div>
-    <div id="avance-metas-body" style="margin-top:14px;"><div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">Sin resultados cargados todavía.</div></div>
-  </div>
-
 
   <!-- Sub-pestañas AUM -->
   <div style="display:flex;gap:0;border-bottom:2px solid var(--border2);margin-bottom:1.25rem;">
@@ -938,7 +929,7 @@ footer {
       </div>
       <div class="kpi">
         <div class="kpi-label">Logro YTD</div>
-        <div class="kpi-value" style="font-size:18px;color:var(--text3);">— pendiente</div>
+        <div class="kpi-value" id="ytd-kpi-logro" style="font-size:18px;color:var(--text3);">— pendiente</div>
         <div class="kpi-sub">Acumulado desde 01 ene 2026</div>
       </div>
       <div class="kpi">
@@ -980,7 +971,7 @@ footer {
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">7.93B</td>
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">31.70B</td>
             <td style="text-align:center;padding:8px 12px;color:var(--text3);">17.15%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-deuda-logro"">pendiente</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
@@ -991,7 +982,7 @@ footer {
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.52B</td>
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">6.07B</td>
             <td style="text-align:center;padding:8px 12px;color:var(--text3);">3.15%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-inm-logro"">pendiente</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
@@ -1002,7 +993,7 @@ footer {
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">6.04B</td>
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">26.61B</td>
             <td style="text-align:center;padding:8px 12px;color:var(--text3);">14.35%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-inter-logro"">pendiente</td>
           </tr>
           <tr style="border-bottom:1px solid var(--border);">
             <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
@@ -1013,7 +1004,7 @@ footer {
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">237M</td>
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">946M</td>
             <td style="text-align:center;padding:8px 12px;color:var(--text3);">0.35%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-notas-logro"">pendiente</td>
           </tr>
           <tr style="background:var(--card2);">
             <td style="padding:8px 12px;font-weight:600;color:var(--text);">Total AUM</td>
@@ -1023,7 +1014,7 @@ footer {
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">15.72B</td>
             <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">65.32B</td>
             <td style="text-align:center;padding:8px 12px;font-weight:600;color:var(--a1);">35%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic;">pendiente</td>
+            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-total-logro"">pendiente</td>
           </tr>
         </tbody>
       </table>
@@ -1450,7 +1441,7 @@ function selectQuarter(q, btn) {
   document.getElementById('q-current-label').textContent = m.label;
   document.querySelector('#q-current-label').nextElementSibling.textContent = m.range;
   document.getElementById('q-section-label').textContent = 'Desglose por instrumento '+m.label;
-  ['deuda','inm','inter','notas'].forEach(function(f){document.getElementById('q-'+f+'-meta').textContent=m[f];});
+  ['deuda','inm','inter','notas'].forEach(function(f){document.getElementById('q-'+f+'-meta').textContent=m[f];}); if (typeof _updateAumLogrosQ === 'function') _updateAumLogrosQ(q, d);
   if (window.aumQChartInst) {
     window.aumQChartInst.data.datasets.forEach(function(ds,i){
       var key=['deuda','inm','inter','notas'][i];
@@ -2095,49 +2086,96 @@ function _fmtB(v) {
   return 'CLP ' + Math.round(v).toLocaleString('es-CL');
 }
 
-function renderMetasAvance(res) {
-  var body = document.getElementById('avance-metas-body');
-  if (!body) return;
-  var bp = (res && res.byPeriodo) || {};
-  var instr = (res && res.instrumentos) || { deuda: 'Deuda Privada', inm: 'Inmobiliario', inter: 'Internacionales', notas: 'Notas Estructuradas' };
-  var cq = window.__CURRENT_Q__ || { q: 1, year: 2026, label: 'Q1 2026' };
-  var yy = String(cq.year).slice(-2);
-  var qKey = cq.q + 'T' + yy;
-  var annualKey = String(cq.year);
+// Devuelve {txt, color} para un logro dado su target (maneja negativos)
+function _logroDisplay(logro, target) {
+  var neg = logro < 0;
+  var pct = target > 0 ? Math.round(logro / target * 100) : 0;
+  if (neg) return { txt: _fmtB(logro) + ' · rescate neto', color: '#B33A2E', pct: pct, neg: true };
+  return {
+    txt: _fmtB(logro) + ' · ' + pct + '%',
+    color: pct >= 100 ? '#0E7A4E' : 'var(--text2)',
+    pct: pct, neg: false,
+  };
+}
 
-  function block(title, periodKey) {
-    var data = bp[periodKey];
-    if (!data) return '';
-    var h = '<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px;">' + title + '</div>';
-    ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
-      var d = data[k]; if (!d) return;
-      var pct = d.target > 0 ? (d.logro / d.target * 100) : 0;
-      var neg = d.logro < 0;
-      var barW = Math.max(0, Math.min(100, pct));
-      var barColor = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : '#1B4B9B');
-      var pctTxt = neg ? 'rescate neto' : Math.round(pct) + '%';
-      var pctCol = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : 'var(--text2)');
-      h += '<div style="margin-bottom:11px;">'
-        + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;flex-wrap:wrap;gap:4px;">'
-        +   '<span style="font-size:12px;font-weight:500;color:var(--text);">' + (instr[k] || k) + '</span>'
-        +   '<span style="font-size:11px;color:var(--text3);">Meta: ' + _fmtB(d.target)
-        +     ' · Real: <strong style="color:' + (neg ? '#B33A2E' : 'var(--text)') + ';">' + _fmtB(d.logro) + '</strong>'
-        +     ' · <span style="color:' + pctCol + ';font-weight:600;">' + pctTxt + '</span></span>'
-        + '</div>'
-        + '<div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden;"><div style="height:8px;width:' + barW + '%;background:' + barColor + ';border-radius:4px;"></div></div>'
-        + '</div>';
+// Actualiza los logros de las cards trimestrales para el trimestre `q` (ej "1T26")
+function _updateAumLogrosQ(q, targets) {
+  var res = window.__METAS_RESULTS__;
+  var ids = { deuda: 'q-deuda-logro', inm: 'q-inm-logro', inter: 'q-inter-logro', notas: 'q-notas-logro' };
+  var totalEl = document.getElementById('q-total-logro');
+  var data = res && res.byPeriodo && res.byPeriodo[q];
+  if (!data) {
+    Object.keys(ids).forEach(function(k) {
+      var el = document.getElementById(ids[k]);
+      if (el) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; }
     });
-    return h;
+    if (totalEl) { totalEl.textContent = '— pendiente'; totalEl.style.color = 'var(--text3)'; }
+    return;
   }
+  var totalLogro = 0;
+  ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
+    var el = document.getElementById(ids[k]);
+    if (!el) return;
+    var d = data[k];
+    if (!d) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; return; }
+    totalLogro += d.logro;
+    var disp = _logroDisplay(d.logro, d.target);
+    el.textContent = disp.txt;
+    el.style.color = disp.color;
+  });
+  if (totalEl) {
+    var tgtTotal = (targets && targets.total ? targets.total * 1e9 : 0);
+    totalEl.textContent = _fmtB(totalLogro);
+    totalEl.style.color = totalLogro < 0 ? '#B33A2E' : (tgtTotal && totalLogro >= tgtTotal ? '#0E7A4E' : 'var(--text)');
+  }
+}
 
-  var html = block('Trimestre actual · ' + cq.label, qKey) + block('Acumulado anual · ' + cq.year, annualKey);
-  body.innerHTML = html || '<div style="padding:14px;color:var(--text3);font-size:11px;">No encontré datos de AUM para ' + cq.label + ' en el archivo.</div>';
+// Actualiza el sub-panel anual (YTD): KPI + celdas de la tabla
+function _updateAumYTD() {
+  var res = window.__METAS_RESULTS__;
+  var cy = (window.__CURRENT_Q__ && window.__CURRENT_Q__.year) || 2026;
+  var data = res && res.byPeriodo && res.byPeriodo[String(cy)];
+  var ids = { deuda: 'ytd-deuda-logro', inm: 'ytd-inm-logro', inter: 'ytd-inter-logro', notas: 'ytd-notas-logro' };
+  var kpiEl = document.getElementById('ytd-kpi-logro');
+  var totalEl = document.getElementById('ytd-total-logro');
+  if (!data) return;
+  var totalLogro = 0;
+  ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
+    var el = document.getElementById(ids[k]);
+    var d = data[k];
+    if (d) totalLogro += d.logro;
+    if (!el || !d) return;
+    var disp = _logroDisplay(d.logro, d.target);
+    el.textContent = disp.txt;
+    el.style.color = disp.color;
+    el.style.fontStyle = 'normal';
+  });
+  if (totalEl) {
+    totalEl.textContent = _fmtB(totalLogro);
+    totalEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--text)';
+    totalEl.style.fontStyle = 'normal';
+  }
+  if (kpiEl) {
+    kpiEl.textContent = _fmtB(totalLogro);
+    kpiEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--green)';
+  }
+}
 
-  var lbl = document.getElementById('avance-metas-label');
-  if (lbl) lbl.textContent = 'Avance real de AUM · ' + cq.label;
-  var sub = document.getElementById('avance-metas-sub');
-  if (sub && res && res.corte) {
-    sub.innerHTML = 'Distribuidores · fuente Britech · corte <strong>' + res.corte + '</strong> · valores negativos = rescate neto · la data vive sólo en tu navegador';
+// Refresca todo el tab AUM con los resultados cargados
+function renderMetasAvance(res) {
+  // Re-disparar el trimestre activo (para actualizar las cards trimestrales)
+  var activeQ = document.querySelector('[id^="qsel-"].active');
+  if (activeQ && typeof selectQuarter === 'function') {
+    var qm = activeQ.getAttribute('onclick').match(/selectQuarter\('([^']+)'/);
+    if (qm) selectQuarter(qm[1], activeQ);
+  }
+  _updateAumYTD();
+  // Actualizar el banner de aviso para reflejar que ya hay datos cargados
+  var banner = document.getElementById('aum-aviso-text');
+  if (banner && res && res.corte) {
+    banner.innerHTML = '✓ <strong>Resultados reales cargados</strong> (fuente Britech, corte ' + res.corte +
+      '). Las barras y los logros reflejan el avance real. Valores negativos = rescate neto. ' +
+      'La data vive sólo en tu navegador.';
   }
 }
 
