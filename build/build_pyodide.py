@@ -79,6 +79,11 @@ UPLOAD_BAR_HTML = """
   <button id="upload-btn" disabled onclick="document.getElementById('xlsm-input').click();">
     <span id="upload-btn-icon">⏳</span> <span id="upload-btn-text">Cargando motor…</span>
   </button>
+  <input type="file" id="metas-input" accept=".xlsx,.xlsm" style="display:none;">
+  <button id="metas-btn" class="ub-secondary" disabled onclick="document.getElementById('metas-input').click();"
+          title="Opcional: archivo de resultados de metas (avance AUM)">
+    <span id="metas-btn-text">↑ Resultados metas</span>
+  </button>
   <div class="ub-status" id="upload-status">
     <span class="ub-spinner" id="upload-spinner"></span>
     <span id="upload-status-text">Iniciando Python en el navegador (primera vez ~15 s, después instantáneo)…</span>
@@ -131,6 +136,8 @@ await micropip.install('openpyxl')
     btn.disabled = false;
     btnIcon.textContent = '↑';
     btnText.textContent = 'Subir Excel';
+    var mbtn = document.getElementById('metas-btn');
+    if (mbtn) mbtn.disabled = false;
     return py;
   } catch (err) {
     spinner.style.display = 'none';
@@ -169,6 +176,85 @@ function _renderWarnings(warnings) {
     + warnings.map(w => '<li>' + w + '</li>').join('')
     + '</ul>';
   bar.appendChild(div);
+}
+
+// ── Resultados de metas (archivo separado, opcional) ────────────────────────
+async function processMetasResults(file) {
+  const py = await pyodideReady;
+  const statusText = document.getElementById('upload-status-text');
+  const input = document.getElementById('metas-input');
+  try {
+    const buf = await file.arrayBuffer();
+    py.globals.set('metas_bytes_js', new Uint8Array(buf));
+    const jsonStr = py.runPython(`
+import json
+metas_bytes = metas_bytes_js.to_bytes()
+json.dumps(pipeline.compute_metas_results(metas_bytes), ensure_ascii=False, default=str)
+`);
+    const res = JSON.parse(jsonStr);
+    window.__METAS_RESULTS__ = res;
+    renderMetasAvance(res);
+    statusText.innerHTML = '<span class="ub-check">✓ Resultados de metas cargados (' + file.name + ')</span>';
+  } catch (err) {
+    var info = _extractPyError(err);
+    statusText.innerHTML = '<span class="ub-error">Error en resultados de metas: ' + info.text + '</span>';
+    console.error(err);
+  } finally {
+    if (input) input.value = '';
+  }
+}
+
+function _fmtB(v) {
+  var b = v / 1e9;
+  if (Math.abs(b) >= 1) return 'CLP ' + b.toFixed(2) + 'B';
+  if (Math.abs(v) >= 1e6) return 'CLP ' + Math.round(v / 1e6) + 'M';
+  return 'CLP ' + Math.round(v).toLocaleString('es-CL');
+}
+
+function renderMetasAvance(res) {
+  var body = document.getElementById('avance-metas-body');
+  if (!body) return;
+  var bp = (res && res.byPeriodo) || {};
+  var instr = (res && res.instrumentos) || { deuda: 'Deuda Privada', inm: 'Inmobiliario', inter: 'Internacionales', notas: 'Notas Estructuradas' };
+  var cq = window.__CURRENT_Q__ || { q: 1, year: 2026, label: 'Q1 2026' };
+  var yy = String(cq.year).slice(-2);
+  var qKey = cq.q + 'T' + yy;
+  var annualKey = String(cq.year);
+
+  function block(title, periodKey) {
+    var data = bp[periodKey];
+    if (!data) return '';
+    var h = '<div style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 10px;">' + title + '</div>';
+    ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
+      var d = data[k]; if (!d) return;
+      var pct = d.target > 0 ? (d.logro / d.target * 100) : 0;
+      var neg = d.logro < 0;
+      var barW = Math.max(0, Math.min(100, pct));
+      var barColor = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : '#1B4B9B');
+      var pctTxt = neg ? 'rescate neto' : Math.round(pct) + '%';
+      var pctCol = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : 'var(--text2)');
+      h += '<div style="margin-bottom:11px;">'
+        + '<div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px;flex-wrap:wrap;gap:4px;">'
+        +   '<span style="font-size:12px;font-weight:500;color:var(--text);">' + (instr[k] || k) + '</span>'
+        +   '<span style="font-size:11px;color:var(--text3);">Meta: ' + _fmtB(d.target)
+        +     ' · Real: <strong style="color:' + (neg ? '#B33A2E' : 'var(--text)') + ';">' + _fmtB(d.logro) + '</strong>'
+        +     ' · <span style="color:' + pctCol + ';font-weight:600;">' + pctTxt + '</span></span>'
+        + '</div>'
+        + '<div style="height:8px;background:var(--card2);border-radius:4px;overflow:hidden;"><div style="height:8px;width:' + barW + '%;background:' + barColor + ';border-radius:4px;"></div></div>'
+        + '</div>';
+    });
+    return h;
+  }
+
+  var html = block('Trimestre actual · ' + cq.label, qKey) + block('Acumulado anual · ' + cq.year, annualKey);
+  body.innerHTML = html || '<div style="padding:14px;color:var(--text3);font-size:11px;">No encontré datos de AUM para ' + cq.label + ' en el archivo.</div>';
+
+  var lbl = document.getElementById('avance-metas-label');
+  if (lbl) lbl.textContent = 'Avance real de AUM · ' + cq.label;
+  var sub = document.getElementById('avance-metas-sub');
+  if (sub && res && res.corte) {
+    sub.innerHTML = 'Distribuidores · fuente Britech · corte <strong>' + res.corte + '</strong> · valores negativos = rescate neto · la data vive sólo en tu navegador';
+  }
 }
 
 async function processExcel(file) {
@@ -272,6 +358,12 @@ function applyData(d) {
     var k = d.kpi || {};
     var cq = d.currentQ || { label: 'Q1', year: 2026, q: 1, label_year_prev: 'Q1' };
     var cy = d.currentYear || 2026;
+    // Guardar currentQ globalmente para que renderMetasAvance lo use.
+    window.__CURRENT_Q__ = cq;
+    // Si ya había resultados de metas cargados, re-renderizar con el Q actual.
+    if (window.__METAS_RESULTS__ && typeof renderMetasAvance === 'function') {
+      try { renderMetasAvance(window.__METAS_RESULTS__); } catch (e) {}
+    }
 
     // KPI principal del trimestre: muestra el total del Q actual completo
     var elQ1 = document.querySelector('[data-kpi="q1-value"]');
@@ -708,6 +800,11 @@ function _pyodideSetup() {
   if (input) input.addEventListener('change', function (e) {
     var f = e.target.files && e.target.files[0];
     if (f) processExcel(f);
+  });
+  var metasInput = document.getElementById('metas-input');
+  if (metasInput) metasInput.addEventListener('change', function (e) {
+    var f = e.target.files && e.target.files[0];
+    if (f) processMetasResults(f);
   });
   pyodideReady = bootPyodide();
 }
@@ -1491,6 +1588,25 @@ def transform(html: str) -> str:
         crosssell_card + "</div>\n\n<!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->",
         1,
     )
+
+    # 1.F) Sección "Avance real de AUM" en el tab Metas AUM (después del aviso)
+    avance_anchor = (
+        "Las Internacionales tienen distribución trimestral irregular "
+        "(Q3 concentra el mayor volumen).</div>\n    </div>\n  </div>"
+    )
+    avance_section = (
+        '\n\n  <!-- ── AVANCE REAL DE AUM (auto, desde archivo de resultados) ── -->\n'
+        '  <div class="section-label" id="avance-metas-label">Avance real de AUM — subí el archivo de resultados</div>\n'
+        '  <div class="card" style="margin-bottom:1.25rem;">\n'
+        '    <div class="card-title">Meta vs resultado real · Distribuidores · fuente Britech</div>\n'
+        '    <div class="card-sub" id="avance-metas-sub">Usá el botón <strong>↑ Resultados metas</strong> arriba para cargar el archivo. Valores negativos = rescate neto. La data vive sólo en tu navegador — no se guarda en ningún lado.</div>\n'
+        '    <div id="avance-metas-body" style="margin-top:14px;"><div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">Sin resultados cargados todavía.</div></div>\n'
+        '  </div>\n'
+    )
+    if avance_anchor in html:
+        html = html.replace(avance_anchor, avance_anchor + avance_section, 1)
+    else:
+        print("  WARN: no encontré el aviso de Metas AUM para insertar el avance")
 
     # 2) IDs / data-attributes para KPI + Q-rolling + activación + áreas
     html = add_kpi_attrs(html)

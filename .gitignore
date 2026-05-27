@@ -13,3 +13,9 @@ venv/
 # Excel temporales / lock
 ~$*.xls*
 *.tmp
+
+# NUNCA commitear archivos de datos (contienen info sensible de clientes).
+# El dashboard los procesa en el browser; no deben vivir en el repo.
+*.xlsx
+*.xlsm
+*.csv

@@ -283,6 +283,96 @@ def _foto_counts(df_f: pd.DataFrame, yr: int) -> dict:
 
 
 # ════════════════════════════════════════════════════════════════════════════
+# RESULTADOS DE METAS (archivo separado "resultados_metas")
+# ════════════════════════════════════════════════════════════════════════════
+
+def compute_metas_results(xlsm_input) -> dict:
+    """
+    Procesa el archivo de resultados de metas (hoja 'Tabla') y devuelve el
+    avance real de AUM para el bloque agregado 'Distribuidores'.
+
+    Estructura de la hoja 'Tabla': filas por Ejecutivo × Tipo × Meta × Periodo.
+    Usamos sólo Ejecutivo='Distribuidores' y Tipo='Aumento de Patrimonio'.
+
+    Devuelve:
+        {
+          "byPeriodo": {"1T26": {"deuda": {target, logro, ratio}, ...}, ...},
+          "instrumentos": {...},
+          "corte": "<fecha de corte si está disponible>"
+        }
+    """
+    if isinstance(xlsm_input, (bytes, bytearray, memoryview)):
+        handle = BytesIO(bytes(xlsm_input))
+    else:
+        handle = str(xlsm_input)
+
+    xls = pd.ExcelFile(handle, engine="openpyxl")
+    if "Tabla" not in xls.sheet_names:
+        raise ExcelValidationError(
+            "El archivo de resultados no tiene una hoja 'Tabla'. "
+            f"Hojas encontradas: {xls.sheet_names}"
+        )
+    df = pd.read_excel(xls, sheet_name="Tabla")
+
+    required = ["Ejecutivo", "Tipo", "Meta", "Periodo", "Valor", "Resultado", "Valor Resultado"]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise ExcelValidationError(
+            f"La hoja 'Tabla' no tiene columnas: {', '.join(missing)}."
+        )
+
+    meta_alias = {
+        "Deuda": "deuda",
+        "Inmobiliario": "inm",
+        "Internacionales": "inter",
+        "Notas Estructuradas": "notas",
+    }
+    aum = df[
+        (df["Tipo"] == "Aumento de Patrimonio")
+        & (df["Ejecutivo"] == "Distribuidores")
+    ]
+    by_periodo: dict = {}
+    for _, r in aum.iterrows():
+        periodo = str(r["Periodo"]).strip()
+        key = meta_alias.get(str(r["Meta"]).strip())
+        if not key:
+            continue
+        try:
+            target = float(r["Valor"])
+            logro = float(r["Resultado"])
+            ratio = float(r["Valor Resultado"])
+        except (ValueError, TypeError):
+            continue
+        by_periodo.setdefault(periodo, {})[key] = {
+            "target": target,
+            "logro": logro,
+            "ratio": ratio,
+        }
+
+    # Intentar leer la fecha de corte de la hoja "Saldos por corte" si existe
+    corte = None
+    if "Saldos por corte" in xls.sheet_names:
+        try:
+            df_s = pd.read_excel(xls, sheet_name="Saldos por corte", usecols=["HistoricalDate"], nrows=2000)
+            fechas = pd.to_datetime(df_s["HistoricalDate"], errors="coerce").dropna()
+            if len(fechas):
+                corte = str(fechas.max().date())
+        except Exception:
+            pass
+
+    return {
+        "byPeriodo": by_periodo,
+        "instrumentos": {
+            "deuda": "Deuda Privada",
+            "inm": "Inmobiliario",
+            "inter": "Internacionales",
+            "notas": "Notas Estructuradas",
+        },
+        "corte": corte,
+    }
+
+
+# ════════════════════════════════════════════════════════════════════════════
 # COMPUTE
 # ════════════════════════════════════════════════════════════════════════════
 
