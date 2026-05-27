@@ -266,6 +266,36 @@ function _updateAumLogrosQ(q, targets) {
     totalEl.textContent = _fmtB(totalLogro);
     totalEl.style.color = totalLogro < 0 ? '#B33A2E' : (tgtTotal && totalLogro >= tgtTotal ? '#0E7A4E' : 'var(--text)');
   }
+
+  // Ponderaciones: badge de peso por instrumento + cumplimiento ponderado total
+  var pondIds = { deuda: 'q-deuda-pond', inm: 'q-inm-pond', inter: 'q-inter-pond', notas: 'q-notas-pond' };
+  var sumCump = 0, sumPond = 0;
+  ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
+    var d = data[k]; if (!d) return;
+    sumCump += (d.cump_pond || 0);
+    sumPond += (d.pond || 0);
+    var pe = document.getElementById(pondIds[k]);
+    if (pe && d.pond) pe.textContent = (d.pond * 100).toFixed(2) + '%';
+  });
+  // Sub del KPI "Logro trimestre": % vs meta total + aporte ponderado
+  var pctEl = document.getElementById('q-total-pct');
+  if (pctEl) {
+    var tgtTotal2 = (targets && targets.total ? targets.total * 1e9 : 0);
+    var pctMeta = tgtTotal2 ? Math.round(totalLogro / tgtTotal2 * 100) : 0;
+    var cumpPts = (sumCump * 100);
+    pctEl.innerHTML = (totalLogro < 0 ? 'rescate neto' : pctMeta + '% de la meta')
+      + ' · aporte ponderado: <strong style="color:' + (cumpPts < 0 ? '#B33A2E' : (cumpPts >= sumPond * 100 ? '#0E7A4E' : 'var(--text2)')) + ';">'
+      + (cumpPts >= 0 ? '+' : '') + cumpPts.toFixed(1) + ' pts</strong>';
+  }
+  // KPI "Ponderación AUM": peso total + cumplimiento ponderado AUM
+  var pondValEl = document.getElementById('aum-pond-value');
+  var cumpSubEl = document.getElementById('aum-cump-sub');
+  if (pondValEl) pondValEl.textContent = (sumPond * 100).toFixed(1) + '%';
+  if (cumpSubEl) {
+    var cp = sumCump * 100;
+    cumpSubEl.innerHTML = 'Del scorecard · cumplió <strong style="color:' + (cp < 0 ? '#B33A2E' : '#0E7A4E') + ';">'
+      + (cp >= 0 ? '+' : '') + cp.toFixed(1) + ' pts</strong> en ' + q;
+  }
 }
 
 // Actualiza el sub-panel anual (YTD): KPI + celdas de la tabla
@@ -1679,6 +1709,38 @@ def transform(html: str) -> str:
     html = html.replace(
         '<div style="font-size:11px;color:var(--text2);line-height:1.6;">Solo se muestran metas de <strong>Aumento de Patrimonio (AUM)</strong>.',
         '<div style="font-size:11px;color:var(--text2);line-height:1.6;" id="aum-aviso-text">Solo se muestran metas de <strong>Aumento de Patrimonio (AUM)</strong>.',
+        1,
+    )
+
+    # 1.G) Ponderaciones: IDs en los badges de peso + KPI Ponderación AUM
+    html = html.replace(
+        'color:#1B4B9B;padding:2px 6px;border-radius:4px;font-weight:600;">17.15%</span>',
+        'color:#1B4B9B;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-deuda-pond" title="Peso en el scorecard">17.15%</span>',
+        1,
+    )
+    html = html.replace(
+        'color:#2E6BAF;padding:2px 6px;border-radius:4px;font-weight:600;">3.15%</span>',
+        'color:#2E6BAF;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-inm-pond" title="Peso en el scorecard">3.15%</span>',
+        1,
+    )
+    html = html.replace(
+        'color:#5A93CC;padding:2px 6px;border-radius:4px;font-weight:600;">14.35%</span>',
+        'color:#5A93CC;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-inter-pond" title="Peso en el scorecard">14.35%</span>',
+        1,
+    )
+    html = html.replace(
+        'color:#7D93B5;padding:2px 6px;border-radius:4px;font-weight:600;">0.35%</span>',
+        'color:#7D93B5;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-notas-pond" title="Peso en el scorecard">0.35%</span>',
+        1,
+    )
+    # KPI "Ponderación AUM" — id en valor y sub para mostrar cumplimiento ponderado
+    html = html.replace(
+        '<div class="kpi-label">Ponderación AUM</div>\n'
+        '        <div class="kpi-value">34.5%</div>\n'
+        '        <div class="kpi-sub">Del scorecard total distribución</div>',
+        '<div class="kpi-label">Ponderación AUM</div>\n'
+        '        <div class="kpi-value" id="aum-pond-value">34.5%</div>\n'
+        '        <div class="kpi-sub" id="aum-cump-sub">Del scorecard total distribución</div>',
         1,
     )
 

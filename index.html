@@ -838,8 +838,8 @@ footer {
       </div>
       <div class="kpi">
         <div class="kpi-label">Ponderación AUM</div>
-        <div class="kpi-value">34.5%</div>
-        <div class="kpi-sub">Del scorecard total distribución</div>
+        <div class="kpi-value" id="aum-pond-value">34.5%</div>
+        <div class="kpi-sub" id="aum-cump-sub">Del scorecard total distribución</div>
       </div>
     </div>
 
@@ -853,7 +853,7 @@ footer {
             <div class="kpi-label">Deuda Directa</div>
             <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-deuda-meta">CLP 7.93B</div>
           </div>
-          <span style="font-size:9px;background:#EBF0F8;color:#1B4B9B;padding:2px 6px;border-radius:4px;font-weight:600;">17.15%</span>
+          <span style="font-size:9px;background:#EBF0F8;color:#1B4B9B;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-deuda-pond" title="Peso en el scorecard">17.15%</span>
         </div>
         <div class="progress-wrap"><div class="progress-bar" id="q-deuda-bar" style="width:0%;background:#1B4B9B;"></div></div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;">
@@ -868,7 +868,7 @@ footer {
             <div class="kpi-label">Inmobiliario</div>
             <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-inm-meta">CLP 1.52B</div>
           </div>
-          <span style="font-size:9px;background:#EBF0F8;color:#2E6BAF;padding:2px 6px;border-radius:4px;font-weight:600;">3.15%</span>
+          <span style="font-size:9px;background:#EBF0F8;color:#2E6BAF;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-inm-pond" title="Peso en el scorecard">3.15%</span>
         </div>
         <div class="progress-wrap"><div class="progress-bar" id="q-inm-bar" style="width:0%;background:#2E6BAF;"></div></div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;">
@@ -883,7 +883,7 @@ footer {
             <div class="kpi-label">Internacionales</div>
             <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-inter-meta">CLP 5.76B</div>
           </div>
-          <span style="font-size:9px;background:#EBF0F8;color:#5A93CC;padding:2px 6px;border-radius:4px;font-weight:600;">14.35%</span>
+          <span style="font-size:9px;background:#EBF0F8;color:#5A93CC;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-inter-pond" title="Peso en el scorecard">14.35%</span>
         </div>
         <div class="progress-wrap"><div class="progress-bar" id="q-inter-bar" style="width:0%;background:#5A93CC;"></div></div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;">
@@ -898,7 +898,7 @@ footer {
             <div class="kpi-label">Notas Estructuradas</div>
             <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-notas-meta">CLP 237M</div>
           </div>
-          <span style="font-size:9px;background:#EBF0F8;color:#7D93B5;padding:2px 6px;border-radius:4px;font-weight:600;">0.35%</span>
+          <span style="font-size:9px;background:#EBF0F8;color:#7D93B5;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-notas-pond" title="Peso en el scorecard">0.35%</span>
         </div>
         <div class="progress-wrap"><div class="progress-bar" id="q-notas-bar" style="width:0%;background:#A8C5E0;"></div></div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;">
@@ -2140,6 +2140,36 @@ function _updateAumLogrosQ(q, targets) {
     var tgtTotal = (targets && targets.total ? targets.total * 1e9 : 0);
     totalEl.textContent = _fmtB(totalLogro);
     totalEl.style.color = totalLogro < 0 ? '#B33A2E' : (tgtTotal && totalLogro >= tgtTotal ? '#0E7A4E' : 'var(--text)');
+  }
+
+  // Ponderaciones: badge de peso por instrumento + cumplimiento ponderado total
+  var pondIds = { deuda: 'q-deuda-pond', inm: 'q-inm-pond', inter: 'q-inter-pond', notas: 'q-notas-pond' };
+  var sumCump = 0, sumPond = 0;
+  ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
+    var d = data[k]; if (!d) return;
+    sumCump += (d.cump_pond || 0);
+    sumPond += (d.pond || 0);
+    var pe = document.getElementById(pondIds[k]);
+    if (pe && d.pond) pe.textContent = (d.pond * 100).toFixed(2) + '%';
+  });
+  // Sub del KPI "Logro trimestre": % vs meta total + aporte ponderado
+  var pctEl = document.getElementById('q-total-pct');
+  if (pctEl) {
+    var tgtTotal2 = (targets && targets.total ? targets.total * 1e9 : 0);
+    var pctMeta = tgtTotal2 ? Math.round(totalLogro / tgtTotal2 * 100) : 0;
+    var cumpPts = (sumCump * 100);
+    pctEl.innerHTML = (totalLogro < 0 ? 'rescate neto' : pctMeta + '% de la meta')
+      + ' · aporte ponderado: <strong style="color:' + (cumpPts < 0 ? '#B33A2E' : (cumpPts >= sumPond * 100 ? '#0E7A4E' : 'var(--text2)')) + ';">'
+      + (cumpPts >= 0 ? '+' : '') + cumpPts.toFixed(1) + ' pts</strong>';
+  }
+  // KPI "Ponderación AUM": peso total + cumplimiento ponderado AUM
+  var pondValEl = document.getElementById('aum-pond-value');
+  var cumpSubEl = document.getElementById('aum-cump-sub');
+  if (pondValEl) pondValEl.textContent = (sumPond * 100).toFixed(1) + '%';
+  if (cumpSubEl) {
+    var cp = sumCump * 100;
+    cumpSubEl.innerHTML = 'Del scorecard · cumplió <strong style="color:' + (cp < 0 ? '#B33A2E' : '#0E7A4E') + ';">'
+      + (cp >= 0 ? '+' : '') + cp.toFixed(1) + ' pts</strong> en ' + q;
   }
 }
 

@@ -320,6 +320,8 @@ def compute_metas_results(xlsm_input) -> dict:
         raise ExcelValidationError(
             f"La hoja 'Tabla' no tiene columnas: {', '.join(missing)}."
         )
+    has_pond = "Ponderación" in df.columns
+    has_cump = "Cumplimiento Ponderado" in df.columns
 
     meta_alias = {
         "Deuda": "deuda",
@@ -343,10 +345,20 @@ def compute_metas_results(xlsm_input) -> dict:
             ratio = float(r["Valor Resultado"])
         except (ValueError, TypeError):
             continue
+        try:
+            pond = float(r["Ponderación"]) if has_pond and pd.notna(r["Ponderación"]) else 0.0
+        except (ValueError, TypeError):
+            pond = 0.0
+        try:
+            cump = float(r["Cumplimiento Ponderado"]) if has_cump and pd.notna(r["Cumplimiento Ponderado"]) else 0.0
+        except (ValueError, TypeError):
+            cump = 0.0
         by_periodo.setdefault(periodo, {})[key] = {
             "target": target,
             "logro": logro,
             "ratio": ratio,
+            "pond": pond,         # peso de la meta en el scorecard (0-1)
+            "cump_pond": cump,    # aporte ponderado (ratio × peso, puede ser negativo)
         }
 
     # Intentar leer la fecha de corte de la hoja "Saldos por corte" si existe
