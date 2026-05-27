@@ -2101,13 +2101,17 @@ function _logroDisplay(logro, target) {
 // Actualiza los logros de las cards trimestrales para el trimestre `q` (ej "1T26")
 function _updateAumLogrosQ(q, targets) {
   var res = window.__METAS_RESULTS__;
-  var ids = { deuda: 'q-deuda-logro', inm: 'q-inm-logro', inter: 'q-inter-logro', notas: 'q-notas-logro' };
+  var ids  = { deuda: 'q-deuda-logro', inm: 'q-inm-logro', inter: 'q-inter-logro', notas: 'q-notas-logro' };
+  var bars = { deuda: 'q-deuda-bar',   inm: 'q-inm-bar',   inter: 'q-inter-bar',   notas: 'q-notas-bar' };
+  var baseColor = { deuda: '#1B4B9B', inm: '#2E6BAF', inter: '#5A93CC', notas: '#A8C5E0' };
   var totalEl = document.getElementById('q-total-logro');
   var data = res && res.byPeriodo && res.byPeriodo[q];
   if (!data) {
     Object.keys(ids).forEach(function(k) {
       var el = document.getElementById(ids[k]);
       if (el) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; }
+      var bar = document.getElementById(bars[k]);
+      if (bar) { bar.style.width = '0%'; bar.style.background = baseColor[k]; }
     });
     if (totalEl) { totalEl.textContent = '— pendiente'; totalEl.style.color = 'var(--text3)'; }
     return;
@@ -2115,13 +2119,22 @@ function _updateAumLogrosQ(q, targets) {
   var totalLogro = 0;
   ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
     var el = document.getElementById(ids[k]);
-    if (!el) return;
+    var bar = document.getElementById(bars[k]);
     var d = data[k];
-    if (!d) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; return; }
+    if (!d) {
+      if (el) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; }
+      if (bar) { bar.style.width = '0%'; bar.style.background = baseColor[k]; }
+      return;
+    }
     totalLogro += d.logro;
     var disp = _logroDisplay(d.logro, d.target);
-    el.textContent = disp.txt;
-    el.style.color = disp.color;
+    if (el) { el.textContent = disp.txt; el.style.color = disp.color; }
+    // Barra: ancho = % logrado (cap 100), color verde si >=100, rojo si rescate
+    if (bar) {
+      var w = disp.neg ? 0 : Math.max(0, Math.min(100, disp.pct));
+      bar.style.width = w + '%';
+      bar.style.background = disp.neg ? '#B33A2E' : (disp.pct >= 100 ? '#0E7A4E' : baseColor[k]);
+    }
   });
   if (totalEl) {
     var tgtTotal = (targets && targets.total ? targets.total * 1e9 : 0);
