@@ -324,6 +324,76 @@ function _updateAumLogrosQ(q, targets) {
   }
 }
 
+// Reconstruye los 2 charts AUM (barras trimestrales + línea acumulada) en USD
+function _buildAumChartsUSD(res) {
+  if (typeof Chart === 'undefined' || !res || !res.byPeriodo) return;
+  var bp = res.byPeriodo;
+  var cy = (window.__CURRENT_Q__ && window.__CURRENT_Q__.year) || 2026;
+  var yy = String(cy).slice(-2);
+  var pers = ['1T' + yy, '2T' + yy, '3T' + yy, '4T' + yy];
+  var qLabels = ['Q1 ' + cy, 'Q2 ' + cy, 'Q3 ' + cy, 'Q4 ' + cy];
+  var metas = ['deuda', 'inm', 'inter'];
+  var mLabel = { deuda: 'Deuda Privada', inm: 'Inmobiliario', inter: 'Internacionales' };
+  var mColor = { deuda: 'rgba(27,75,155,0.85)', inm: 'rgba(46,107,175,0.85)', inter: 'rgba(90,147,204,0.85)' };
+
+  // Barras: meta USD (millones) por trimestre por instrumento (stacked)
+  var elQ = document.getElementById('aumQChart');
+  if (elQ) {
+    var ex = Chart.getChart(elQ); if (ex) ex.destroy();
+    var datasets = metas.map(function(k, i) {
+      return {
+        label: mLabel[k],
+        data: pers.map(function(per) { var d = bp[per] && bp[per][k]; return d ? (d.target || 0) / 1e6 : 0; }),
+        backgroundColor: mColor[k], stack: 's', borderSkipped: false,
+        borderRadius: i === metas.length - 1 ? [3, 3, 0, 0] : 0
+      };
+    });
+    window.aumQChartInst = new Chart(elQ, {
+      type: 'bar',
+      data: { labels: qLabels, datasets: datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: {
+          label: function(ctx) { return ' ' + ctx.dataset.label + ': US$ ' + ctx.parsed.y.toFixed(2) + 'M'; },
+          footer: function(ctx) { return 'Total: US$ ' + ctx.reduce(function(a, c) { return a + c.parsed.y; }, 0).toFixed(2) + 'M'; }
+        }}},
+        scales: { x: Object.assign({ stacked: true }, xScale()), y: Object.assign({ stacked: true }, yScale(), {
+          title: { display: true, text: 'US$ millones', color: TICK_C, font: { size: 9 } },
+          ticks: { callback: function(v) { return 'US$' + v + 'M'; }, color: TICK_C, font: TICK_FONT } }) }
+      }
+    });
+    var leg = document.getElementById('aumq-legend');
+    if (leg) { leg.innerHTML = ''; metas.forEach(function(k) { leg.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + mColor[k] + '"></span>' + mLabel[k] + '</span>'; }); }
+  }
+
+  // Línea: meta acumulada vs logro acumulado (USD millones)
+  var elY = document.getElementById('aumYtdChart');
+  if (elY) {
+    var ex2 = Chart.getChart(elY); if (ex2) ex2.destroy();
+    var metaCum = [0], logroCum = [0], mc = 0, lc = 0, lValid = true;
+    pers.forEach(function(per) {
+      var dsum = 0, lsum = 0, hasL = false;
+      metas.forEach(function(k) { var d = bp[per] && bp[per][k]; if (d) { dsum += (d.target || 0); if (d.logro != null) { lsum += d.logro; hasL = true; } } });
+      mc += dsum; metaCum.push(mc / 1e6);
+      if (hasL && lValid) { lc += lsum; logroCum.push(lc / 1e6); } else { lValid = false; logroCum.push(null); }
+    });
+    new Chart(elY, {
+      type: 'line',
+      data: { labels: ['Inicio', 'Cierre Q1', 'Cierre Q2', 'Cierre Q3', 'Cierre Q4'], datasets: [
+        { label: 'Hito acumulado meta', data: metaCum, borderColor: '#1B4B9B', backgroundColor: 'rgba(27,75,155,0.08)', borderWidth: 2.5, fill: true, tension: 0.2, pointRadius: 5, pointBackgroundColor: '#1B4B9B', pointBorderColor: '#fff', pointBorderWidth: 2 },
+        { label: 'Logro YTD', data: logroCum, borderColor: '#0E7A4E', backgroundColor: 'rgba(14,122,78,0.08)', borderWidth: 2.5, borderDash: [5, 3], fill: true, tension: 0.2, pointRadius: 5, pointBackgroundColor: '#0E7A4E', pointBorderColor: '#fff', pointBorderWidth: 2 }
+      ]},
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y === null ? ctx.dataset.label + ': pendiente' : ' ' + ctx.dataset.label + ': US$ ' + ctx.parsed.y.toFixed(2) + 'M'; } } } },
+        scales: { x: xScale(), y: Object.assign(yScale(), {
+          title: { display: true, text: 'US$ millones (acum.)', color: TICK_C, font: { size: 9 } },
+          ticks: { callback: function(v) { return 'US$' + v + 'M'; }, color: TICK_C, font: TICK_FONT } }) }
+      }
+    });
+  }
+}
+
 // Actualiza el sub-panel anual (YTD): KPI + celdas de la tabla (USD)
 function _updateAumYTD() {
   var res = window.__METAS_RESULTS__;
@@ -368,6 +438,13 @@ function renderMetasAvance(res) {
     if (qm) selectQuarter(qm[1], activeQ);
   }
   _updateAumYTD();
+  // Reconstruir los charts AUM en USD. Si el tab está visible, ya; si no,
+  // se reconstruyen al entrar (initAumCharts chequea __METAS_RESULTS__).
+  window.aumChartsInited = false;
+  var aumPanel = document.getElementById('tab-metas-aum');
+  if (aumPanel && aumPanel.offsetParent !== null && typeof initAumCharts === 'function') {
+    initAumCharts();
+  }
   // Actualizar el banner de aviso para reflejar que ya hay datos cargados
   var banner = document.getElementById('aum-aviso-text');
   if (banner && res && res.corte) {
@@ -1771,6 +1848,14 @@ def transform(html: str) -> str:
         '<div class="kpi-label">Ponderación AUM</div>\n'
         '        <div class="kpi-value" id="aum-pond-value">34.5%</div>\n'
         '        <div class="kpi-sub" id="aum-cump-sub">Del scorecard total distribución</div>',
+        1,
+    )
+
+    # Patch initAumCharts: si hay resultados cargados, construir charts en USD
+    html = html.replace(
+        "function initAumCharts() {\n  if (aumChartsInited) return;\n  aumChartsInited = true;\n",
+        "function initAumCharts() {\n  if (aumChartsInited) return;\n  aumChartsInited = true;\n"
+        "  if (window.__METAS_RESULTS__ && typeof _buildAumChartsUSD === 'function') { _buildAumChartsUSD(window.__METAS_RESULTS__); var _b=document.querySelector('[onclick*=\"selectQuarter\"][onclick*=\"1T26\"]'); if(_b) selectQuarter('1T26',_b); return; }\n",
         1,
     )
 
