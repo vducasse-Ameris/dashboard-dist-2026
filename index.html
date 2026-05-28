@@ -246,6 +246,32 @@ footer {
   body.no-data .panel { opacity: 0.35; pointer-events: none; }
   body.no-data #upload-bar { background: #FFF3CD; border-bottom-color:#E5C97D; }
   body.no-data #upload-bar .ub-info { color: #6B5100; font-weight:500; }
+
+  /* ── Cruces por distribuidor (saldo/gasto vs reuniones) ── */
+  .xhead { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;
+    font-size:10px; color:var(--text3); text-transform:uppercase; letter-spacing:.05em; font-weight:600; }
+  .xrow { display:flex; align-items:center; gap:12px; padding:10px 8px;
+    border-bottom:1px solid var(--border); transition:background .15s; }
+  .xrow:last-child { border-bottom:0; }
+  .xrow:hover { background:var(--card2); }
+  .xrank { display:inline-flex; align-items:center; justify-content:center; min-width:24px; height:24px;
+    padding:0 6px; border-radius:7px; font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:700;
+    background:#EBF0F8; color:#1B4B9B; flex-shrink:0; }
+  .xrank.top { background:linear-gradient(135deg,#2E6BAF,#1B4B9B); color:#fff;
+    box-shadow:0 1px 3px rgba(27,75,155,.3); }
+  .xname { font-size:12px; font-weight:600; color:var(--text);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .xval { font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:700; color:var(--text); white-space:nowrap; }
+  .xbar-track { height:5px; background:var(--border); border-radius:3px; margin-top:6px; overflow:hidden; }
+  .xbar-fill { height:100%; border-radius:3px; }
+  .xpill { display:inline-flex; align-items:baseline; gap:3px; padding:3px 10px; border-radius:999px;
+    font-family:'IBM Plex Mono',monospace; font-size:12px; font-weight:700; background:#EBF0F8; color:#1B4B9B; flex-shrink:0; }
+  .xpill small { font-size:9px; font-weight:600; opacity:.7; }
+  .xpill.zero { background:#FAE9E7; color:#B33A2E; }
+  .xsub { font-size:10px; font-family:'IBM Plex Mono',monospace; margin-top:3px; white-space:nowrap; }
+  .xscroll { max-height:520px; overflow-y:auto; }
+  .xscroll::-webkit-scrollbar { width:8px; }
+  .xscroll::-webkit-scrollbar-thumb { background:var(--border2); border-radius:4px; }
 </style>
 
 </head>
@@ -2785,11 +2811,8 @@ function _fmtCLP(v) {
   return 'CLP ' + Math.round(v).toLocaleString('es-CL');
 }
 
-function _crossTableHead(cols) {
-  return '<thead><tr style="border-bottom:2px solid var(--border2);">' + cols.map(function(c) {
-    return '<th style="padding:7px 12px;text-align:' + c[1] + ';font-size:10px;color:var(--text3);'
-      + 'text-transform:uppercase;letter-spacing:.05em;font-weight:600;white-space:nowrap;">' + c[0] + '</th>';
-  }).join('') + '</tr></thead>';
+function _xEmpty(msg) {
+  return '<div style="padding:18px 14px;text-align:center;color:var(--text3);font-size:11px;line-height:1.5;">' + msg + '</div>';
 }
 
 // Saldo (MarketValue total) vs reuniones — join saldoPorAdvisor x reunPorEntidad.
@@ -2800,8 +2823,7 @@ function renderCrossSaldoReun() {
   var reun = window.__REUN_POR_ENTIDAD__ || {};
   var saldo = res && res.saldoPorAdvisor;
   if (!saldo || !Object.keys(saldo).length || !Object.keys(reun).length) {
-    el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">'
-      + 'Carga el Excel <strong>Follow Up clientes</strong> y el archivo de <strong>resultados de metas</strong> para ver el cruce.</div>';
+    el.innerHTML = _xEmpty('Carga el Excel <strong>Follow Up clientes</strong> y el archivo de <strong>resultados de metas</strong> para ver el cruce.');
     return;
   }
   var rows = [];
@@ -2810,22 +2832,28 @@ function renderCrossSaldoReun() {
   });
   rows.sort(function(a, b) { return b.saldo - a.saldo; });
   if (!rows.length) {
-    el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">'
-      + 'Ningún distribuidor está simultáneamente en saldos por corte y con reuniones registradas.</div>';
+    el.innerHTML = _xEmpty('Ningún distribuidor está simultáneamente en saldos por corte y con reuniones registradas.');
     return;
   }
-  var corte = (res.saldoCorteLabel ? ' · corte ' + res.saldoCorteLabel : '');
+  var maxV = rows[0].saldo || 1;
+  var corte = res.saldoCorteLabel || '';
+  var head = '<div class="xhead"><span>' + rows.length + ' distribuidores</span>'
+    + (corte ? '<span>MarketValue total · corte ' + corte + '</span>' : '') + '</div>';
   var body = rows.map(function(c, i) {
-    return '<tr style="border-bottom:1px solid var(--border);">'
-      + '<td style="padding:7px 12px;text-align:right;font-size:10px;color:var(--text3);font-family:monospace;">' + (i + 1) + '</td>'
-      + '<td style="padding:7px 12px;font-weight:500;color:var(--text);">' + c.nombre + '</td>'
-      + '<td style="padding:7px 12px;text-align:right;font-family:monospace;font-weight:600;color:var(--text);">' + _fmtUSD(c.saldo) + '</td>'
-      + '<td style="padding:7px 12px;text-align:center;font-family:monospace;color:var(--text);">' + c.reun + '</td>'
-      + '</tr>';
+    var w = Math.max(3, Math.round(c.saldo / maxV * 100));
+    return '<div class="xrow">'
+      + '<span class="xrank' + (i === 0 ? ' top' : '') + '">' + (i + 1) + '</span>'
+      + '<div style="flex:1;min-width:0;">'
+      +   '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">'
+      +     '<span class="xname">' + c.nombre + '</span>'
+      +     '<span class="xval">' + _fmtUSD(c.saldo) + '</span>'
+      +   '</div>'
+      +   '<div class="xbar-track"><div class="xbar-fill" style="width:' + w + '%;background:linear-gradient(90deg,#5A93CC,#1B4B9B);"></div></div>'
+      + '</div>'
+      + '<span class="xpill">' + c.reun + ' <small>reun</small></span>'
+      + '</div>';
   }).join('');
-  el.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
-    + _crossTableHead([['#', 'right'], ['Distribuidor', 'left'], ['Saldo (USD)' + corte, 'right'], ['Reuniones', 'center']])
-    + '<tbody>' + body + '</tbody></table></div>';
+  el.innerHTML = head + body;
 }
 
 // Gasto vs reuniones por distribuidor (todo computado en compute_data).
@@ -2835,28 +2863,40 @@ function renderCrossGastoReun(d) {
   var list = (d && d.crossGastoReun) || (window.__CROSS_GASTO_REUN__ || []);
   window.__CROSS_GASTO_REUN__ = list;
   if (!list.length) {
-    el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">'
-      + 'Carga el Excel <strong>Follow Up clientes</strong> para ver el gasto vs reuniones por distribuidor.</div>';
+    el.innerHTML = _xEmpty('Carga el Excel <strong>Follow Up clientes</strong> para ver el gasto vs reuniones por distribuidor.');
     return;
   }
+  var maxV = Math.max.apply(null, list.map(function(r) { return r.gasto; }).concat([1]));
+  var head = '<div class="xhead"><span>' + list.length + ' distribuidores</span>'
+    + '<span>Gasto · reuniones · costo por reunión</span></div>';
   var body = list.map(function(c, i) {
-    var cpr = c.gastoPorReun != null
-      ? _fmtCLP(c.gastoPorReun)
-      : '<span style="color:var(--text3);">—</span>';
-    var reunCell = c.reun > 0
-      ? c.reun
-      : '<span style="color:#B33A2E;font-weight:600;">0</span>';
-    return '<tr style="border-bottom:1px solid var(--border);">'
-      + '<td style="padding:7px 12px;text-align:right;font-size:10px;color:var(--text3);font-family:monospace;">' + (i + 1) + '</td>'
-      + '<td style="padding:7px 12px;font-weight:500;color:var(--text);">' + c.nombre + '</td>'
-      + '<td style="padding:7px 12px;text-align:right;font-family:monospace;font-weight:600;color:var(--text);">' + _fmtCLP(c.gasto) + '</td>'
-      + '<td style="padding:7px 12px;text-align:center;font-family:monospace;color:var(--text);">' + reunCell + '</td>'
-      + '<td style="padding:7px 12px;text-align:right;font-family:monospace;color:var(--text2);">' + cpr + '</td>'
-      + '</tr>';
+    var w = Math.max(3, Math.round(c.gasto / maxV * 100));
+    var reunPill = c.reun > 0
+      ? '<span class="xpill">' + c.reun + ' <small>reun</small></span>'
+      : '<span class="xpill zero">0 <small>reun</small></span>';
+    var cpr;
+    if (c.gastoPorReun == null) {
+      cpr = '<span class="xsub" style="color:var(--text3);">sin reuniones</span>';
+    } else {
+      var v = c.gastoPorReun;
+      var col = v < 30000 ? '#0E7A4E' : (v < 100000 ? '#D4890A' : '#B33A2E');
+      cpr = '<span class="xsub" style="color:' + col + ';font-weight:700;">' + _fmtCLP(v) + ' c/u</span>';
+    }
+    return '<div class="xrow">'
+      + '<span class="xrank' + (i === 0 ? ' top' : '') + '">' + (i + 1) + '</span>'
+      + '<div style="flex:1;min-width:0;">'
+      +   '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">'
+      +     '<span class="xname">' + c.nombre + '</span>'
+      +     '<span class="xval">' + _fmtCLP(c.gasto) + '</span>'
+      +   '</div>'
+      +   '<div class="xbar-track"><div class="xbar-fill" style="width:' + w + '%;background:linear-gradient(90deg,#E0A23A,#D4890A);"></div></div>'
+      + '</div>'
+      + '<div style="display:flex;flex-direction:column;align-items:flex-end;gap:2px;flex-shrink:0;min-width:86px;">'
+      +   reunPill + cpr
+      + '</div>'
+      + '</div>';
   }).join('');
-  el.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
-    + _crossTableHead([['#', 'right'], ['Distribuidor', 'left'], ['Gasto', 'right'], ['Reuniones', 'center'], ['CLP / reunión', 'right']])
-    + '<tbody>' + body + '</tbody></table></div>';
+  el.innerHTML = head + '<div class="xscroll">' + body + '</div>';
 }
 
 // ══════════════════════════════════════════════════════════════════════════
