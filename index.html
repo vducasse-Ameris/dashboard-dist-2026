@@ -782,6 +782,23 @@ footer {
     <div id="cross-sell-list" style="margin-top:10px;"></div>
   </div>
 
+
+  <!-- ── SALDO vs REUNIONES POR DISTRIBUIDOR (auto) ───── -->
+  <div class="section-label">Saldo vs reuniones — por distribuidor</div>
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-title">MarketValue total vs reuniones · distribuidores en saldos por corte y con reuniones</div>
+    <div class="card-sub">Saldo = MarketValue total (todos los fondos, USD) al corte más reciente. Sólo distribuidores presentes en la hoja Saldos por corte <strong>y</strong> con reuniones. Requiere cargar el Excel Follow Up <strong>y</strong> el archivo de resultados de metas.</div>
+    <div id="cross-saldo-reun" style="margin-top:10px;"></div>
+  </div>
+
+  <!-- ── GASTO vs REUNIONES POR DISTRIBUIDOR (auto) ───── -->
+  <div class="section-label">Gasto vs reuniones — por distribuidor</div>
+  <div class="card" style="margin-bottom:1.25rem;">
+    <div class="card-title">Gasto comercial vs reuniones por distribuidor</div>
+    <div class="card-sub">Gasto acumulado (CLP) y reuniones del año, con costo por reunión. Distribuidores presentes en la hoja de gastos y en el foto. 0 reuniones = gasto sin reunión registrada.</div>
+    <div id="cross-gasto-reun" style="margin-top:10px;"></div>
+  </div>
+
 </div>
 
 <!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->
@@ -2334,6 +2351,9 @@ function renderMetasAvance(res) {
     if (qm) selectQuarter(qm[1], activeQ);
   }
   _updateAumYTD();
+  // Cruce saldo vs reuniones (necesita saldoPorAdvisor de este archivo +
+  // reunPorEntidad del Excel principal ya cargado).
+  if (typeof renderCrossSaldoReun === 'function') renderCrossSaldoReun();
   // Reconstruir los charts AUM en USD. Si el tab está visible, ya; si no,
   // se reconstruyen al entrar (initAumCharts chequea __METAS_RESULTS__).
   window.aumChartsInited = false;
@@ -2426,6 +2446,7 @@ function applyData(d) {
   window.riskData2026      = d.riskData2026;
   window.activationData    = d.activationData    || {};
   window.areasData         = d.areasData         || [];
+  window.__REUN_POR_ENTIDAD__ = d.reunPorEntidad || {};
   // Estos quedan idénticos a los inline (no son data sensible — son aliases JS):
   window.data2024 = d.data['2024']; window.data2025 = d.data['2025']; window.data2026 = d.data['2026'];
 
@@ -2682,6 +2703,8 @@ function applyData(d) {
     if (typeof _renderAreas === 'function')        _renderAreas();
     renderComparativaQ(d);
     renderCrossSell(d);
+    renderCrossGastoReun(d);
+    renderCrossSaldoReun();
     if (typeof renderRiesgo2026 === 'function')    renderRiesgo2026();
     if (typeof renderMonthly === 'function')       renderMonthly();
     if (typeof renderSubtemas === 'function')      renderSubtemas();
@@ -2747,6 +2770,93 @@ function renderCrossSell(d) {
       + '</div>'
       + '</div>';
   }).join('');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// Cruces por distribuidor (saldo vs reuniones · gasto vs reuniones)
+// ══════════════════════════════════════════════════════════════════════════
+
+// Formato CLP compacto (B / M / k)
+function _fmtCLP(v) {
+  var a = Math.abs(v);
+  if (a >= 1e9) return 'CLP ' + (v / 1e9).toFixed(2) + 'B';
+  if (a >= 1e6) return 'CLP ' + (v / 1e6).toFixed(1) + 'M';
+  if (a >= 1e3) return 'CLP ' + Math.round(v / 1e3) + 'k';
+  return 'CLP ' + Math.round(v).toLocaleString('es-CL');
+}
+
+function _crossTableHead(cols) {
+  return '<thead><tr style="border-bottom:2px solid var(--border2);">' + cols.map(function(c) {
+    return '<th style="padding:7px 12px;text-align:' + c[1] + ';font-size:10px;color:var(--text3);'
+      + 'text-transform:uppercase;letter-spacing:.05em;font-weight:600;white-space:nowrap;">' + c[0] + '</th>';
+  }).join('') + '</tr></thead>';
+}
+
+// Saldo (MarketValue total) vs reuniones — join saldoPorAdvisor x reunPorEntidad.
+function renderCrossSaldoReun() {
+  var el = document.getElementById('cross-saldo-reun');
+  if (!el) return;
+  var res  = window.__METAS_RESULTS__;
+  var reun = window.__REUN_POR_ENTIDAD__ || {};
+  var saldo = res && res.saldoPorAdvisor;
+  if (!saldo || !Object.keys(saldo).length || !Object.keys(reun).length) {
+    el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">'
+      + 'Carga el Excel <strong>Follow Up clientes</strong> y el archivo de <strong>resultados de metas</strong> para ver el cruce.</div>';
+    return;
+  }
+  var rows = [];
+  Object.keys(saldo).forEach(function(n) {
+    if (reun[n]) rows.push({ nombre: reun[n].nombre, saldo: saldo[n].saldoUSD, reun: reun[n].reun });
+  });
+  rows.sort(function(a, b) { return b.saldo - a.saldo; });
+  if (!rows.length) {
+    el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">'
+      + 'Ningún distribuidor está simultáneamente en saldos por corte y con reuniones registradas.</div>';
+    return;
+  }
+  var corte = (res.saldoCorteLabel ? ' · corte ' + res.saldoCorteLabel : '');
+  var body = rows.map(function(c, i) {
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:7px 12px;text-align:right;font-size:10px;color:var(--text3);font-family:monospace;">' + (i + 1) + '</td>'
+      + '<td style="padding:7px 12px;font-weight:500;color:var(--text);">' + c.nombre + '</td>'
+      + '<td style="padding:7px 12px;text-align:right;font-family:monospace;font-weight:600;color:var(--text);">' + _fmtUSD(c.saldo) + '</td>'
+      + '<td style="padding:7px 12px;text-align:center;font-family:monospace;color:var(--text);">' + c.reun + '</td>'
+      + '</tr>';
+  }).join('');
+  el.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+    + _crossTableHead([['#', 'right'], ['Distribuidor', 'left'], ['Saldo (USD)' + corte, 'right'], ['Reuniones', 'center']])
+    + '<tbody>' + body + '</tbody></table></div>';
+}
+
+// Gasto vs reuniones por distribuidor (todo computado en compute_data).
+function renderCrossGastoReun(d) {
+  var el = document.getElementById('cross-gasto-reun');
+  if (!el) return;
+  var list = (d && d.crossGastoReun) || (window.__CROSS_GASTO_REUN__ || []);
+  window.__CROSS_GASTO_REUN__ = list;
+  if (!list.length) {
+    el.innerHTML = '<div style="padding:14px;text-align:center;color:var(--text3);font-size:11px;">'
+      + 'Carga el Excel <strong>Follow Up clientes</strong> para ver el gasto vs reuniones por distribuidor.</div>';
+    return;
+  }
+  var body = list.map(function(c, i) {
+    var cpr = c.gastoPorReun != null
+      ? _fmtCLP(c.gastoPorReun)
+      : '<span style="color:var(--text3);">—</span>';
+    var reunCell = c.reun > 0
+      ? c.reun
+      : '<span style="color:#B33A2E;font-weight:600;">0</span>';
+    return '<tr style="border-bottom:1px solid var(--border);">'
+      + '<td style="padding:7px 12px;text-align:right;font-size:10px;color:var(--text3);font-family:monospace;">' + (i + 1) + '</td>'
+      + '<td style="padding:7px 12px;font-weight:500;color:var(--text);">' + c.nombre + '</td>'
+      + '<td style="padding:7px 12px;text-align:right;font-family:monospace;font-weight:600;color:var(--text);">' + _fmtCLP(c.gasto) + '</td>'
+      + '<td style="padding:7px 12px;text-align:center;font-family:monospace;color:var(--text);">' + reunCell + '</td>'
+      + '<td style="padding:7px 12px;text-align:right;font-family:monospace;color:var(--text2);">' + cpr + '</td>'
+      + '</tr>';
+  }).join('');
+  el.innerHTML = '<div style="overflow-x:auto;"><table style="width:100%;border-collapse:collapse;font-size:12px;">'
+    + _crossTableHead([['#', 'right'], ['Distribuidor', 'left'], ['Gasto', 'right'], ['Reuniones', 'center'], ['CLP / reunión', 'right']])
+    + '<tbody>' + body + '</tbody></table></div>';
 }
 
 // ══════════════════════════════════════════════════════════════════════════

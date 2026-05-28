@@ -133,6 +133,25 @@ def _sub_color(name: str) -> str:
     return BASE_COLORS[int(hashlib.md5(name.encode()).hexdigest(), 16) % len(BASE_COLORS)]
 
 
+def _norm_entity(s) -> str:
+    """
+    Normaliza el nombre de una entidad (cliente / advisor / distribuidor) para
+    cruzar entre fuentes (gastos, foto de reuniones, saldos por corte).
+
+    Quita sufijos legales y de tipo de cuenta ('S.A.', 'SpA', 'Banca Privada',
+    'Wealth Management'…) y deja sólo alfanuméricos en minúscula.
+
+    NO colapsa 'GR Capital' con 'Grey Capital' — quedan 'grcapital' vs
+    'greycapital' (son entidades distintas, confirmado con el área).
+    """
+    s = str(s).strip().lower()
+    s = re.sub(
+        r"\b(s\.?a\.?|spa|ltda|limitada|s\.?l\.?|banca privada|wealth management|wmg)\b",
+        "", s,
+    )
+    return re.sub(r"[^a-z0-9]", "", s)
+
+
 def _load_foto(xls, sheet: str) -> pd.DataFrame:
     """
     Lee una hoja 'Clientes foto YYYY' y agrega `_tipo` ('Dist' / 'Inst')
@@ -466,6 +485,31 @@ def compute_metas_results(xlsm_input) -> dict:
         ]
     saldo_serie["_labels"] = [_corte_label(c) for c in cuts_chrono]
 
+    # ── SALDO POR ADVISOR (MarketValue TOTAL, todos los fondos) ─────────────
+    # Para el cruce "saldo vs reuniones por distribuidor" del tab Clientes.
+    # A diferencia de las metas (sólo 3 áreas), aquí se suma MarketValueUSD de
+    # TODAS las InstrumentArea al corte más reciente, por advisor de
+    # distribución. Se entrega indexado por nombre normalizado para cruzar con
+    # las reuniones del foto (que vienen del otro archivo, vía JS).
+    saldo_por_advisor: dict = {}
+    ds_full = pd.read_excel(xls, sheet_name="Saldos por corte")
+    if _corte_latest and "MarketValueUSD" in ds_full.columns and "Advisor" in ds_full.columns:
+        ds_full["_adv"] = ds_full["Advisor"].astype(str).str.strip().str.lower()
+        ds_cut = ds_full[
+            (ds_full["Corte"] == _corte_latest) & (ds_full["_adv"].isin(_DIST_ADVISORS))
+        ]
+        for adv, grp in ds_cut.groupby("Advisor"):
+            nombre = str(adv).strip()
+            n = _norm_entity(nombre)
+            if not n:
+                continue
+            total = float(grp["MarketValueUSD"].sum())
+            cur = saldo_por_advisor.get(n)
+            if cur:
+                cur["saldoUSD"] += total
+            else:
+                saldo_por_advisor[n] = {"nombre": nombre, "saldoUSD": total}
+
     return {
         "byPeriodo": by_periodo,
         "instrumentos": {
@@ -476,6 +520,8 @@ def compute_metas_results(xlsm_input) -> dict:
         "corte": corte,
         "fxPorCorte": {str(k): float(v) for k, v in fx_por_corte.items()},
         "saldoSerie": saldo_serie,
+        "saldoPorAdvisor": saldo_por_advisor,
+        "saldoCorteLabel": _corte_latest,
         "moneda": "USD",
     }
 
@@ -1076,6 +1122,68 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "clientes": [c["name"] for c in clientes_list],
         })
 
+    # ── CRUCE GASTO vs REUNIONES + REUNIONES POR ENTIDAD ────────────────
+    # Reuniones del año actual por entidad (normalizada), desde el foto. Incluye
+    # reun=0 (un cliente puede estar en el foto sin reuniones este año).
+    reun_all: dict = {}  # norm -> {nombre, reun, tipo}
+    for _, row in df_cur.iterrows():
+        nombre = str(row["Cliente"]).strip()
+        n = _norm_entity(nombre)
+        if not n:
+            continue
+        reun = int(sum(float(row.get(m, 0) or 0) for m in MESES if m in df_cur.columns))
+        cur = reun_all.get(n)
+        if cur:
+            cur["reun"] += reun
+        else:
+            reun_all[n] = {"nombre": nombre, "reun": reun, "tipo": (row.get("_tipo") or "Dist")}
+
+    # Para el cruce saldo vs reuniones: sólo entidades con reuniones > 0.
+    reun_por_entidad = {n: v for n, v in reun_all.items() if v["reun"] > 0}
+
+    # Gasto por entidad (hoja 'Gastos', columnas Cliente / Monto).
+    gasto_por_entidad: dict = {}  # norm -> {nombre, monto}
+    if "Gastos" in xls.sheet_names:
+        try:
+            dfg = pd.read_excel(xls, sheet_name="Gastos")
+            if "Cliente" in dfg.columns and "Monto" in dfg.columns:
+                for _, row in dfg.iterrows():
+                    nombre = str(row["Cliente"]).strip()
+                    if not nombre or nombre.lower() in ("nan", "total"):
+                        continue
+                    n = _norm_entity(nombre)
+                    if not n:
+                        continue
+                    try:
+                        monto = float(row["Monto"])
+                    except (ValueError, TypeError):
+                        continue
+                    if pd.isna(monto):
+                        continue
+                    g = gasto_por_entidad.get(n)
+                    if g:
+                        g["monto"] += monto
+                    else:
+                        gasto_por_entidad[n] = {"nombre": nombre, "monto": monto}
+        except Exception as e:
+            print(f"[gastos] error parseando hoja Gastos: {e}")
+
+    # Cruce gasto vs reuniones: entidades presentes en gastos Y en el foto.
+    # La reunión puede ser 0 (gasto sin reuniones es una señal en sí misma).
+    cross_gasto_reun = []
+    for n, g in gasto_por_entidad.items():
+        info = reun_all.get(n)
+        if info is None:
+            continue  # sólo distribuidores que también están en el foto
+        reun = info["reun"]
+        cross_gasto_reun.append({
+            "nombre": info["nombre"],
+            "gasto": g["monto"],
+            "reun": reun,
+            "gastoPorReun": (g["monto"] / reun) if reun else None,
+        })
+    cross_gasto_reun.sort(key=lambda x: -x["gasto"])
+
     # ── RESULT ──────────────────────────────────────────────────────────
     # data y clientsData keyed por año (string) — dinámico según años disponibles.
     data_out = {str(yr): monthly_by_year[yr] for yr in years_avail}
@@ -1117,6 +1225,8 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "nuevosDistribuidores": nuevos_distribuidores,
         "qComparativa": q_comparativa,
         "crossSellRadar": cross_sell_radar,
+        "crossGastoReun": cross_gasto_reun,
+        "reunPorEntidad": reun_por_entidad,
         "recentLabels": recent_labels,
         "recentVals": recent_vals,
         "years": years_avail,
