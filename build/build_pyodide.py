@@ -383,38 +383,6 @@ function _buildAumChartsUSD(res) {
     if (leg) { leg.innerHTML = ''; metas.forEach(function(k) { leg.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + mColor[k] + '"></span>' + mLabel[k] + '</span>'; }); }
   }
 
-  // Evolución del saldo por instrumento (líneas a través de los cortes)
-  var elE = document.getElementById('aumEvolChart');
-  if (elE && res.saldoSerie) {
-    var ex3 = Chart.getChart(elE); if (ex3) ex3.destroy();
-    var ss = res.saldoSerie;
-    var labels = ss._labels || [];
-    var lineColor = { deuda: '#1B4B9B', inm: '#2E6BAF', inter: '#5A93CC' };
-    var evolDs = metas.map(function(k) {
-      return {
-        label: mLabel[k],
-        data: (ss[k] || []).map(function(pt) { return pt.saldo / 1e6; }),
-        borderColor: lineColor[k], backgroundColor: lineColor[k] + '18',
-        borderWidth: 2.5, tension: 0.25, pointRadius: 4,
-        pointBackgroundColor: lineColor[k], pointBorderColor: '#fff', pointBorderWidth: 1.5, fill: false
-      };
-    });
-    new Chart(elE, {
-      type: 'line', data: { labels: labels, datasets: evolDs },
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
-        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: {
-          label: function(ctx) { return ' ' + ctx.dataset.label + ': US$ ' + ctx.parsed.y.toFixed(2) + 'M'; } } } },
-        scales: { x: xScale(), y: Object.assign(yScale(), {
-          title: { display: true, text: 'US$ millones', color: TICK_C, font: { size: 9 } },
-          ticks: { callback: function(v) { return 'US$' + v + 'M'; }, color: TICK_C, font: TICK_FONT } }) }
-      }
-    });
-    var cardE = document.getElementById('aum-evol-card'); if (cardE) cardE.style.display = '';
-    var legE = document.getElementById('aum-evol-legend');
-    if (legE) { legE.innerHTML = ''; metas.forEach(function(k) { legE.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + lineColor[k] + '"></span>' + mLabel[k] + '</span>'; }); }
-  }
-
   // Línea: meta acumulada vs logro acumulado (USD millones)
   var elY = document.getElementById('aumYtdChart');
   if (elY) {
@@ -1883,22 +1851,6 @@ def transform(html: str) -> str:
             html = html.replace(anchor, extra, 1)
         else:
             print(f"  WARN: no encontré la fila de logro de {k} para inyectar extra")
-
-    # Card nueva: "Evolución del saldo por instrumento" (canvas), tras el gráfico trimestral
-    evol_card = (
-        '\n    <!-- Evolución del saldo por instrumento (auto, USD) -->\n'
-        '    <div class="card" id="aum-evol-card" style="display:none;">\n'
-        '      <div class="card-title">Evolución del saldo por instrumento</div>\n'
-        '      <div class="card-sub">Saldo de AUM (US$ M) en cada corte · Distribuidores</div>\n'
-        '      <div class="chart-wrap" style="height:220px;"><canvas id="aumEvolChart"></canvas></div>\n'
-        '      <div id="aum-evol-legend" class="legend" style="margin-top:8px;"></div>\n'
-        '    </div>\n'
-    )
-    evol_anchor = '<div id="aumq-legend" class="legend" style="margin-top:8px;"></div>\n    </div>'
-    if evol_anchor in html:
-        html = html.replace(evol_anchor, evol_anchor + evol_card, 1)
-    else:
-        print("  WARN: no encontré dónde insertar la card de evolución")
 
     # 1.G) Ponderaciones: IDs en los badges de peso + KPI Ponderación AUM
     html = html.replace(
