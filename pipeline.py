@@ -402,7 +402,7 @@ def compute_metas_results(xlsm_input) -> dict:
     # ── Armar byPeriodo (todo USD) ──────────────────────────────────────
     by_periodo: dict = {}
     for periodo, cortes in _PERIODO_CORTES.items():
-        _, cut_now = cortes
+        cut_prev, cut_now = cortes
         fx = fx_por_corte.get(cut_now) or _fx_latest
         tgt_periodo = targets_clp.get(periodo, {})
         for meta_key in ["deuda", "inm", "inter"]:
@@ -410,7 +410,15 @@ def compute_metas_results(xlsm_input) -> dict:
             target_usd = tinfo["target_clp"] / fx if fx else 0.0
             pond = tinfo["pond"]
             logro_usd = _saldo(cut_now, meta_key)  # SALDO al cierre del corte
+            saldo_prev = _saldo(cut_prev, meta_key)
             entry = {"target": target_usd, "logro": logro_usd, "pond": pond}
+            # variación vs corte anterior (momentum)
+            entry["delta_prev"] = (
+                (logro_usd - saldo_prev)
+                if (logro_usd is not None and saldo_prev is not None) else None
+            )
+            # brecha vs meta (positivo = falta; negativo = sobre meta)
+            entry["gap"] = (target_usd - logro_usd) if logro_usd is not None else None
             if logro_usd is not None:
                 ratio = (logro_usd / target_usd) if target_usd else 0.0
                 entry["ratio"] = ratio
@@ -444,6 +452,20 @@ def compute_metas_results(xlsm_input) -> dict:
         if len(fechas):
             corte = str(fechas.max().date())
 
+    # ── Serie de evolución del saldo por instrumento (cortes cronológicos) ──
+    cuts_chrono = [c for c in _CORTE_ORDER if c in cortes_disponibles]
+
+    def _corte_label(c):  # "4Q25" -> "Q4 '25"
+        return f"Q{c[0]} '{c[-2:]}"
+
+    saldo_serie = {}
+    for meta_key in ["deuda", "inm", "inter"]:
+        saldo_serie[meta_key] = [
+            {"corte": _corte_label(c), "saldo": float(saldo_corte.get((c, meta_key), 0.0))}
+            for c in cuts_chrono
+        ]
+    saldo_serie["_labels"] = [_corte_label(c) for c in cuts_chrono]
+
     return {
         "byPeriodo": by_periodo,
         "instrumentos": {
@@ -453,6 +475,7 @@ def compute_metas_results(xlsm_input) -> dict:
         },
         "corte": corte,
         "fxPorCorte": {str(k): float(v) for k, v in fx_por_corte.items()},
+        "saldoSerie": saldo_serie,
         "moneda": "USD",
     }
 

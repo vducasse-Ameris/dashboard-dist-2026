@@ -856,6 +856,7 @@ footer {
           <span style="font-size:9px;background:#EBF0F8;color:#1B4B9B;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-deuda-pond" title="Peso en el scorecard">17.15%</span>
         </div>
         <div class="progress-wrap"><div class="progress-bar" id="q-deuda-bar" style="width:0%;background:#1B4B9B;"></div></div>
+        <div id="q-deuda-extra" style="font-size:10px;margin-top:4px;display:none;"></div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;">
           <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-deuda-logro" style="color:var(--text2);">pendiente</span></span>
           <span style="font-size:10px;color:var(--text3);">Fuente: Britech</span>
@@ -871,6 +872,7 @@ footer {
           <span style="font-size:9px;background:#EBF0F8;color:#2E6BAF;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-inm-pond" title="Peso en el scorecard">3.15%</span>
         </div>
         <div class="progress-wrap"><div class="progress-bar" id="q-inm-bar" style="width:0%;background:#2E6BAF;"></div></div>
+        <div id="q-inm-extra" style="font-size:10px;margin-top:4px;display:none;"></div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;">
           <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-inm-logro" style="color:var(--text2);">pendiente</span></span>
           <span style="font-size:10px;color:var(--text3);">Fuente: Britech</span>
@@ -886,6 +888,7 @@ footer {
           <span style="font-size:9px;background:#EBF0F8;color:#5A93CC;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-inter-pond" title="Peso en el scorecard">14.35%</span>
         </div>
         <div class="progress-wrap"><div class="progress-bar" id="q-inter-bar" style="width:0%;background:#5A93CC;"></div></div>
+        <div id="q-inter-extra" style="font-size:10px;margin-top:4px;display:none;"></div>
         <div style="display:flex;justify-content:space-between;margin-top:5px;">
           <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-inter-logro" style="color:var(--text2);">pendiente</span></span>
           <span style="font-size:10px;color:var(--text3);">Fuente: Britech</span>
@@ -915,6 +918,14 @@ footer {
       <div class="chart-wrap" style="height:220px;"><canvas id="aumQChart"></canvas></div>
       <div id="aumq-legend" class="legend" style="margin-top:8px;"></div>
     </div>
+    <!-- Evolución del saldo por instrumento (auto, USD) -->
+    <div class="card" id="aum-evol-card" style="display:none;">
+      <div class="card-title">Evolución del saldo por instrumento</div>
+      <div class="card-sub">Saldo de AUM (US$ M) en cada corte · Distribuidores</div>
+      <div class="chart-wrap" style="height:220px;"><canvas id="aumEvolChart"></canvas></div>
+      <div id="aum-evol-legend" class="legend" style="margin-top:8px;"></div>
+    </div>
+
   </div>
 
   <!-- ── SUB-TAB: YTD ANUAL ── -->
@@ -2169,6 +2180,23 @@ function _updateAumLogrosQ(q, targets) {
       bar.style.width = w + '%';
       bar.style.background = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : baseColor[k]);
     }
+    // Línea extra: variación vs corte anterior (momentum) + brecha vs meta
+    var extraEl = document.getElementById('q-' + k + '-extra');
+    if (extraEl) {
+      var parts = [];
+      if (d.delta_prev !== null && d.delta_prev !== undefined) {
+        var dp = d.delta_prev;
+        var arrow = dp > 0 ? '▲' : (dp < 0 ? '▼' : '–');
+        var dpCol = dp > 0 ? '#0E7A4E' : (dp < 0 ? '#B33A2E' : 'var(--text3)');
+        parts.push('<span style="color:' + dpCol + ';">' + arrow + ' ' + (dp >= 0 ? '+' : '') + _fmtUSD(dp) + ' vs corte ant.</span>');
+      }
+      if (d.gap !== null && d.gap !== undefined) {
+        if (d.gap > 0) parts.push('<span style="color:var(--text3);">faltan ' + _fmtUSD(d.gap) + '</span>');
+        else parts.push('<span style="color:#0E7A4E;">+' + _fmtUSD(-d.gap) + ' sobre meta</span>');
+      }
+      extraEl.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+      extraEl.style.display = parts.length ? 'block' : 'none';
+    }
   });
 
   if (totalMetaEl) totalMetaEl.textContent = _fmtUSD(totalMeta);
@@ -2240,6 +2268,38 @@ function _buildAumChartsUSD(res) {
     });
     var leg = document.getElementById('aumq-legend');
     if (leg) { leg.innerHTML = ''; metas.forEach(function(k) { leg.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + mColor[k] + '"></span>' + mLabel[k] + '</span>'; }); }
+  }
+
+  // Evolución del saldo por instrumento (líneas a través de los cortes)
+  var elE = document.getElementById('aumEvolChart');
+  if (elE && res.saldoSerie) {
+    var ex3 = Chart.getChart(elE); if (ex3) ex3.destroy();
+    var ss = res.saldoSerie;
+    var labels = ss._labels || [];
+    var lineColor = { deuda: '#1B4B9B', inm: '#2E6BAF', inter: '#5A93CC' };
+    var evolDs = metas.map(function(k) {
+      return {
+        label: mLabel[k],
+        data: (ss[k] || []).map(function(pt) { return pt.saldo / 1e6; }),
+        borderColor: lineColor[k], backgroundColor: lineColor[k] + '18',
+        borderWidth: 2.5, tension: 0.25, pointRadius: 4,
+        pointBackgroundColor: lineColor[k], pointBorderColor: '#fff', pointBorderWidth: 1.5, fill: false
+      };
+    });
+    new Chart(elE, {
+      type: 'line', data: { labels: labels, datasets: evolDs },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: {
+          label: function(ctx) { return ' ' + ctx.dataset.label + ': US$ ' + ctx.parsed.y.toFixed(2) + 'M'; } } } },
+        scales: { x: xScale(), y: Object.assign(yScale(), {
+          title: { display: true, text: 'US$ millones', color: TICK_C, font: { size: 9 } },
+          ticks: { callback: function(v) { return 'US$' + v + 'M'; }, color: TICK_C, font: TICK_FONT } }) }
+      }
+    });
+    var cardE = document.getElementById('aum-evol-card'); if (cardE) cardE.style.display = '';
+    var legE = document.getElementById('aum-evol-legend');
+    if (legE) { legE.innerHTML = ''; metas.forEach(function(k) { legE.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + lineColor[k] + '"></span>' + mLabel[k] + '</span>'; }); }
   }
 
   // Línea: meta acumulada vs logro acumulado (USD millones)

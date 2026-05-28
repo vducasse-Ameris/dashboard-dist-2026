@@ -293,6 +293,23 @@ function _updateAumLogrosQ(q, targets) {
       bar.style.width = w + '%';
       bar.style.background = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : baseColor[k]);
     }
+    // Línea extra: variación vs corte anterior (momentum) + brecha vs meta
+    var extraEl = document.getElementById('q-' + k + '-extra');
+    if (extraEl) {
+      var parts = [];
+      if (d.delta_prev !== null && d.delta_prev !== undefined) {
+        var dp = d.delta_prev;
+        var arrow = dp > 0 ? '▲' : (dp < 0 ? '▼' : '–');
+        var dpCol = dp > 0 ? '#0E7A4E' : (dp < 0 ? '#B33A2E' : 'var(--text3)');
+        parts.push('<span style="color:' + dpCol + ';">' + arrow + ' ' + (dp >= 0 ? '+' : '') + _fmtUSD(dp) + ' vs corte ant.</span>');
+      }
+      if (d.gap !== null && d.gap !== undefined) {
+        if (d.gap > 0) parts.push('<span style="color:var(--text3);">faltan ' + _fmtUSD(d.gap) + '</span>');
+        else parts.push('<span style="color:#0E7A4E;">+' + _fmtUSD(-d.gap) + ' sobre meta</span>');
+      }
+      extraEl.innerHTML = parts.join(' &nbsp;·&nbsp; ');
+      extraEl.style.display = parts.length ? 'block' : 'none';
+    }
   });
 
   if (totalMetaEl) totalMetaEl.textContent = _fmtUSD(totalMeta);
@@ -364,6 +381,38 @@ function _buildAumChartsUSD(res) {
     });
     var leg = document.getElementById('aumq-legend');
     if (leg) { leg.innerHTML = ''; metas.forEach(function(k) { leg.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + mColor[k] + '"></span>' + mLabel[k] + '</span>'; }); }
+  }
+
+  // Evolución del saldo por instrumento (líneas a través de los cortes)
+  var elE = document.getElementById('aumEvolChart');
+  if (elE && res.saldoSerie) {
+    var ex3 = Chart.getChart(elE); if (ex3) ex3.destroy();
+    var ss = res.saldoSerie;
+    var labels = ss._labels || [];
+    var lineColor = { deuda: '#1B4B9B', inm: '#2E6BAF', inter: '#5A93CC' };
+    var evolDs = metas.map(function(k) {
+      return {
+        label: mLabel[k],
+        data: (ss[k] || []).map(function(pt) { return pt.saldo / 1e6; }),
+        borderColor: lineColor[k], backgroundColor: lineColor[k] + '18',
+        borderWidth: 2.5, tension: 0.25, pointRadius: 4,
+        pointBackgroundColor: lineColor[k], pointBorderColor: '#fff', pointBorderWidth: 1.5, fill: false
+      };
+    });
+    new Chart(elE, {
+      type: 'line', data: { labels: labels, datasets: evolDs },
+      options: {
+        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
+        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: {
+          label: function(ctx) { return ' ' + ctx.dataset.label + ': US$ ' + ctx.parsed.y.toFixed(2) + 'M'; } } } },
+        scales: { x: xScale(), y: Object.assign(yScale(), {
+          title: { display: true, text: 'US$ millones', color: TICK_C, font: { size: 9 } },
+          ticks: { callback: function(v) { return 'US$' + v + 'M'; }, color: TICK_C, font: TICK_FONT } }) }
+      }
+    });
+    var cardE = document.getElementById('aum-evol-card'); if (cardE) cardE.style.display = '';
+    var legE = document.getElementById('aum-evol-legend');
+    if (legE) { legE.innerHTML = ''; metas.forEach(function(k) { legE.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + lineColor[k] + '"></span>' + mLabel[k] + '</span>'; }); }
   }
 
   // Línea: meta acumulada vs logro acumulado (USD millones)
@@ -1818,6 +1867,38 @@ def transform(html: str) -> str:
         '<div style="font-size:11px;color:var(--text2);line-height:1.6;" id="aum-aviso-text">Solo se muestran metas de <strong>Aumento de Patrimonio (AUM)</strong>.',
         1,
     )
+
+    # 1.H) Cards: línea extra (variación vs corte anterior + brecha vs meta)
+    for k in ["deuda", "inm", "inter"]:
+        anchor = (
+            '<div style="display:flex;justify-content:space-between;margin-top:5px;">\n'
+            '          <span style="font-size:10px;color:var(--text3);">Logro: '
+            '<span id="q-' + k + '-logro"'
+        )
+        extra = (
+            '<div id="q-' + k + '-extra" style="font-size:10px;margin-top:4px;display:none;"></div>\n'
+            '        ' + anchor
+        )
+        if anchor in html:
+            html = html.replace(anchor, extra, 1)
+        else:
+            print(f"  WARN: no encontré la fila de logro de {k} para inyectar extra")
+
+    # Card nueva: "Evolución del saldo por instrumento" (canvas), tras el gráfico trimestral
+    evol_card = (
+        '\n    <!-- Evolución del saldo por instrumento (auto, USD) -->\n'
+        '    <div class="card" id="aum-evol-card" style="display:none;">\n'
+        '      <div class="card-title">Evolución del saldo por instrumento</div>\n'
+        '      <div class="card-sub">Saldo de AUM (US$ M) en cada corte · Distribuidores</div>\n'
+        '      <div class="chart-wrap" style="height:220px;"><canvas id="aumEvolChart"></canvas></div>\n'
+        '      <div id="aum-evol-legend" class="legend" style="margin-top:8px;"></div>\n'
+        '    </div>\n'
+    )
+    evol_anchor = '<div id="aumq-legend" class="legend" style="margin-top:8px;"></div>\n    </div>'
+    if evol_anchor in html:
+        html = html.replace(evol_anchor, evol_anchor + evol_card, 1)
+    else:
+        print("  WARN: no encontré dónde insertar la card de evolución")
 
     # 1.G) Ponderaciones: IDs en los badges de peso + KPI Ponderación AUM
     html = html.replace(
