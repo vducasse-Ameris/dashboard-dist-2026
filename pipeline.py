@@ -364,80 +364,77 @@ def compute_metas_results(xlsm_input) -> dict:
             pond = 0.0
         targets_clp.setdefault(periodo, {})[key] = {"target_clp": target_clp, "pond": pond}
 
-    # ── SALDOS POR CORTE → cumplimiento USD (población común) ───────────
+    # ── SALDOS POR CORTE → cumplimiento USD (SALDO al cierre del corte) ──
+    # El cumplimiento de cada trimestre es el SALDO de AUM al cierre del corte
+    # (no un delta). Filtro de advisors per-corte (sin 'Ameris'), 3 áreas,
+    # suma de MarketValueUSD. Coincide con el pivot del área (1Q26 Internac =
+    # US$5,105,708.62).
     ds = pd.read_excel(xls, sheet_name="Saldos por corte")
     ds["_adv"] = ds["Advisor"].astype(str).str.strip().str.lower()
     ds["_in"] = ds["_adv"].isin(_DIST_ADVISORS)
     ds = ds[ds["InstrumentArea"].isin(_AREA_TO_META.keys())].copy()
     ds["_meta"] = ds["InstrumentArea"].map(_AREA_TO_META)
 
-    # FX promedio por corte (CLP por USD)
     fx_por_corte = (
         ds.groupby("Corte")["FxRateUSDCLP"].mean().to_dict()
         if "FxRateUSDCLP" in ds.columns else {}
     )
-
     cortes_disponibles = set(ds["Corte"].dropna().unique())
-    # FX de respaldo = tasa del corte más reciente disponible (orden cronológico)
     _fx_latest = 1.0
+    _corte_latest = None
     for _c in reversed(_CORTE_ORDER):
         if _c in fx_por_corte:
             _fx_latest = fx_por_corte[_c]
+            _corte_latest = _c
             break
 
-    def _common_delta(cut_prev, cut_now, meta_key):
-        """Delta MarketValueUSD del meta entre dos cortes, población común."""
-        if cut_prev not in cortes_disponibles or cut_now not in cortes_disponibles:
+    # Saldo USD por (corte, meta) con filtro per-corte de advisors
+    ds_in = ds[ds["_in"]]
+    saldo_corte = (
+        ds_in.groupby(["Corte", "_meta"])["MarketValueUSD"].sum().to_dict()
+    )  # {(corte, meta): saldo_usd}
+
+    def _saldo(cut, meta_key):
+        if cut not in cortes_disponibles:
             return None
-        prev = ds[(ds["Corte"] == cut_prev) & ds["_in"]]
-        now = ds[(ds["Corte"] == cut_now) & ds["_in"]]
-        common = set(prev["ClientId"]) & set(now["ClientId"])
-        v_prev = prev[(prev["ClientId"].isin(common)) & (prev["_meta"] == meta_key)]["MarketValueUSD"].sum()
-        v_now = now[(now["ClientId"].isin(common)) & (now["_meta"] == meta_key)]["MarketValueUSD"].sum()
-        return float(v_now - v_prev)
+        return float(saldo_corte.get((cut, meta_key), 0.0))
 
     # ── Armar byPeriodo (todo USD) ──────────────────────────────────────
     by_periodo: dict = {}
-    annual_target_usd = {"deuda": 0.0, "inm": 0.0, "inter": 0.0}
-    annual_logro_usd = {"deuda": 0.0, "inm": 0.0, "inter": 0.0}
-    annual_pond = {"deuda": 0.0, "inm": 0.0, "inter": 0.0}
-
     for periodo, cortes in _PERIODO_CORTES.items():
-        cut_prev, cut_now = cortes
-        fx = fx_por_corte.get(cut_now) or fx_por_corte.get(cut_prev) or _fx_latest
+        _, cut_now = cortes
+        fx = fx_por_corte.get(cut_now) or _fx_latest
         tgt_periodo = targets_clp.get(periodo, {})
         for meta_key in ["deuda", "inm", "inter"]:
             tinfo = tgt_periodo.get(meta_key, {"target_clp": 0.0, "pond": 0.0})
             target_usd = tinfo["target_clp"] / fx if fx else 0.0
             pond = tinfo["pond"]
-            logro_usd = _common_delta(cut_prev, cut_now, meta_key)
-            entry = {
-                "target": target_usd,
-                "logro": logro_usd,            # None si el corte aún no existe
-                "pond": pond,
-            }
+            logro_usd = _saldo(cut_now, meta_key)  # SALDO al cierre del corte
+            entry = {"target": target_usd, "logro": logro_usd, "pond": pond}
             if logro_usd is not None:
                 ratio = (logro_usd / target_usd) if target_usd else 0.0
                 entry["ratio"] = ratio
                 entry["cump_pond"] = ratio * pond
-                annual_logro_usd[meta_key] += logro_usd
             else:
                 entry["ratio"] = None
                 entry["cump_pond"] = None
             by_periodo.setdefault(periodo, {})[meta_key] = entry
-            annual_target_usd[meta_key] += target_usd
-            annual_pond[meta_key] = pond  # mismo peso en todos los trimestres
 
-    # Periodo anual "2026" = suma de targets y logros trimestrales (USD)
+    # Periodo anual "2026": meta anual (fila 2026 de Tabla) vs SALDO al corte
+    # más reciente disponible.
+    annual_tgt = targets_clp.get("2026", {})
+    fx_annual = (fx_por_corte.get(_corte_latest) or _fx_latest)
     by_periodo["2026"] = {}
     for meta_key in ["deuda", "inm", "inter"]:
-        t = annual_target_usd[meta_key]
-        l = annual_logro_usd[meta_key]
-        pond = annual_pond[meta_key]
-        ratio = (l / t) if t else 0.0
+        tinfo = annual_tgt.get(meta_key, {"target_clp": 0.0, "pond": 0.0})
+        target_usd = tinfo["target_clp"] / fx_annual if fx_annual else 0.0
+        pond = tinfo["pond"]
+        logro_usd = _saldo(_corte_latest, meta_key) if _corte_latest else None
+        ratio = (logro_usd / target_usd) if (logro_usd is not None and target_usd) else (None if logro_usd is None else 0.0)
         by_periodo["2026"][meta_key] = {
-            "target": t, "logro": l, "ratio": ratio,
-            "pond": pond, "cump_pond": ratio * pond,
+            "target": target_usd, "logro": logro_usd, "ratio": ratio,
+            "pond": pond,
+            "cump_pond": (ratio * pond) if ratio is not None else None,
         }
 
     # Fecha de corte (máxima HistoricalDate)
