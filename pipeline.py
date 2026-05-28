@@ -286,20 +286,44 @@ def _foto_counts(df_f: pd.DataFrame, yr: int) -> dict:
 # RESULTADOS DE METAS (archivo separado "resultados_metas")
 # ════════════════════════════════════════════════════════════════════════════
 
+# Advisors que componen "Distribuidores" para el cómputo de saldos (sin "Ameris"
+# que son cuentas casa). Normalizados a minúsculas + strip.
+_DIST_ADVISORS = {
+    "addwise", "afitrading", "bci wealth management", "florencia stambuk",
+    "fourtrees", "francisco sepulveda", "grey capital", "jose castro",
+    "pondera/taurus", "valcapital", "value advice spa",
+}
+# InstrumentArea → clave de meta (sólo estas 3; el resto se excluye)
+_AREA_TO_META = {"Deuda": "deuda", "Inmobiliario": "inm", "Internacionales": "inter"}
+# Orden cronológico de los cortes y mapeo a periodo trimestral de la Tabla
+_CORTE_ORDER = ["4Q25", "1Q26", "2Q26", "3Q26", "4Q26"]
+# Periodo Tabla (1T26...) → (corte previo, corte del trimestre)
+_PERIODO_CORTES = {
+    "1T26": ("4Q25", "1Q26"),
+    "2T26": ("1Q26", "2Q26"),
+    "3T26": ("2Q26", "3Q26"),
+    "4T26": ("3Q26", "4Q26"),
+}
+
+
 def compute_metas_results(xlsm_input) -> dict:
     """
-    Procesa el archivo de resultados de metas (hoja 'Tabla') y devuelve el
-    avance real de AUM para el bloque agregado 'Distribuidores'.
+    Avance de metas AUM de Distribuidores, todo en USD.
 
-    Estructura de la hoja 'Tabla': filas por Ejecutivo × Tipo × Meta × Periodo.
-    Usamos sólo Ejecutivo='Distribuidores' y Tipo='Aumento de Patrimonio'.
+    Metodología (definida con el área):
+    - METAS (target) y PONDERACIÓN: hoja 'Tabla', columnas 'Valor' y
+      'Ponderación', filtrando Ejecutivo='Distribuidores' y
+      Tipo='Aumento de Patrimonio'. Las metas (CLP) se convierten a USD con
+      la tasa FxRateUSDCLP del corte del trimestre.
+    - CUMPLIMIENTO (logro): se recalcula desde 'Saldos por corte' (la columna
+      'Resultado' de Tabla tiene error). Se filtran los advisors de
+      distribución (sin 'Ameris'), las áreas Deuda/Inmobiliario/Internacionales,
+      y se mide el delta de MarketValueUSD entre cortes consecutivos usando
+      POBLACIÓN COMÚN (clientes presentes con advisor incluido en ambos cortes),
+      para no contaminar con migraciones de ejecutivo.
 
-    Devuelve:
-        {
-          "byPeriodo": {"1T26": {"deuda": {target, logro, ratio}, ...}, ...},
-          "instrumentos": {...},
-          "corte": "<fecha de corte si está disponible>"
-        }
+    Devuelve: { byPeriodo: {periodo: {meta: {target, logro, ratio, pond, cump_pond}}},
+                instrumentos, corte, fx_por_corte, moneda: 'USD' }
     """
     if isinstance(xlsm_input, (bytes, bytearray, memoryview)):
         handle = BytesIO(bytes(xlsm_input))
@@ -307,70 +331,121 @@ def compute_metas_results(xlsm_input) -> dict:
         handle = str(xlsm_input)
 
     xls = pd.ExcelFile(handle, engine="openpyxl")
-    if "Tabla" not in xls.sheet_names:
-        raise ExcelValidationError(
-            "El archivo de resultados no tiene una hoja 'Tabla'. "
-            f"Hojas encontradas: {xls.sheet_names}"
-        )
-    df = pd.read_excel(xls, sheet_name="Tabla")
+    for req_sheet in ("Tabla", "Saldos por corte"):
+        if req_sheet not in xls.sheet_names:
+            raise ExcelValidationError(
+                f"El archivo de resultados no tiene la hoja '{req_sheet}'. "
+                f"Hojas encontradas: {xls.sheet_names}"
+            )
 
-    required = ["Ejecutivo", "Tipo", "Meta", "Periodo", "Valor", "Resultado", "Valor Resultado"]
+    # ── METAS + PONDERACIÓN desde Tabla ─────────────────────────────────
+    df = pd.read_excel(xls, sheet_name="Tabla")
+    required = ["Ejecutivo", "Tipo", "Meta", "Periodo", "Valor"]
     missing = [c for c in required if c not in df.columns]
     if missing:
-        raise ExcelValidationError(
-            f"La hoja 'Tabla' no tiene columnas: {', '.join(missing)}."
-        )
+        raise ExcelValidationError(f"La hoja 'Tabla' no tiene columnas: {', '.join(missing)}.")
     has_pond = "Ponderación" in df.columns
-    has_cump = "Cumplimiento Ponderado" in df.columns
+    meta_alias = {"Deuda": "deuda", "Inmobiliario": "inm", "Internacionales": "inter"}
 
-    meta_alias = {
-        "Deuda": "deuda",
-        "Inmobiliario": "inm",
-        "Internacionales": "inter",
-        "Notas Estructuradas": "notas",
-    }
-    aum = df[
-        (df["Tipo"] == "Aumento de Patrimonio")
-        & (df["Ejecutivo"] == "Distribuidores")
-    ]
-    by_periodo: dict = {}
+    aum = df[(df["Tipo"] == "Aumento de Patrimonio") & (df["Ejecutivo"] == "Distribuidores")]
+    targets_clp: dict = {}   # {periodo: {meta: {target_clp, pond}}}
     for _, r in aum.iterrows():
         periodo = str(r["Periodo"]).strip()
         key = meta_alias.get(str(r["Meta"]).strip())
         if not key:
             continue
         try:
-            target = float(r["Valor"])
-            logro = float(r["Resultado"])
-            ratio = float(r["Valor Resultado"])
+            target_clp = float(r["Valor"])
         except (ValueError, TypeError):
             continue
         try:
             pond = float(r["Ponderación"]) if has_pond and pd.notna(r["Ponderación"]) else 0.0
         except (ValueError, TypeError):
             pond = 0.0
-        try:
-            cump = float(r["Cumplimiento Ponderado"]) if has_cump and pd.notna(r["Cumplimiento Ponderado"]) else 0.0
-        except (ValueError, TypeError):
-            cump = 0.0
-        by_periodo.setdefault(periodo, {})[key] = {
-            "target": target,
-            "logro": logro,
-            "ratio": ratio,
-            "pond": pond,         # peso de la meta en el scorecard (0-1)
-            "cump_pond": cump,    # aporte ponderado (ratio × peso, puede ser negativo)
+        targets_clp.setdefault(periodo, {})[key] = {"target_clp": target_clp, "pond": pond}
+
+    # ── SALDOS POR CORTE → cumplimiento USD (población común) ───────────
+    ds = pd.read_excel(xls, sheet_name="Saldos por corte")
+    ds["_adv"] = ds["Advisor"].astype(str).str.strip().str.lower()
+    ds["_in"] = ds["_adv"].isin(_DIST_ADVISORS)
+    ds = ds[ds["InstrumentArea"].isin(_AREA_TO_META.keys())].copy()
+    ds["_meta"] = ds["InstrumentArea"].map(_AREA_TO_META)
+
+    # FX promedio por corte (CLP por USD)
+    fx_por_corte = (
+        ds.groupby("Corte")["FxRateUSDCLP"].mean().to_dict()
+        if "FxRateUSDCLP" in ds.columns else {}
+    )
+
+    cortes_disponibles = set(ds["Corte"].dropna().unique())
+    # FX de respaldo = tasa del corte más reciente disponible (orden cronológico)
+    _fx_latest = 1.0
+    for _c in reversed(_CORTE_ORDER):
+        if _c in fx_por_corte:
+            _fx_latest = fx_por_corte[_c]
+            break
+
+    def _common_delta(cut_prev, cut_now, meta_key):
+        """Delta MarketValueUSD del meta entre dos cortes, población común."""
+        if cut_prev not in cortes_disponibles or cut_now not in cortes_disponibles:
+            return None
+        prev = ds[(ds["Corte"] == cut_prev) & ds["_in"]]
+        now = ds[(ds["Corte"] == cut_now) & ds["_in"]]
+        common = set(prev["ClientId"]) & set(now["ClientId"])
+        v_prev = prev[(prev["ClientId"].isin(common)) & (prev["_meta"] == meta_key)]["MarketValueUSD"].sum()
+        v_now = now[(now["ClientId"].isin(common)) & (now["_meta"] == meta_key)]["MarketValueUSD"].sum()
+        return float(v_now - v_prev)
+
+    # ── Armar byPeriodo (todo USD) ──────────────────────────────────────
+    by_periodo: dict = {}
+    annual_target_usd = {"deuda": 0.0, "inm": 0.0, "inter": 0.0}
+    annual_logro_usd = {"deuda": 0.0, "inm": 0.0, "inter": 0.0}
+    annual_pond = {"deuda": 0.0, "inm": 0.0, "inter": 0.0}
+
+    for periodo, cortes in _PERIODO_CORTES.items():
+        cut_prev, cut_now = cortes
+        fx = fx_por_corte.get(cut_now) or fx_por_corte.get(cut_prev) or _fx_latest
+        tgt_periodo = targets_clp.get(periodo, {})
+        for meta_key in ["deuda", "inm", "inter"]:
+            tinfo = tgt_periodo.get(meta_key, {"target_clp": 0.0, "pond": 0.0})
+            target_usd = tinfo["target_clp"] / fx if fx else 0.0
+            pond = tinfo["pond"]
+            logro_usd = _common_delta(cut_prev, cut_now, meta_key)
+            entry = {
+                "target": target_usd,
+                "logro": logro_usd,            # None si el corte aún no existe
+                "pond": pond,
+            }
+            if logro_usd is not None:
+                ratio = (logro_usd / target_usd) if target_usd else 0.0
+                entry["ratio"] = ratio
+                entry["cump_pond"] = ratio * pond
+                annual_logro_usd[meta_key] += logro_usd
+            else:
+                entry["ratio"] = None
+                entry["cump_pond"] = None
+            by_periodo.setdefault(periodo, {})[meta_key] = entry
+            annual_target_usd[meta_key] += target_usd
+            annual_pond[meta_key] = pond  # mismo peso en todos los trimestres
+
+    # Periodo anual "2026" = suma de targets y logros trimestrales (USD)
+    by_periodo["2026"] = {}
+    for meta_key in ["deuda", "inm", "inter"]:
+        t = annual_target_usd[meta_key]
+        l = annual_logro_usd[meta_key]
+        pond = annual_pond[meta_key]
+        ratio = (l / t) if t else 0.0
+        by_periodo["2026"][meta_key] = {
+            "target": t, "logro": l, "ratio": ratio,
+            "pond": pond, "cump_pond": ratio * pond,
         }
 
-    # Intentar leer la fecha de corte de la hoja "Saldos por corte" si existe
+    # Fecha de corte (máxima HistoricalDate)
     corte = None
-    if "Saldos por corte" in xls.sheet_names:
-        try:
-            df_s = pd.read_excel(xls, sheet_name="Saldos por corte", usecols=["HistoricalDate"], nrows=2000)
-            fechas = pd.to_datetime(df_s["HistoricalDate"], errors="coerce").dropna()
-            if len(fechas):
-                corte = str(fechas.max().date())
-        except Exception:
-            pass
+    if "HistoricalDate" in ds.columns:
+        fechas = pd.to_datetime(ds["HistoricalDate"], errors="coerce").dropna()
+        if len(fechas):
+            corte = str(fechas.max().date())
 
     return {
         "byPeriodo": by_periodo,
@@ -378,9 +453,10 @@ def compute_metas_results(xlsm_input) -> dict:
             "deuda": "Deuda Privada",
             "inm": "Inmobiliario",
             "inter": "Internacionales",
-            "notas": "Notas Estructuradas",
         },
         "corte": corte,
+        "fxPorCorte": {str(k): float(v) for k, v in fx_por_corte.items()},
+        "moneda": "USD",
     }
 
 

@@ -2086,6 +2086,14 @@ function _fmtB(v) {
   return 'CLP ' + Math.round(v).toLocaleString('es-CL');
 }
 
+// Formato USD (los valores AUM vienen en USD)
+function _fmtUSD(v) {
+  var a = Math.abs(v);
+  if (a >= 1e6) return 'US$ ' + (v / 1e6).toFixed(2) + 'M';
+  if (a >= 1e3) return 'US$ ' + (v / 1e3).toFixed(0) + 'k';
+  return 'US$ ' + Math.round(v).toLocaleString('en-US');
+}
+
 // Devuelve {txt, color} para un logro dado su target (maneja negativos)
 function _logroDisplay(logro, target) {
   var neg = logro < 0;
@@ -2098,17 +2106,27 @@ function _logroDisplay(logro, target) {
   };
 }
 
-// Actualiza los logros de las cards trimestrales para el trimestre `q` (ej "1T26")
+// Actualiza el trimestre `q` (ej "1T26") con metas + cumplimiento en USD.
+// Lee todo de window.__METAS_RESULTS__.byPeriodo (no usa aumData CLP).
 function _updateAumLogrosQ(q, targets) {
   var res = window.__METAS_RESULTS__;
-  var ids  = { deuda: 'q-deuda-logro', inm: 'q-inm-logro', inter: 'q-inter-logro', notas: 'q-notas-logro' };
-  var bars = { deuda: 'q-deuda-bar',   inm: 'q-inm-bar',   inter: 'q-inter-bar',   notas: 'q-notas-bar' };
-  var baseColor = { deuda: '#1B4B9B', inm: '#2E6BAF', inter: '#5A93CC', notas: '#A8C5E0' };
+  var metaIds = { deuda: 'q-deuda-meta', inm: 'q-inm-meta', inter: 'q-inter-meta' };
+  var logIds  = { deuda: 'q-deuda-logro', inm: 'q-inm-logro', inter: 'q-inter-logro' };
+  var bars    = { deuda: 'q-deuda-bar',   inm: 'q-inm-bar',   inter: 'q-inter-bar' };
+  var pondIds = { deuda: 'q-deuda-pond', inm: 'q-inm-pond', inter: 'q-inter-pond' };
+  var baseColor = { deuda: '#1B4B9B', inm: '#2E6BAF', inter: '#5A93CC' };
   var totalEl = document.getElementById('q-total-logro');
+  var totalMetaEl = document.getElementById('q-total-meta');
+
+  // Ocultar la card de Notas Estructuradas (ya no se mide)
+  var notasMeta = document.getElementById('q-notas-meta');
+  if (notasMeta) { var nc = notasMeta.closest('.aum-card'); if (nc) nc.style.display = res ? 'none' : ''; }
+
   var data = res && res.byPeriodo && res.byPeriodo[q];
   if (!data) {
-    Object.keys(ids).forEach(function(k) {
-      var el = document.getElementById(ids[k]);
+    // Sin resultados cargados → dejar 'pendiente' y barras vacías
+    ['deuda', 'inm', 'inter'].forEach(function(k) {
+      var el = document.getElementById(logIds[k]);
       if (el) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; }
       var bar = document.getElementById(bars[k]);
       if (bar) { bar.style.width = '0%'; bar.style.background = baseColor[k]; }
@@ -2116,90 +2134,102 @@ function _updateAumLogrosQ(q, targets) {
     if (totalEl) { totalEl.textContent = '— pendiente'; totalEl.style.color = 'var(--text3)'; }
     return;
   }
-  var totalLogro = 0;
-  ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
-    var el = document.getElementById(ids[k]);
+
+  var totalMeta = 0, totalLogro = 0, anyLogro = false, sumCump = 0, sumPond = 0;
+  ['deuda', 'inm', 'inter'].forEach(function(k) {
+    var d = data[k]; if (!d) return;
+    totalMeta += (d.target || 0);
+    sumPond += (d.pond || 0);
+    // Meta card en USD
+    var me = document.getElementById(metaIds[k]);
+    if (me) me.textContent = _fmtUSD(d.target || 0);
+    // Badge de ponderación
+    var pe = document.getElementById(pondIds[k]);
+    if (pe && d.pond) pe.textContent = (d.pond * 100).toFixed(2) + '%';
+    // Logro + barra
+    var el = document.getElementById(logIds[k]);
     var bar = document.getElementById(bars[k]);
-    var d = data[k];
-    if (!d) {
-      if (el) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; }
+    if (d.logro === null || d.logro === undefined) {
+      if (el) { el.textContent = 'corte pendiente'; el.style.color = 'var(--text2)'; }
       if (bar) { bar.style.width = '0%'; bar.style.background = baseColor[k]; }
       return;
     }
+    anyLogro = true;
     totalLogro += d.logro;
-    var disp = _logroDisplay(d.logro, d.target);
-    if (el) { el.textContent = disp.txt; el.style.color = disp.color; }
-    // Barra: ancho = % logrado (cap 100), color verde si >=100, rojo si rescate
+    sumCump += (d.cump_pond || 0);
+    var pct = Math.round((d.ratio || 0) * 100);
+    var neg = d.logro < 0;
+    if (el) {
+      el.textContent = _fmtUSD(d.logro) + ' · ' + (neg ? 'rescate' : pct + '%');
+      el.style.color = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : 'var(--text2)');
+    }
     if (bar) {
-      var w = disp.neg ? 0 : Math.max(0, Math.min(100, disp.pct));
+      var w = neg ? 0 : Math.max(0, Math.min(100, pct));
       bar.style.width = w + '%';
-      bar.style.background = disp.neg ? '#B33A2E' : (disp.pct >= 100 ? '#0E7A4E' : baseColor[k]);
+      bar.style.background = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : baseColor[k]);
     }
   });
-  if (totalEl) {
-    var tgtTotal = (targets && targets.total ? targets.total * 1e9 : 0);
-    totalEl.textContent = _fmtB(totalLogro);
-    totalEl.style.color = totalLogro < 0 ? '#B33A2E' : (tgtTotal && totalLogro >= tgtTotal ? '#0E7A4E' : 'var(--text)');
-  }
 
-  // Ponderaciones: badge de peso por instrumento + cumplimiento ponderado total
-  var pondIds = { deuda: 'q-deuda-pond', inm: 'q-inm-pond', inter: 'q-inter-pond', notas: 'q-notas-pond' };
-  var sumCump = 0, sumPond = 0;
-  ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
-    var d = data[k]; if (!d) return;
-    sumCump += (d.cump_pond || 0);
-    sumPond += (d.pond || 0);
-    var pe = document.getElementById(pondIds[k]);
-    if (pe && d.pond) pe.textContent = (d.pond * 100).toFixed(2) + '%';
-  });
-  // Sub del KPI "Logro trimestre": % vs meta total + aporte ponderado
+  if (totalMetaEl) totalMetaEl.textContent = _fmtUSD(totalMeta);
+  if (totalEl) {
+    if (!anyLogro) { totalEl.textContent = 'corte pendiente'; totalEl.style.color = 'var(--text3)'; }
+    else { totalEl.textContent = _fmtUSD(totalLogro); totalEl.style.color = totalLogro < 0 ? '#B33A2E' : (totalLogro >= totalMeta ? '#0E7A4E' : 'var(--text)'); }
+  }
   var pctEl = document.getElementById('q-total-pct');
   if (pctEl) {
-    var tgtTotal2 = (targets && targets.total ? targets.total * 1e9 : 0);
-    var pctMeta = tgtTotal2 ? Math.round(totalLogro / tgtTotal2 * 100) : 0;
-    var cumpPts = (sumCump * 100);
-    pctEl.innerHTML = (totalLogro < 0 ? 'rescate neto' : pctMeta + '% de la meta')
-      + ' · aporte ponderado: <strong style="color:' + (cumpPts < 0 ? '#B33A2E' : (cumpPts >= sumPond * 100 ? '#0E7A4E' : 'var(--text2)')) + ';">'
-      + (cumpPts >= 0 ? '+' : '') + cumpPts.toFixed(1) + ' pts</strong>';
+    if (!anyLogro) { pctEl.textContent = 'Corte del trimestre aún no disponible'; }
+    else {
+      var pctMeta = totalMeta ? Math.round(totalLogro / totalMeta * 100) : 0;
+      var cumpPts = sumCump * 100;
+      pctEl.innerHTML = (totalLogro < 0 ? 'rescate neto' : pctMeta + '% de la meta')
+        + ' · aporte ponderado: <strong style="color:' + (cumpPts < 0 ? '#B33A2E' : '#0E7A4E') + ';">'
+        + (cumpPts >= 0 ? '+' : '') + cumpPts.toFixed(2) + ' pts</strong>';
+    }
   }
-  // KPI "Ponderación AUM": peso total + cumplimiento ponderado AUM
   var pondValEl = document.getElementById('aum-pond-value');
   var cumpSubEl = document.getElementById('aum-cump-sub');
   if (pondValEl) pondValEl.textContent = (sumPond * 100).toFixed(1) + '%';
   if (cumpSubEl) {
-    var cp = sumCump * 100;
-    cumpSubEl.innerHTML = 'Del scorecard · cumplió <strong style="color:' + (cp < 0 ? '#B33A2E' : '#0E7A4E') + ';">'
-      + (cp >= 0 ? '+' : '') + cp.toFixed(1) + ' pts</strong> en ' + q;
+    if (!anyLogro) { cumpSubEl.textContent = 'Del scorecard total distribución'; }
+    else {
+      var cp = sumCump * 100;
+      cumpSubEl.innerHTML = 'Del scorecard · cumplió <strong style="color:' + (cp < 0 ? '#B33A2E' : '#0E7A4E') + ';">'
+        + (cp >= 0 ? '+' : '') + cp.toFixed(2) + ' pts</strong> en ' + q;
+    }
   }
 }
 
-// Actualiza el sub-panel anual (YTD): KPI + celdas de la tabla
+// Actualiza el sub-panel anual (YTD): KPI + celdas de la tabla (USD)
 function _updateAumYTD() {
   var res = window.__METAS_RESULTS__;
-  var cy = (window.__CURRENT_Q__ && window.__CURRENT_Q__.year) || 2026;
-  var data = res && res.byPeriodo && res.byPeriodo[String(cy)];
-  var ids = { deuda: 'ytd-deuda-logro', inm: 'ytd-inm-logro', inter: 'ytd-inter-logro', notas: 'ytd-notas-logro' };
+  var data = res && res.byPeriodo && res.byPeriodo['2026'];
+  var ids = { deuda: 'ytd-deuda-logro', inm: 'ytd-inm-logro', inter: 'ytd-inter-logro' };
   var kpiEl = document.getElementById('ytd-kpi-logro');
   var totalEl = document.getElementById('ytd-total-logro');
+  // Ocultar fila de Notas en la tabla YTD
+  var notasCell = document.getElementById('ytd-notas-logro');
+  if (notasCell && res) { var tr = notasCell.closest('tr'); if (tr) tr.style.display = 'none'; }
   if (!data) return;
   var totalLogro = 0;
-  ['deuda', 'inm', 'inter', 'notas'].forEach(function(k) {
+  ['deuda', 'inm', 'inter'].forEach(function(k) {
     var el = document.getElementById(ids[k]);
     var d = data[k];
-    if (d) totalLogro += d.logro;
+    if (d && d.logro != null) totalLogro += d.logro;
     if (!el || !d) return;
-    var disp = _logroDisplay(d.logro, d.target);
-    el.textContent = disp.txt;
-    el.style.color = disp.color;
+    if (d.logro == null) { el.textContent = 'corte pendiente'; el.style.fontStyle = 'normal'; return; }
+    var pct = Math.round((d.ratio || 0) * 100);
+    var neg = d.logro < 0;
+    el.textContent = _fmtUSD(d.logro) + ' · ' + (neg ? 'rescate' : pct + '%');
+    el.style.color = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : 'var(--text2)');
     el.style.fontStyle = 'normal';
   });
   if (totalEl) {
-    totalEl.textContent = _fmtB(totalLogro);
+    totalEl.textContent = _fmtUSD(totalLogro);
     totalEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--text)';
     totalEl.style.fontStyle = 'normal';
   }
   if (kpiEl) {
-    kpiEl.textContent = _fmtB(totalLogro);
+    kpiEl.textContent = _fmtUSD(totalLogro);
     kpiEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--green)';
   }
 }
