@@ -49,7 +49,7 @@ body { font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(-
 /* ── TABS ── */
 .tab-bar {
   background:var(--a2);
-  display:flex; gap:0; padding: 0 2rem;
+  display:flex; gap:0; padding: 0 2rem; flex-wrap:wrap;
   border-bottom:1px solid rgba(255,255,255,0.08);
 }
 .tab-btn {
@@ -323,6 +323,7 @@ footer {
   <button class="tab-btn active" onclick="showTab('resumen',this)"><span class="tab-icon">◎</span>Resumen</button>
   <button class="tab-btn" onclick="showTab('reuniones',this)"><span class="tab-icon">◈</span>Reuniones</button>
   <button class="tab-btn" onclick="showTab('clientes',this)"><span class="tab-icon">◇</span>Clientes</button>
+  <button class="tab-btn" onclick="showTab('foto',this)"><span class="tab-icon">▣</span>Clientes foto</button>
   <button class="tab-btn" onclick="showTab('metas-aum',this)"><span class="tab-icon">◆</span>Metas AUM</button>
   <button class="tab-btn" onclick="showTab('riesgo',this)"><span class="tab-icon">▲</span>Riesgo</button>
 </div>
@@ -827,7 +828,85 @@ footer {
 
 </div>
 
-<!-- ═══════════════════════════════════════════════ TAB 4: METAS AUM -->
+<!-- ═══════════════════════════════════════════════ TAB 4: CLIENTES FOTO -->
+<div class="panel" id="tab-foto">
+
+  <div class="section-label" data-foto-text="section">Clientes foto — consolidado del año</div>
+  <div style="font-size:11px;color:var(--text2);margin-bottom:1.25rem;" data-foto-text="intro">
+    Todas las contrapartes del foto con sus reuniones mes a mes, cortado en el mes en curso. Misma estructura que la hoja <em>Clientes foto</em> del Follow Up.
+  </div>
+
+  <div class="kpi-row kpi-row-4">
+    <div class="kpi accent">
+      <div class="kpi-label" data-foto-text="kpi-reun-label">Reuniones YTD</div>
+      <div class="kpi-value" data-foto-kpi="reun">—</div>
+      <div class="kpi-sub" data-foto-kpi="reun-sub">&nbsp;</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Contrapartes en el foto</div>
+      <div class="kpi-value" data-foto-kpi="total">—</div>
+      <div class="kpi-sub" data-foto-kpi="total-sub">&nbsp;</div>
+    </div>
+    <div class="kpi" style="background:#E0F4EC;border-color:#a8d5bc;">
+      <div class="kpi-label" style="color:#0E7A4E;">Con reunión YTD</div>
+      <div class="kpi-value" style="color:#0E7A4E;" data-foto-kpi="con">—</div>
+      <div class="kpi-sub" style="color:#0E7A4E;" data-foto-kpi="con-sub">&nbsp;</div>
+    </div>
+    <div class="kpi" style="background:#FAE9E7;border-color:#e8b5af;">
+      <div class="kpi-label" style="color:#8B2A1F;">Sin reunión YTD</div>
+      <div class="kpi-value neg" data-foto-kpi="sin">—</div>
+      <div class="kpi-sub neg" data-foto-kpi="sin-sub">&nbsp;</div>
+    </div>
+  </div>
+
+  <div style="background:var(--card2);border-radius:var(--rl);padding:14px 16px;margin-bottom:1rem;">
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Tipo</span>
+      <div class="ftabs" style="margin:0;">
+        <button class="ftab active" data-ftipo="ALL" onclick="setFotoTipo('ALL',this)">Todos</button><button class="ftab" data-ftipo="Dist" onclick="setFotoTipo('Dist',this)">Distribuidor</button><button class="ftab" data-ftipo="Inst" onclick="setFotoTipo('Inst',this)">Institucional</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Prio</span>
+      <div class="ftabs" style="margin:0;">
+        <button class="ftab active" data-fprio="ALL" onclick="setFotoPrio('ALL',this)">Todos</button><button class="ftab" data-fprio="HP" onclick="setFotoPrio('HP',this)">HP</button><button class="ftab" data-fprio="MP" onclick="setFotoPrio('MP',this)">MP</button><button class="ftab" data-fprio="LP" onclick="setFotoPrio('LP',this)">LP</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Estado</span>
+      <div class="ftabs" style="margin:0;">
+        <button class="ftab active" data-fest="ALL" onclick="setFotoEstado('ALL',this)">Todos</button><button class="ftab" data-fest="CON" onclick="setFotoEstado('CON',this)">Con reunión YTD</button><button class="ftab" data-fest="SIN" onclick="setFotoEstado('SIN',this)">Sin reunión YTD</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+      <span style="font-size:10px;font-weight:600;color:var(--text3);min-width:40px;">Buscar</span>
+      <input type="text" id="foto-search" placeholder="Nombre de la contraparte..." oninput="setFotoSearch(this.value)" style="flex:1;min-width:200px;max-width:400px;padding:6px 10px;font-size:12px;border:1px solid var(--border);border-radius:6px;background:var(--card);color:var(--text);outline:none;font-family:inherit;">
+      <button onclick="exportFotoCSV()" style="font-size:11px;font-weight:500;color:var(--a1);padding:6px 12px;border-radius:6px;background:var(--card);border:1px solid var(--a1);cursor:pointer;font-family:inherit;white-space:nowrap;">↓ Descargar CSV</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0 10px;border-bottom:1px solid var(--border);margin-bottom:8px;gap:12px;flex-wrap:wrap;">
+      <div id="foto-summary" style="font-size:11px;color:var(--text2);"></div>
+      <div style="display:flex;align-items:center;gap:10px;font-size:10px;color:var(--text3);flex-wrap:wrap;">
+        <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:14px;height:14px;border-radius:2px;background:#E2726A;"></span>0</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:14px;height:14px;border-radius:2px;background:#FBD5A5;"></span>1</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:14px;height:14px;border-radius:2px;background:#C9E7CF;"></span>2</span>
+        <span style="display:flex;align-items:center;gap:4px;"><span style="display:inline-block;width:14px;height:14px;border-radius:2px;background:#A8CBEA;"></span>3+</span>
+        <span style="color:var(--border2);">|</span>
+        <span>Click en un encabezado para ordenar</span>
+      </div>
+    </div>
+    <div id="foto-table" style="overflow-x:auto;"></div>
+  </div>
+
+  <div style="margin-top:1rem;font-size:10px;color:var(--text3);" data-foto-text="footnote">
+    Fuente: hoja «Clientes foto» del Follow Up. Los meses son los del propio foto (no los apuntes), por lo que los totales cuadran exactamente con el Excel.
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════ TAB 5: METAS AUM -->
 <div class="panel" id="tab-metas-aum">
 
   <!-- Aviso logros pendientes -->
@@ -1957,6 +2036,201 @@ function renderSubtemas(){
   el.innerHTML=h;
 }
 
+// ── CLIENTES FOTO — consolidado YTD por contraparte ──────────────────────────
+// Reproduce la hoja "Clientes foto YYYY" del Follow Up: una fila por contraparte
+// con sus reuniones mes a mes hasta el mes en curso. Data: d.fotoYTD del pipeline.
+var fotoYTD = { year:0, prevYear:0, month:0, monthNames:[], rows:[] };
+// Orden por defecto: alfabético, igual que la hoja del Excel.
+window._FOTO = { tipo:'ALL', prio:'ALL', est:'ALL', search:'', sort:'name', dir:1 };
+
+var FOTO_MES_ABBR = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+var FOTO_PRIO_C   = { HP:'#1B4B9B', MP:'#2E6BAF', LP:'#5A93CC', '?':'#8FA3BE' };
+
+function _fEsc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function _fotoSetBtn(attr, val, btn){
+  document.querySelectorAll('['+attr+']').forEach(function(t){ t.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+}
+function setFotoTipo(v,btn){ _fotoSetBtn('data-ftipo',v,btn); window._FOTO.tipo=v; renderFoto(); }
+function setFotoPrio(v,btn){ _fotoSetBtn('data-fprio',v,btn); window._FOTO.prio=v; renderFoto(); }
+function setFotoEstado(v,btn){ _fotoSetBtn('data-fest',v,btn); window._FOTO.est=v; renderFoto(); }
+function setFotoSearch(v){ window._FOTO.search=(v||'').toLowerCase().trim(); renderFoto(); }
+function setFotoSort(key){
+  var st=window._FOTO;
+  if(st.sort===key){ st.dir=-st.dir; }
+  else { st.sort=key; st.dir=(key==='name')?1:-1; }
+  renderFoto();
+}
+
+// Filas visibles según los filtros activos (compartido por tabla y CSV).
+function _fotoVisible(){
+  var st=window._FOTO;
+  var rows=(fotoYTD.rows||[]).filter(function(r){
+    if(st.tipo!=='ALL' && r.tipo!==st.tipo) return false;
+    if(st.prio!=='ALL' && r.prio!==st.prio) return false;
+    if(st.est==='CON' && !r.ytd) return false;
+    if(st.est==='SIN' && r.ytd) return false;
+    if(st.search && r.name.toLowerCase().indexOf(st.search)<0) return false;
+    return true;
+  });
+  var key=st.sort, dir=st.dir;
+  var pOrd={HP:0,MP:1,LP:2,'?':3};
+  rows.sort(function(a,b){
+    var va,vb;
+    if(key==='name'){ return dir*a.name.localeCompare(b.name,'es'); }
+    else if(key==='prio'){ va=pOrd[a.prio]!=null?pOrd[a.prio]:3; vb=pOrd[b.prio]!=null?pOrd[b.prio]:3; }
+    else if(key==='tipo'){ va=(a.tipo==='Inst'?1:0); vb=(b.tipo==='Inst'?1:0); }
+    else if(key==='prev'){ va=a.prevYtd; vb=b.prevYtd; }
+    else if(key==='delta'){ va=a.ytd-a.prevYtd; vb=b.ytd-b.prevYtd; }
+    else if(key==='dias'){ va=(a.dias==null?99999:a.dias); vb=(b.dias==null?99999:b.dias); }
+    else if(key.charAt(0)==='m'){ var i=parseInt(key.slice(1),10); va=a.m[i]||0; vb=b.m[i]||0; }
+    else { va=a.ytd; vb=b.ytd; }
+    // Desempate estable: YTD desc y luego nombre.
+    return dir*(va-vb) || (b.ytd-a.ytd) || a.name.localeCompare(b.name,'es');
+  });
+  return rows;
+}
+
+// Misma semántica de color que el formato condicional del Excel:
+// 0 reuniones = rojo, 1 = naranjo, 2 = verde, 3 o más = azul.
+function _fotoColor(v){
+  if(!v)      return ['#E2726A','#FFFFFF'];
+  if(v===1)   return ['#FBD5A5','#7A4B00'];
+  if(v===2)   return ['#C9E7CF','#1B5E33'];
+  return             ['#A8CBEA','#0D2D6B'];
+}
+function _fotoCell(v){
+  var c=_fotoColor(v);
+  return '<td style="text-align:center;padding:5px 4px;background:'+c[0]+';color:'+c[1]+";font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;border:1px solid rgba(255,255,255,0.55);\">"+v+'</td>';
+}
+
+function _fotoTh(label, key, align, extra){
+  var st=window._FOTO;
+  var arrow = st.sort===key ? (st.dir>0?' ▲':' ▼') : '';
+  var col = st.sort===key ? 'var(--a1)' : 'var(--text3)';
+  return '<th onclick="setFotoSort(\''+key+'\')" style="position:sticky;top:0;z-index:2;background:var(--card);'+(extra||'')+'text-align:'+(align||'center')+';padding:7px 6px;font-size:9px;font-weight:600;color:'+col+';text-transform:uppercase;letter-spacing:.06em;cursor:pointer;user-select:none;white-space:nowrap;border-bottom:2px solid var(--border2);">'+label+arrow+'</th>';
+}
+
+function renderFoto(){
+  var el=document.getElementById('foto-table'); if(!el) return;
+  var es=document.getElementById('foto-summary');
+  var nMonths=(fotoYTD.month||0);
+  var rows=_fotoVisible();
+
+  // Labels que rolan con el año / mes de corte.
+  if(nMonths){
+    var MES_FULL=['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+    var rango = nMonths===1 ? MES_FULL[0] : ('Enero – '+MES_FULL[nMonths-1]);
+    var setT=function(k,v){ var e=document.querySelector('[data-foto-text="'+k+'"]'); if(e) e.innerHTML=v; };
+    setT('section','Clientes foto '+fotoYTD.year+' — consolidado '+rango);
+    setT('kpi-reun-label','Reuniones '+fotoYTD.year+' YTD');
+    setT('intro','Todas las contrapartes del foto con sus reuniones mes a mes, de '+rango.toLowerCase()+' de '+fotoYTD.year+'. Misma estructura que la hoja <em>Clientes foto '+fotoYTD.year+'</em> del Follow Up.');
+    var orfanas=(fotoYTD.prevYtdTotal||0)-(fotoYTD.prevYtdMatched||0);
+    setT('footnote','Fuente: hoja «Clientes foto '+fotoYTD.year+'» del Follow Up. Los meses vienen del propio foto (no de los apuntes), por lo que los totales cuadran exactamente con el Excel. La columna '+fotoYTD.prevYear+' es el mismo tramo Ene–'+FOTO_MES_ABBR[nMonths-1]+' del año anterior.'
+      + (orfanas>0 ? ' Ojo: sólo cubre contrapartes que siguen en el foto '+fotoYTD.year+' — quedan '+orfanas+' reuniones de '+fotoYTD.prevYear+' de clientes que ya salieron del foto, por eso la columna suma '+fotoYTD.prevYtdMatched+' y no '+fotoYTD.prevYtdTotal+'.' : ''));
+  }
+
+  // KPIs — siempre sobre el universo completo, no sobre el filtro.
+  var all=fotoYTD.rows||[];
+  var totReun=all.reduce(function(a,r){return a+r.ytd;},0);
+  var totPrev=all.reduce(function(a,r){return a+r.prevYtd;},0);
+  var con=all.filter(function(r){return r.ytd>0;}).length;
+  var sin=all.length-con;
+  var dist=all.filter(function(r){return r.tipo!=='Inst';}).length;
+  var inst=all.length-dist;
+  var setK=function(k,v){ var e=document.querySelector('[data-foto-kpi="'+k+'"]'); if(e) e.innerHTML=v; };
+  setK('reun', totReun);
+  // Comparación contra el YTD real del año anterior (incluye contrapartes que
+  // ya salieron del foto); la columna por fila sólo cubre las que siguen.
+  var prevReal=(fotoYTD.prevYtdTotal!=null?fotoYTD.prevYtdTotal:totPrev);
+  var dTot=totReun-prevReal;
+  setK('reun-sub', prevReal ? ('vs '+prevReal+' en '+fotoYTD.prevYear+' YTD ('+(dTot>=0?'+':'')+dTot+')') : '&nbsp;');
+  setK('total', all.length);
+  setK('total-sub', dist+' distribuidores &nbsp;·&nbsp; '+inst+' institucionales');
+  setK('con', con);
+  setK('con-sub', all.length ? Math.round(con/all.length*100)+'% de la cartera' : '&nbsp;');
+  setK('sin', sin);
+  setK('sin-sub', all.length ? Math.round(sin/all.length*100)+'% de la cartera' : '&nbsp;');
+
+  var visReun=rows.reduce(function(a,r){return a+r.ytd;},0);
+  if(es){
+    es.innerHTML = '<strong>'+rows.length+' contrapartes</strong> &nbsp;·&nbsp; '+visReun+' reuniones'
+      + (rows.length!==all.length ? ' &nbsp;·&nbsp; <span style="color:var(--text3);">de '+all.length+' en el foto</span>' : '');
+  }
+
+  if(!nMonths){ el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);">Sube el Excel para ver el foto consolidado</div>'; return; }
+  if(!rows.length){ el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);">Ninguna contraparte cumple los filtros</div>'; return; }
+
+  // Layout = el de la hoja: Cliente · Tipo · Prioridad · meses · Total.
+  // Después de una separación vertical van las columnas de análisis.
+  var stickyTd='position:sticky;left:0;z-index:1;background:var(--card);';
+  var sepL='border-left:3px double var(--border2);';
+  var mono="font-family:'IBM Plex Mono',monospace;";
+  var h='<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:'+(560+nMonths*54)+'px;">';
+  h+='<thead><tr>';
+  h+='<th onclick="setFotoSort(\'name\')" style="position:sticky;left:0;top:0;z-index:3;background:var(--card);text-align:left;padding:7px 8px;font-size:9px;font-weight:600;color:'+(window._FOTO.sort==='name'?'var(--a1)':'var(--text3)')+';text-transform:uppercase;letter-spacing:.06em;cursor:pointer;user-select:none;white-space:nowrap;border-bottom:2px solid var(--border2);">Cliente'+(window._FOTO.sort==='name'?(window._FOTO.dir>0?' ▲':' ▼'):'')+'</th>';
+  h+=_fotoTh('Tipo','tipo');
+  h+=_fotoTh('Prioridad','prio');
+  for(var i=0;i<nMonths;i++){ h+=_fotoTh(fotoYTD.monthNames[i]||FOTO_MES_ABBR[i],'m'+i); }
+  h+=_fotoTh('Total','ytd');
+  h+=_fotoTh(fotoYTD.prevYear+' YTD','prev',null,sepL);
+  h+=_fotoTh('Δ','delta');
+  h+=_fotoTh('Últ. contacto','dias','right');
+  h+='</tr></thead><tbody>';
+
+  rows.forEach(function(r){
+    var pc=FOTO_PRIO_C[r.prio]||'#8FA3BE';
+    h+='<tr style="border-bottom:1px solid var(--border);">';
+    h+='<td style="'+stickyTd+'padding:5px 8px;font-weight:500;color:var(--text);white-space:nowrap;max-width:260px;overflow:hidden;text-overflow:ellipsis;" title="'+_fEsc(r.name)+'">'+_fEsc(r.name)+'</td>';
+    h+='<td style="text-align:center;padding:5px 6px;'+mono+'font-size:11px;font-weight:600;color:'+(r.tipo==='Inst'?'#6B4C9B':'#3D5278')+';" title="'+(r.tipo==='Inst'?'Institucional':'Distribuidor')+'">'+(r.tipo==='Inst'?'I':'D')+'</td>';
+    h+='<td style="text-align:center;padding:5px 6px;"><span style="font-size:9px;font-weight:600;padding:2px 6px;border-radius:3px;background:'+pc+'18;color:'+pc+';">'+(r.prio==='?'?'—':r.prio)+'</span></td>';
+    for(var i=0;i<nMonths;i++){ h+=_fotoCell(r.m[i]||0); }
+    h+='<td style="text-align:center;padding:5px 8px;'+mono+'font-size:12px;font-weight:700;color:'+(r.ytd?'var(--text)':'#B33A2E')+';background:var(--card2);">'+r.ytd+'</td>';
+    h+='<td style="text-align:center;padding:5px 8px;'+sepL+mono+'font-size:11px;color:var(--text3);">'+r.prevYtd+'</td>';
+    var d=r.ytd-r.prevYtd;
+    h+='<td style="text-align:center;padding:5px 8px;'+mono+'font-size:11px;font-weight:600;color:'+(d>0?'#0E7A4E':(d<0?'#B33A2E':'var(--text3)'))+';">'+(d>0?'+':'')+(d||'—')+'</td>';
+    var lastTxt = r.last ? (r.last+' <span style="color:var(--text3);">('+r.dias+'d)</span>') : '<span style="color:var(--text3);">sin historial</span>';
+    h+='<td style="text-align:right;padding:5px 8px;'+mono+'font-size:10px;color:var(--text2);white-space:nowrap;">'+lastTxt+'</td>';
+    h+='</tr>';
+  });
+
+  // Totales de las filas visibles.
+  var tm=[]; for(var i=0;i<nMonths;i++){ tm.push(rows.reduce(function(a,r){return a+(r.m[i]||0);},0)); }
+  var tPrev=rows.reduce(function(a,r){return a+r.prevYtd;},0);
+  var tD=visReun-tPrev;
+  h+='</tbody><tfoot><tr style="border-top:2px solid var(--border2);font-weight:700;">';
+  h+='<td style="'+stickyTd+'padding:7px 8px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);">Total</td>';
+  h+='<td colspan="2"></td>';
+  tm.forEach(function(v){ h+='<td style="text-align:center;padding:7px 6px;'+mono+'font-size:11px;color:var(--a1);">'+(v||'—')+'</td>'; });
+  h+='<td style="text-align:center;padding:7px 8px;'+mono+'font-size:12px;color:var(--a1);background:var(--card2);">'+visReun+'</td>';
+  h+='<td style="text-align:center;padding:7px 8px;'+sepL+mono+'font-size:11px;color:var(--text3);">'+tPrev+'</td>';
+  h+='<td style="text-align:center;padding:7px 8px;'+mono+'font-size:11px;color:'+(tD>0?'#0E7A4E':(tD<0?'#B33A2E':'var(--text3)'))+';">'+(tD>0?'+':'')+(tD||'—')+'</td>';
+  h+='<td></td></tr></tfoot></table>';
+  el.innerHTML=h;
+}
+
+function exportFotoCSV(){
+  var rows=_fotoVisible(); var n=fotoYTD.month||0;
+  if(!rows.length){ return; }
+  // Separador ';' — es lo que espera Excel en configuración regional es-CL.
+  var head=['Cliente','Tipo','Prioridad'].concat(fotoYTD.monthNames.slice(0,n))
+    .concat(['Total '+fotoYTD.year,'YTD '+fotoYTD.prevYear,'Delta','Ultimo contacto','Dias']);
+  var lines=[head.join(';')];
+  rows.forEach(function(r){
+    var cells=['"'+r.name.replace(/"/g,'""')+'"', r.tipo==='Inst'?'I':'D', r.prio==='?'?'':r.prio];
+    for(var i=0;i<n;i++){ cells.push(r.m[i]||0); }
+    cells.push(r.ytd, r.prevYtd, r.ytd-r.prevYtd, r.last||'', r.dias==null?'':r.dias);
+    lines.push(cells.join(';'));
+  });
+  var blob=new Blob(['﻿'+lines.join('\r\n')],{type:'text/csv;charset=utf-8;'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='clientes_foto_'+fotoYTD.year+'_YTD_'+FOTO_MES_ABBR[n-1]+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+}
+
 function renderRiesgo2026(){
   var sL={activo:'Con reuni&oacute;n 2026',pendiente:'&Uacute;ltimo contacto 2025',inactivo:'Sin contacto reciente'};
   var sC={activo:'#0E7A4E',pendiente:'#895200',inactivo:'#B33A2E'};
@@ -2473,6 +2747,7 @@ function applyData(d) {
   window.activationData    = d.activationData    || {};
   window.areasData         = d.areasData         || [];
   window.__REUN_POR_ENTIDAD__ = d.reunPorEntidad || {};
+  window.fotoYTD           = d.fotoYTD || { year:0, prevYear:0, month:0, monthNames:[], rows:[] };
   // Estos quedan idénticos a los inline (no son data sensible — son aliases JS):
   window.data2024 = d.data['2024']; window.data2025 = d.data['2025']; window.data2026 = d.data['2026'];
 
@@ -2734,6 +3009,7 @@ function applyData(d) {
     if (typeof renderRiesgo2026 === 'function')    renderRiesgo2026();
     if (typeof renderMonthly === 'function')       renderMonthly();
     if (typeof renderSubtemas === 'function')      renderSubtemas();
+    if (typeof renderFoto === 'function')          renderFoto();
     if (typeof buildHeatmap === 'function')        buildHeatmap();
   } catch (e) { console.warn('re-render fallo', e); }
 }

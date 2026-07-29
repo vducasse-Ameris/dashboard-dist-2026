@@ -1184,6 +1184,59 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         })
     cross_gasto_reun.sort(key=lambda x: -x["gasto"])
 
+    # ── CLIENTES FOTO YTD ───────────────────────────────────────────────
+    # Reproduce la hoja "Clientes foto {cur_year}" tal cual la ve el Excel:
+    # una fila por contraparte con sus reuniones mes a mes, cortado en el mes
+    # en curso. Es la vista cruda que el área usa para revisar cobertura.
+    ytd_month = today_ts.month
+    df_prev_foto = year_dfs.get(cur_year - 1)
+    prev_ytd_by_cn: dict = {}
+    if df_prev_foto is not None and not df_prev_foto.empty:
+        for _, row in df_prev_foto.iterrows():
+            v = int(sum(
+                float(row.get(m, 0) or 0)
+                for m in MESES[:ytd_month] if m in df_prev_foto.columns
+            ))
+            prev_ytd_by_cn[row["_cn"]] = prev_ytd_by_cn.get(row["_cn"], 0) + v
+
+    foto_rows = []
+    for _, row in df_cur.iterrows():
+        cn = row["_cn"]
+        meses_vals = [
+            int(float(row.get(m, 0) or 0)) if m in df_cur.columns else 0
+            for m in MESES
+        ]
+        prio = prio_dict.get(cn)
+        prio = prio if prio in THRESH else "?"
+        last = last_contact.get(cn) if len(last_contact) else None
+        has_last = last is not None and not pd.isna(last)
+        foto_rows.append({
+            "name": str(row["Cliente"]).strip(),
+            "prio": prio,
+            "tipo": tipo_dict.get(cn) or "Dist",
+            "m": meses_vals[:ytd_month],          # Ene → mes en curso
+            "ytd": sum(meses_vals[:ytd_month]),
+            "anio": sum(meses_vals),              # año completo cargado en el foto
+            "prevYtd": prev_ytd_by_cn.get(cn, 0),
+            "last": str(last.date()) if has_last else None,
+            "dias": int((today_ts - last).days) if has_last else None,
+        })
+    # Orden por defecto: más reuniones YTD primero, luego prioridad y nombre.
+    foto_rows.sort(key=lambda r: (-r["ytd"], PRIO_ORD.get(r["prio"], 3), r["name"].lower()))
+
+    # El YTD del año anterior por fila sólo cubre contrapartes que siguen en el
+    # foto actual. `prevYtdTotal` es el total real del año anterior (incluye las
+    # que salieron del foto) — la diferencia se muestra como nota en la UI.
+    foto_ytd = {
+        "year": cur_year,
+        "prevYear": cur_year - 1,
+        "month": ytd_month,
+        "monthNames": MESES[:ytd_month],
+        "rows": foto_rows,
+        "prevYtdTotal": int(sum(prev_ytd_by_cn.values())),
+        "prevYtdMatched": int(sum(r["prevYtd"] for r in foto_rows)),
+    }
+
     # ── RESULT ──────────────────────────────────────────────────────────
     # data y clientsData keyed por año (string) — dinámico según años disponibles.
     data_out = {str(yr): monthly_by_year[yr] for yr in years_avail}
@@ -1227,6 +1280,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "crossSellRadar": cross_sell_radar,
         "crossGastoReun": cross_gasto_reun,
         "reunPorEntidad": reun_por_entidad,
+        "fotoYTD": foto_ytd,
         "recentLabels": recent_labels,
         "recentVals": recent_vals,
         "years": years_avail,
