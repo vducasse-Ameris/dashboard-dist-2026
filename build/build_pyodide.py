@@ -565,15 +565,12 @@ function applyData(d) {
   window.prioData          = d.prioData;
   window.clientsData       = d.clientsData;
   window.recontactData     = d.recontactData;
-  window.riskAll           = d.riskAll;
-  window.criticalList      = d.criticalList;
   window.monthlyDetailData = d.monthlyDetailData;
   window.subtemaMoData     = d.subtemaMoData;
   window.subteamAnnual     = d.subteamAnnual;
   window.subtemasColors    = d.subtemasColors;
   window.subtemasClientsM  = d.subtemasClientsM;
   window.subtemasClientsA  = d.subtemasClientsA;
-  window.riskData2026      = d.riskData2026;
   window.activationData    = d.activationData    || {};
   window.areasData         = d.areasData         || [];
   window.__REUN_POR_ENTIDAD__ = d.reunPorEntidad || {};
@@ -819,23 +816,6 @@ function applyData(d) {
     });
   } catch (e) { console.warn('recontact update fallo', e); }
 
-  // 5) Tab Riesgo — KPIs y títulos de columna (HP/MP/LP — N clientes)
-  try {
-    var r = d.kpi.riesgo_totals || {}, p = d.kpi.riesgo_by_prio || {};
-    var setText = function (sel, val) { var el = document.querySelector(sel); if (el) el.textContent = val; };
-    setText('[data-riesgo="activo-value"]',    r.activo);
-    setText('[data-riesgo="pendiente-value"]', r.pendiente);
-    setText('[data-riesgo="inactivo-value"]',  r.inactivo);
-    setText('[data-riesgo="total-value"]',     r.total);
-    setText('[data-riesgo="activo-sub"]',      'HP:' + (p.HP||{}).activo    + ' · MP:' + (p.MP||{}).activo    + ' · LP:' + (p.LP||{}).activo);
-    setText('[data-riesgo="pendiente-sub"]',   'HP:' + (p.HP||{}).pendiente + ' · MP:' + (p.MP||{}).pendiente + ' · LP:' + (p.LP||{}).pendiente);
-    setText('[data-riesgo="inactivo-sub"]',    'HP:' + (p.HP||{}).inactivo  + ' · MP:' + (p.MP||{}).inactivo  + ' · LP:' + (p.LP||{}).inactivo);
-    setText('[data-riesgo="total-sub"]',       'HP:' + (p.HP||{}).total     + ' · MP:' + (p.MP||{}).total     + ' · LP:' + (p.LP||{}).total);
-    setText('[data-riesgo-col="HP"]', 'HP — ' + (p.HP||{}).total + ' clientes');
-    setText('[data-riesgo-col="MP"]', 'MP — ' + (p.MP||{}).total + ' clientes');
-    setText('[data-riesgo-col="LP"]', 'LP — ' + (p.LP||{}).total + ' clientes');
-  } catch (e) { console.warn('riesgo update fallo', e); }
-
   // 6) Charts anónimos del Resumen — destroy + recreate
   try {
     if (typeof Chart !== 'undefined') {
@@ -864,7 +844,6 @@ function applyData(d) {
     renderCrossSell(d);
     renderCrossGastoReun(d);
     renderCrossSaldoReun();
-    if (typeof renderRiesgo2026 === 'function')    renderRiesgo2026();
     if (typeof renderMonthly === 'function')       renderMonthly();
     if (typeof renderSubtemas === 'function')      renderSubtemas();
     if (typeof renderFoto === 'function')          renderFoto();
@@ -2136,6 +2115,9 @@ def transform(html: str) -> str:
     # 8) Todos los años del Excel en el tab Reuniones (incluye 2023)
     html = add_2023_series(html)
 
+    # 9) Sacar la pestaña Riesgo (Clientes foto la reemplaza)
+    html = remove_riesgo_tab(html)
+
     return html
 
 
@@ -2489,6 +2471,35 @@ REEMPLAZOS_2023.append((
     "    leg.appendChild(item);\n  });\n})();",
     "    leg.appendChild(item);\n  });\n}\nrebuildLineLegend(YEARS);",
 ))
+
+
+def remove_riesgo_tab(html: str) -> str:
+    """Saca la pestaña Riesgo: botón, panel y las funciones que sólo ella usaba.
+
+    NO toca kpi.riesgo_by_prio ni el cálculo de riesgo del pipeline: alimentan
+    el gráfico reunYtdChart del Resumen.
+    """
+    tramos = [
+        # (desde, hasta_exclusivo, etiqueta)
+        ('  <button class="tab-btn" onclick="showTab(\'riesgo\',this)">',
+         "</button>\n</div>", "botón de la tab-bar"),
+        ("<!-- " + "═" * 47 + " TAB 5: RIESGO -->", "<footer>", "panel"),
+        ("function buildRiskRow(r, prio, thresh) {", "function fmtG(v){",
+         "buildRiskRow / buildRiskRowWithPrio / showRiskTab"),
+        ("function renderRiesgo2026(){", "function toggleSubtemaChart(e) {", "renderRiesgo2026"),
+    ]
+    for desde, hasta, etiqueta in tramos:
+        if desde not in html or hasta not in html:
+            print("  WARN: no encontré el tramo '%s' del tab Riesgo" % etiqueta)
+            continue
+        i = html.index(desde)
+        j = html.index(hasta, i)
+        html = html[:i] + html[j:]
+
+    # Globals que quedaban como placeholder vacío tras el strip de data inline
+    for var in ("riskAll", "riskData2026"):
+        html = html.replace("var %s = { HP:[], MP:[], LP:[] };\n" % var, "", 1)
+    return html
 
 
 def add_2023_series(html: str) -> str:

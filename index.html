@@ -325,7 +325,7 @@ footer {
   <button class="tab-btn" onclick="showTab('clientes',this)"><span class="tab-icon">◇</span>Clientes</button>
   <button class="tab-btn" onclick="showTab('foto',this)"><span class="tab-icon">▣</span>Clientes foto</button>
   <button class="tab-btn" onclick="showTab('metas-aum',this)"><span class="tab-icon">◆</span>Metas AUM</button>
-  <button class="tab-btn" onclick="showTab('riesgo',this)"><span class="tab-icon">▲</span>Riesgo</button>
+</button>
 </div>
 
 <!-- ═══════════════════════════════════════════════ TAB 1: RESUMEN -->
@@ -1214,28 +1214,6 @@ footer {
   </div>
 </div>
 
-<!-- ═══════════════════════════════════════════════ TAB 5: RIESGO -->
-<div class="panel" id="tab-riesgo">
-
-  <div class="section-label">Seguimiento de cartera 2026 &mdash; por prioridad</div>
-  <div style="font-size:11px;color:var(--text2);margin-bottom:1.25rem;">Todos los clientes ordenados por estado de contacto en 2026. <span style="background:#E0F4EC;color:#0E7A4E;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;">Con reuni&oacute;n 2026</span> <span style="background:#FEF3E2;color:#895200;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-left:4px;">&Uacute;ltimo 2025</span> <span style="background:#FAE9E7;color:#B33A2E;padding:1px 6px;border-radius:3px;font-size:10px;font-weight:600;margin-left:4px;">Sin contacto reciente</span></div>
-
-  <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
-    <div class="kpi" style="background:#E0F4EC;border-color:#a8d5bc;"><div class="kpi-label" style="color:#0E7A4E;">Con reuni&oacute;n 2026</div><div class="kpi-value" style="color:#0E7A4E;">85</div><div class="kpi-sub" style="color:#0E7A4E;">HP:47&nbsp;&middot;&nbsp;MP:26&nbsp;&middot;&nbsp;LP:12</div></div>
-    <div class="kpi" style="background:#FEF3E2;border-color:#e8d5a3;"><div class="kpi-label" style="color:#895200;">&Uacute;ltimo contacto 2025</div><div class="kpi-value warn">59</div><div class="kpi-sub warn">HP:14&nbsp;&middot;&nbsp;MP:14&nbsp;&middot;&nbsp;LP:31</div></div>
-    <div class="kpi" style="background:#FAE9E7;border-color:#e8b5af;"><div class="kpi-label" style="color:#8B2A1F;">Sin contacto reciente</div><div class="kpi-value neg">45</div><div class="kpi-sub neg">HP:10&nbsp;&middot;&nbsp;MP:4&nbsp;&middot;&nbsp;LP:31</div></div>
-    <div class="kpi"><div class="kpi-label">Total cartera</div><div class="kpi-value">189</div><div class="kpi-sub">HP:71&nbsp;&middot;&nbsp;MP:44&nbsp;&middot;&nbsp;LP:74</div></div>
-  </div>
-
-  <div class="three-col">
-    <div class="card"><div style="font-size:11px;font-weight:600;color:#B33A2E;text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;border-bottom:2px solid #B33A2E;margin-bottom:8px;display:flex;justify-content:space-between;"><span>HP &mdash; 71 clientes</span><span style="font-weight:400;font-size:10px;">umbral 75 d&iacute;as</span></div><div id="risk-2026-hp" style="max-height:520px;overflow-y:auto;"></div></div>
-    <div class="card"><div style="font-size:11px;font-weight:600;color:#895200;text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;border-bottom:2px solid #895200;margin-bottom:8px;display:flex;justify-content:space-between;"><span>MP &mdash; 44 clientes</span><span style="font-weight:400;font-size:10px;">umbral 120 d&iacute;as</span></div><div id="risk-2026-mp" style="max-height:520px;overflow-y:auto;"></div></div>
-    <div class="card"><div style="font-size:11px;font-weight:600;color:#2E6BAF;text-transform:uppercase;letter-spacing:.06em;padding-bottom:8px;border-bottom:2px solid #2E6BAF;margin-bottom:8px;display:flex;justify-content:space-between;"><span>LP &mdash; 74 clientes</span><span style="font-weight:400;font-size:10px;">umbral 210 d&iacute;as</span></div><div id="risk-2026-lp" style="max-height:520px;overflow-y:auto;"></div></div>
-  </div>
-
-  <div style="margin-top:1rem;font-size:10px;color:var(--text3);">Umbrales: HP 75d &middot; MP 120d &middot; LP 210d</div>
-
-</div>
 <footer>
   <span>Fuente: Consolidado_Follow-Ups_metas_dist.xlsx</span>
   <span id="footer-date" data-q-text="footer-date">Q1 2026 · 2024–2026 · Perú incluido</span>
@@ -1311,7 +1289,6 @@ var areasData = [];
 
 var criticalList = [];
 
-var riskAll = { HP:[], MP:[], LP:[] };
 
 var aumData = {
   '1T26': { deuda:7.925, inm:1.517, inter:5.764, notas:0.237, total:15.443 },
@@ -1737,67 +1714,6 @@ function _renderCriticalList(){
 } _renderCriticalList();
 
 // ── RIESGO ────────────────────────────────────────────────────────────────────
-function buildRiskRow(r, prio, thresh) {
-  var pC={HP:'#B33A2E',MP:'#895200',LP:'#2E6BAF'}, col=pC[prio];
-  var noHist=(r.dias===null||r.dias===undefined);
-  var over=noHist?null:r.dias-thresh;
-  var urgency=noHist?'#999':(r.dias>700?'#6B0F0F':over>180?'#B33A2E':over>90?'#C05A20':col);
-  var dLabel=noHist?'Sin historial':r.dias+'d', pct=noHist?0:Math.min(100,r.dias/700*100);
-  return '<div style="padding:6px 0;border-bottom:1px solid var(--border);">'
-    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;">'
-    +'<span style="font-size:11px;color:var(--text);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px;" title="'+r.name+'">'+r.name+'</span>'
-    +'<div style="text-align:right;flex-shrink:0;"><span style="font-family:monospace;font-size:10px;font-weight:600;color:'+urgency+';">'+dLabel+'</span>'
-    +'<div style="font-size:9px;color:var(--text3);">'+r.last+'</div></div></div>'
-    +'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden;">'
-    +'<div style="height:4px;width:'+pct+'%;background:'+urgency+';border-radius:2px;opacity:0.8;"></div></div></div>';
-}
-function buildRiskRowWithPrio(r, prio, thresh) {
-  var pC={HP:'#B33A2E',MP:'#895200',LP:'#2E6BAF'}, col=pC[prio];
-  var noHist=(r.dias===null||r.dias===undefined);
-  var over=noHist?null:r.dias-thresh;
-  var urgency=noHist?'#999':(r.dias>700?'#6B0F0F':over>180?'#B33A2E':over>90?'#C05A20':col);
-  var dLabel=noHist?'Sin historial':r.dias+'d', pct=noHist?0:Math.min(100,r.dias/700*100);
-  return '<div style="padding:6px 0;border-bottom:1px solid var(--border);">'
-    +'<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;">'
-    +'<div style="display:flex;align-items:center;gap:6px;flex:1;min-width:0;">'
-    +'<span style="font-size:9px;font-weight:600;padding:1px 5px;border-radius:3px;background:'+col+'18;color:'+col+';flex-shrink:0;">'+prio+'</span>'
-    +'<span style="font-size:11px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="'+r.name+'">'+r.name+'</span></div>'
-    +'<div style="text-align:right;flex-shrink:0;margin-left:6px;"><span style="font-family:monospace;font-size:10px;font-weight:600;color:'+urgency+';">'+dLabel+'</span>'
-    +'<div style="font-size:9px;color:var(--text3);">'+r.last+'</div></div></div>'
-    +'<div style="height:4px;background:var(--card2);border-radius:2px;overflow:hidden;">'
-    +'<div style="height:4px;width:'+pct+'%;background:'+urgency+';border-radius:2px;opacity:0.8;"></div></div></div>';
-}
-(function(){
-  var th={HP:75,MP:120,LP:210};
-  ['HP','MP','LP'].forEach(function(prio){
-    var el=document.getElementById('risk-seg-'+prio.toLowerCase()); if(!el) return;
-    el.innerHTML=riskAll[prio].map(function(r){return buildRiskRow(r,prio,th[prio]);}).join('');
-  });
-  var elAll=document.getElementById('risk-all-list');
-  if(elAll){
-    var combined=[];
-    ['HP','MP','LP'].forEach(function(p){riskAll[p].forEach(function(r){if(r.dias!==null)combined.push({r:r,prio:p});});});
-    combined.sort(function(a,b){return (b.r.dias||0)-(a.r.dias||0);});
-    elAll.innerHTML=combined.slice(0,25).map(function(item){return buildRiskRowWithPrio(item.r,item.prio,th[item.prio]);}).join('');
-  }
-})();
-
-function showRiskTab(tab, btn) {
-  document.querySelectorAll('[onclick*="showRiskTab"]').forEach(function(t){t.classList.remove('active');});
-  btn.classList.add('active');
-  ['risk-panel-seg','risk-panel-tipo'].forEach(function(id){var el=document.getElementById(id);if(el)el.style.display='none';});
-  var panel=document.getElementById('risk-panel-'+tab);
-  if(panel) panel.style.display='block';
-}
-// Show first risk tab by default
-(function(){
-  var btn=document.querySelector('[onclick*="showRiskTab"]');
-  if(btn) showRiskTab('seg',btn);
-})();
-
-// ── GASTOS x REUNIONES ─────────────────────────────────────────────────────
-var grData = [{"name": "Larraín Vial Banca Privada", "prio": "HP", "gasto": 814097, "reun": 52, "reun25": 18, "reun26": 4, "ratio": 15655, "y2023": 100879, "y2024": 192721, "y2025": 391797, "y2026": 128700, "flo": 609432, "juan": 204665}, {"name": "Itau Banca Privada", "prio": "HP", "gasto": 769305, "reun": 45, "reun25": 27, "reun26": 2, "ratio": 17095, "y2023": 0, "y2024": 15800, "y2025": 727535, "y2026": 25970, "flo": 488704, "juan": 280601}, {"name": "Sura Wealth Management", "prio": "HP", "gasto": 392460, "reun": 30, "reun25": 13, "reun26": 1, "ratio": 13082, "y2023": 171894, "y2024": 0, "y2025": 213666, "y2026": 6900, "flo": 392460, "juan": 0}, {"name": "BTG Pactual Wealth Management", "prio": "HP", "gasto": 292048, "reun": 59, "reun25": 12, "reun26": 6, "ratio": 4949, "y2023": 95320, "y2024": 63345, "y2025": 133383, "y2026": 0, "flo": 283448, "juan": 8600}, {"name": "Addwise", "prio": "HP", "gasto": 279249, "reun": 34, "reun25": 12, "reun26": 2, "ratio": 8213, "y2023": 113738, "y2024": 0, "y2025": 165511, "y2026": 0, "flo": 279249, "juan": 0}, {"name": "MBI Advisors", "prio": "HP", "gasto": 253861, "reun": 26, "reun25": 5, "reun26": 1, "ratio": 9763, "y2023": 172928, "y2024": 18804, "y2025": 62129, "y2026": 0, "flo": 234852, "juan": 19009}, {"name": "Afitrading", "prio": "MP", "gasto": 233352, "reun": 42, "reun25": 11, "reun26": 3, "ratio": 5556, "y2023": 99112, "y2024": 19133, "y2025": 111107, "y2026": 4000, "flo": 229352, "juan": 4000}, {"name": "THX", "prio": "HP", "gasto": 227150, "reun": 8, "reun25": 6, "reun26": 0, "ratio": 28393, "y2023": 0, "y2024": 0, "y2025": 227150, "y2026": 0, "flo": 227150, "juan": 0}, {"name": "Security Banca Privada", "prio": "HP", "gasto": 195026, "reun": 7, "reun25": 3, "reun26": 0, "ratio": 27860, "y2023": 0, "y2024": 162156, "y2025": 32870, "y2026": 0, "flo": 162156, "juan": 32870}, {"name": "AFC", "prio": "HP", "gasto": 192500, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 192500, "y2023": 0, "y2024": 0, "y2025": 192500, "y2026": 0, "flo": 192500, "juan": 0}, {"name": "Consorcio Seguros", "prio": "HP", "gasto": 191996, "reun": 4, "reun25": 3, "reun26": 1, "ratio": 47999, "y2023": 0, "y2024": 0, "y2025": 191996, "y2026": 0, "flo": 112920, "juan": 79076}, {"name": "Falcom AGF", "prio": "HP", "gasto": 183850, "reun": 6, "reun25": 3, "reun26": 2, "ratio": 30641, "y2023": 0, "y2024": 0, "y2025": 183850, "y2026": 0, "flo": 178250, "juan": 5600}, {"name": "Betterplan", "prio": "HP", "gasto": 180722, "reun": 16, "reun25": 6, "reun26": 4, "ratio": 11295, "y2023": 0, "y2024": 25201, "y2025": 125521, "y2026": 30000, "flo": 25630, "juan": 155092}, {"name": "Lakpa", "prio": "HP", "gasto": 161880, "reun": 31, "reun25": 6, "reun26": 3, "ratio": 5221, "y2023": 0, "y2024": 0, "y2025": 161880, "y2026": 0, "flo": 0, "juan": 161880}, {"name": "Grey Capital", "prio": "MP", "gasto": 157415, "reun": 35, "reun25": 11, "reun26": 1, "ratio": 4497, "y2023": 142555, "y2024": 5480, "y2025": 9380, "y2026": 0, "flo": 142555, "juan": 14860}, {"name": "Vector Global WMG", "prio": "HP", "gasto": 152325, "reun": 12, "reun25": 7, "reun26": 0, "ratio": 12693, "y2023": 0, "y2024": 0, "y2025": 152325, "y2026": 0, "flo": 8425, "juan": 143900}, {"name": "Ventum Group", "prio": "HP", "gasto": 147794, "reun": 18, "reun25": 8, "reun26": 3, "ratio": 8210, "y2023": 0, "y2024": 84769, "y2025": 63025, "y2026": 0, "flo": 0, "juan": 147794}, {"name": "Finital", "prio": "HP", "gasto": 130168, "reun": 18, "reun25": 7, "reun26": 2, "ratio": 7231, "y2023": 0, "y2024": 0, "y2025": 130168, "y2026": 0, "flo": 130168, "juan": 0}, {"name": "Patrimore", "prio": "HP", "gasto": 125843, "reun": 21, "reun25": 9, "reun26": 1, "ratio": 5992, "y2023": 0, "y2024": 11044, "y2025": 114799, "y2026": 0, "flo": 125843, "juan": 0}, {"name": "Sura AGF", "prio": "HP", "gasto": 108966, "reun": 5, "reun25": 4, "reun26": 1, "ratio": 21793, "y2023": 0, "y2024": 108966, "y2025": 0, "y2026": 0, "flo": 108966, "juan": 0}, {"name": "4 Life", "prio": "HP", "gasto": 107700, "reun": 6, "reun25": 3, "reun26": 2, "ratio": 17950, "y2023": 0, "y2024": 2700, "y2025": 105000, "y2026": 0, "flo": 107700, "juan": 0}, {"name": "Alcalá", "prio": "MP", "gasto": 107655, "reun": 11, "reun25": 4, "reun26": 2, "ratio": 9786, "y2023": 0, "y2024": 56975, "y2025": 6300, "y2026": 44380, "flo": 90195, "juan": 17460}, {"name": "Santander Private Banking", "prio": "HP", "gasto": 107551, "reun": 21, "reun25": 10, "reun26": 1, "ratio": 5121, "y2023": 0, "y2024": 8813, "y2025": 94342, "y2026": 4396, "flo": 107551, "juan": 0}, {"name": "Vision Advisors", "prio": "HP", "gasto": 88219, "reun": 10, "reun25": 5, "reun26": 2, "ratio": 8821, "y2023": 0, "y2024": 0, "y2025": 88219, "y2026": 0, "flo": 82279, "juan": 5940}, {"name": "Value Advice", "prio": "MP", "gasto": 84879, "reun": 13, "reun25": 3, "reun26": 1, "ratio": 6529, "y2023": 66012, "y2024": 8800, "y2025": 10067, "y2026": 0, "flo": 66012, "juan": 18867}, {"name": "Fourtrees", "prio": "MP", "gasto": 73150, "reun": 16, "reun25": 4, "reun26": 1, "ratio": 4571, "y2023": 0, "y2024": 0, "y2025": 73150, "y2026": 0, "flo": 73150, "juan": 0}, {"name": "Fintual", "prio": "MP", "gasto": 70044, "reun": 7, "reun25": 0, "reun26": 3, "ratio": 10006, "y2023": 0, "y2024": 39024, "y2025": 0, "y2026": 31020, "flo": 70044, "juan": 0}, {"name": "Pondera", "prio": "MP", "gasto": 56625, "reun": 14, "reun25": 5, "reun26": 0, "ratio": 4044, "y2023": 0, "y2024": 17820, "y2025": 38805, "y2026": 0, "flo": 36995, "juan": 19630}, {"name": "VanTrust Capital", "prio": "MP", "gasto": 45667, "reun": 2, "reun25": 0, "reun26": 0, "ratio": 22833, "y2023": 0, "y2024": 45667, "y2025": 0, "y2026": 0, "flo": 45667, "juan": 0}, {"name": "FYNSA Banca Privada", "prio": "MP", "gasto": 45300, "reun": 8, "reun25": 4, "reun26": 1, "ratio": 5662, "y2023": 0, "y2024": 0, "y2025": 40300, "y2026": 5000, "flo": 22400, "juan": 22900}, {"name": "Paragon", "prio": "LP", "gasto": 33400, "reun": 10, "reun25": 2, "reun26": 1, "ratio": 3340, "y2023": 0, "y2024": 0, "y2025": 21400, "y2026": 12000, "flo": 0, "juan": 33400}, {"name": "Simple Trust", "prio": "MP", "gasto": 32586, "reun": 14, "reun25": 7, "reun26": 2, "ratio": 2327, "y2023": 0, "y2024": 0, "y2025": 32586, "y2026": 0, "flo": 14686, "juan": 17900}, {"name": "Abaqus", "prio": "MP", "gasto": 32560, "reun": 8, "reun25": 2, "reun26": 2, "ratio": 4070, "y2023": 8580, "y2024": 0, "y2025": 0, "y2026": 23980, "flo": 32560, "juan": 0}, {"name": "MFO Advisors", "prio": "HP", "gasto": 31190, "reun": 12, "reun25": 4, "reun26": 1, "ratio": 2599, "y2023": 0, "y2024": 31190, "y2025": 0, "y2026": 0, "flo": 0, "juan": 31190}, {"name": "Andes investing", "prio": "MP", "gasto": 28740, "reun": 26, "reun25": 8, "reun26": 0, "ratio": 1105, "y2023": 14040, "y2024": 14700, "y2025": 0, "y2026": 0, "flo": 28740, "juan": 0}, {"name": "Vizcaya", "prio": "HP", "gasto": 26510, "reun": 16, "reun25": 2, "reun26": 2, "ratio": 1656, "y2023": 0, "y2024": 11490, "y2025": 15020, "y2026": 0, "flo": 11490, "juan": 15020}, {"name": "125 Global Invest", "prio": "MP", "gasto": 22935, "reun": 4, "reun25": 4, "reun26": 0, "ratio": 5733, "y2023": 0, "y2024": 0, "y2025": 22935, "y2026": 0, "flo": 22935, "juan": 0}, {"name": "Scotiabank Banca Privada", "prio": "HP", "gasto": 21810, "reun": 9, "reun25": 2, "reun26": 0, "ratio": 2423, "y2023": 21810, "y2024": 0, "y2025": 0, "y2026": 0, "flo": 21810, "juan": 0}, {"name": "Compass", "prio": "LP", "gasto": 21340, "reun": 10, "reun25": 1, "reun26": 2, "ratio": 2134, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 21340, "flo": 21340, "juan": 0}, {"name": "Vicapital", "prio": "HP", "gasto": 20896, "reun": 5, "reun25": 3, "reun26": 1, "ratio": 4179, "y2023": 0, "y2024": 0, "y2025": 20896, "y2026": 0, "flo": 14896, "juan": 6000}, {"name": "Global Advisors", "prio": "MP", "gasto": 19132, "reun": 4, "reun25": 2, "reun26": 0, "ratio": 4783, "y2023": 0, "y2024": 0, "y2025": 19132, "y2026": 0, "flo": 0, "juan": 19132}, {"name": "Credicorp Banca Privada", "prio": "HP", "gasto": 18205, "reun": 6, "reun25": 4, "reun26": 0, "ratio": 3034, "y2023": 0, "y2024": 0, "y2025": 18205, "y2026": 0, "flo": 11165, "juan": 7040}, {"name": "Laroche", "prio": "MP", "gasto": 18180, "reun": 2, "reun25": 1, "reun26": 1, "ratio": 9090, "y2023": 0, "y2024": 0, "y2025": 18180, "y2026": 0, "flo": 0, "juan": 18180}, {"name": "BR Capital", "prio": "LP", "gasto": 17600, "reun": 2, "reun25": 2, "reun26": 0, "ratio": 8800, "y2023": 0, "y2024": 0, "y2025": 17600, "y2026": 0, "flo": 17600, "juan": 0}, {"name": "Vector Capital", "prio": "MP", "gasto": 17380, "reun": 9, "reun25": 3, "reun26": 1, "ratio": 1931, "y2023": 0, "y2024": 17380, "y2025": 0, "y2026": 0, "flo": 17380, "juan": 0}, {"name": "GR Capital", "prio": "MP", "gasto": 14000, "reun": 14, "reun25": 6, "reun26": 2, "ratio": 1000, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 14000, "flo": 0, "juan": 14000}, {"name": "Adilac", "prio": "MP", "gasto": 11500, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 11500, "y2023": 0, "y2024": 0, "y2025": 11500, "y2026": 0, "flo": 11500, "juan": 0}, {"name": "Alejandrina Donoso", "prio": "LP", "gasto": 10890, "reun": 7, "reun25": 3, "reun26": 1, "ratio": 1555, "y2023": 0, "y2024": 10890, "y2025": 0, "y2026": 0, "flo": 10890, "juan": 0}, {"name": "Altovalsol", "prio": "MP", "gasto": 9690, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 9690, "y2023": 0, "y2024": 0, "y2025": 9690, "y2026": 0, "flo": 9690, "juan": 0}, {"name": "Partners advisers", "prio": "LP", "gasto": 8813, "reun": 7, "reun25": 0, "reun26": 1, "ratio": 1259, "y2023": 0, "y2024": 0, "y2025": 8813, "y2026": 0, "flo": 8813, "juan": 0}, {"name": "BD Investments", "prio": "MP", "gasto": 7190, "reun": 25, "reun25": 8, "reun26": 1, "ratio": 287, "y2023": 0, "y2024": 7190, "y2025": 0, "y2026": 0, "flo": 0, "juan": 7190}, {"name": "Andes Advisors", "prio": "MP", "gasto": 7000, "reun": 4, "reun25": 2, "reun26": 2, "ratio": 1750, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 7000, "flo": 0, "juan": 7000}, {"name": "Propela Partners", "prio": "LP", "gasto": 7000, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 7000, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 7000, "flo": 0, "juan": 7000}, {"name": "Quest", "prio": "HP", "gasto": 6832, "reun": 4, "reun25": 0, "reun26": 1, "ratio": 1708, "y2023": 0, "y2024": 0, "y2025": 0, "y2026": 6832, "flo": 6832, "juan": 0}, {"name": "Okomos", "prio": "LP", "gasto": 6153, "reun": 8, "reun25": 1, "reun26": 0, "ratio": 769, "y2023": 0, "y2024": 0, "y2025": 6153, "y2026": 0, "flo": 0, "juan": 6153}, {"name": "AFP Uno", "prio": "HP", "gasto": 5850, "reun": 2, "reun25": 0, "reun26": 0, "ratio": 2925, "y2023": 0, "y2024": 5850, "y2025": 0, "y2026": 0, "flo": 5850, "juan": 0}, {"name": "Ursa", "prio": "LP", "gasto": 4785, "reun": 1, "reun25": 1, "reun26": 0, "ratio": 4785, "y2023": 0, "y2024": 0, "y2025": 4785, "y2026": 0, "flo": 0, "juan": 4785}];
-
 function fmtG(v){
   if(v>=1000000) return (v/1000000).toFixed(2)+'M';
   if(v>=1000) return Math.round(v/1000)+'K';
@@ -1989,7 +1905,6 @@ var subteamAnnual = {};
 var subtemasColors = {};
 var subtemasClientsM = {};
 var subtemasClientsA = {};
-var riskData2026 = { HP:[], MP:[], LP:[] };
 
 window._MONTH = window._MONTH || {yr:'2026',mo:null,prio:'ALL',tipo:'ALL',search:''};
 window._SUB   = window._SUB   || {yr:'2026',mo:'ALL',activeSub:null};
@@ -2301,37 +2216,6 @@ function exportFotoCSV(){
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
 }
-
-function renderRiesgo2026(){
-  var sL={activo:'Con reuni&oacute;n 2026',pendiente:'&Uacute;ltimo contacto 2025',inactivo:'Sin contacto reciente'};
-  var sC={activo:'#0E7A4E',pendiente:'#895200',inactivo:'#B33A2E'};
-  ['HP','MP','LP'].forEach(function(prio){
-    var el=document.getElementById('risk-2026-'+prio.toLowerCase()); if(!el) return;
-    var rows=riskData2026[prio]||[],h='',last=null;
-    rows.forEach(function(r){
-      if(r.status!==last){last=r.status;h+='<div style="font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:'+sC[r.status]+';padding:8px 0 4px;border-top:1px solid var(--border2);margin-top:4px;">'+sL[r.status]+'</div>';}
-      var urg=r.status==='activo'?'#0E7A4E':r.status==='pendiente'?'#895200':'#B33A2E';
-      var dl=r.dias===null?'Sin hist.':r.dias+'d';
-      h+='<div style="display:flex;align-items:flex-start;gap:6px;padding:5px 0;border-bottom:1px solid var(--border);">';
-      h+='<div style="flex:1;min-width:0;"><div style="font-size:11px;color:var(--text);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.name+'</div><div style="font-size:9px;color:var(--text3);">'+r.last+'</div></div>';
-      if(r.reun26>0) h+='<span style="font-size:9px;padding:1px 5px;border-radius:3px;background:#E0F4EC;color:#0E7A4E;font-weight:600;flex-shrink:0;">'+r.reun26+'&#x2713;</span>';
-      h+='<span style="font-family:monospace;font-size:10px;font-weight:600;color:'+urg+';min-width:40px;text-align:right;flex-shrink:0;">'+dl+'</span></div>';
-    });
-    el.innerHTML=h||'<div style="padding:10px;color:var(--text3);font-size:11px;">Sin datos</div>';
-  });
-}
-
-setTimeout(function(){
-  var yr26=document.querySelector('[data-yr="2026"]');
-  if(yr26) setMonthYear('2026',yr26); else renderMonthly();
-  renderSubtemas();
-  renderRiesgo2026();
-},60);
-
-
-
-
-
 
 function toggleSubtemaChart(e) {
   if (e) e.stopPropagation();
@@ -2806,15 +2690,12 @@ function applyData(d) {
   window.prioData          = d.prioData;
   window.clientsData       = d.clientsData;
   window.recontactData     = d.recontactData;
-  window.riskAll           = d.riskAll;
-  window.criticalList      = d.criticalList;
   window.monthlyDetailData = d.monthlyDetailData;
   window.subtemaMoData     = d.subtemaMoData;
   window.subteamAnnual     = d.subteamAnnual;
   window.subtemasColors    = d.subtemasColors;
   window.subtemasClientsM  = d.subtemasClientsM;
   window.subtemasClientsA  = d.subtemasClientsA;
-  window.riskData2026      = d.riskData2026;
   window.activationData    = d.activationData    || {};
   window.areasData         = d.areasData         || [];
   window.__REUN_POR_ENTIDAD__ = d.reunPorEntidad || {};
@@ -3060,23 +2941,6 @@ function applyData(d) {
     });
   } catch (e) { console.warn('recontact update fallo', e); }
 
-  // 5) Tab Riesgo — KPIs y títulos de columna (HP/MP/LP — N clientes)
-  try {
-    var r = d.kpi.riesgo_totals || {}, p = d.kpi.riesgo_by_prio || {};
-    var setText = function (sel, val) { var el = document.querySelector(sel); if (el) el.textContent = val; };
-    setText('[data-riesgo="activo-value"]',    r.activo);
-    setText('[data-riesgo="pendiente-value"]', r.pendiente);
-    setText('[data-riesgo="inactivo-value"]',  r.inactivo);
-    setText('[data-riesgo="total-value"]',     r.total);
-    setText('[data-riesgo="activo-sub"]',      'HP:' + (p.HP||{}).activo    + ' · MP:' + (p.MP||{}).activo    + ' · LP:' + (p.LP||{}).activo);
-    setText('[data-riesgo="pendiente-sub"]',   'HP:' + (p.HP||{}).pendiente + ' · MP:' + (p.MP||{}).pendiente + ' · LP:' + (p.LP||{}).pendiente);
-    setText('[data-riesgo="inactivo-sub"]',    'HP:' + (p.HP||{}).inactivo  + ' · MP:' + (p.MP||{}).inactivo  + ' · LP:' + (p.LP||{}).inactivo);
-    setText('[data-riesgo="total-sub"]',       'HP:' + (p.HP||{}).total     + ' · MP:' + (p.MP||{}).total     + ' · LP:' + (p.LP||{}).total);
-    setText('[data-riesgo-col="HP"]', 'HP — ' + (p.HP||{}).total + ' clientes');
-    setText('[data-riesgo-col="MP"]', 'MP — ' + (p.MP||{}).total + ' clientes');
-    setText('[data-riesgo-col="LP"]', 'LP — ' + (p.LP||{}).total + ' clientes');
-  } catch (e) { console.warn('riesgo update fallo', e); }
-
   // 6) Charts anónimos del Resumen — destroy + recreate
   try {
     if (typeof Chart !== 'undefined') {
@@ -3105,7 +2969,6 @@ function applyData(d) {
     renderCrossSell(d);
     renderCrossGastoReun(d);
     renderCrossSaldoReun();
-    if (typeof renderRiesgo2026 === 'function')    renderRiesgo2026();
     if (typeof renderMonthly === 'function')       renderMonthly();
     if (typeof renderSubtemas === 'function')      renderSubtemas();
     if (typeof renderFoto === 'function')          renderFoto();
