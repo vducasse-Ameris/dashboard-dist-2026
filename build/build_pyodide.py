@@ -578,6 +578,8 @@ function applyData(d) {
   window.areasData         = d.areasData         || [];
   window.__REUN_POR_ENTIDAD__ = d.reunPorEntidad || {};
   window.fotoYTD           = d.fotoYTD || { year:0, prevYear:0, month:0, monthNames:[], rows:[] };
+  window.__YEARS__         = d.years || YEARS;
+  window.__MES_CORTE__     = (d.meta && d.meta.mes_corte) || null;
   // Estos quedan idénticos a los inline (no son data sensible — son aliases JS):
   window.data2024 = d.data['2024']; window.data2025 = d.data['2025']; window.data2026 = d.data['2026'];
 
@@ -585,16 +587,22 @@ function applyData(d) {
   // (en 2027 esto pasará a mostrar 2025/2026/2027 automáticamente).
   try {
     if (typeof lineChart !== 'undefined' && lineChart && lineChart.data && d.years) {
-      var yrs3 = d.years.slice(-3);
-      for (var i = 0; i < 3; i++) {
-        var yr = yrs3[i];
-        if (yr == null) continue;
-        var ds = lineChart.data.datasets[i];
-        if (!ds) continue;
-        ds.label = String(yr);
-        ds.data = d.data[String(yr)] || [];
-      }
+      // Todos los años que traiga el Excel, no sólo los 3 últimos: así el 2023
+      // (y cualquier hoja "Clientes foto" anterior) entra al gráfico.
+      var yrs = d.years.slice(-LINE_COLORS.length);
+      var cols = lineColors(yrs.length), fills = lineFills(yrs.length);
+      lineChart.data.datasets = yrs.map(function(yr, i) {
+        var ytd = (i === yrs.length - 1);
+        return { label:String(yr), data:d.data[String(yr)] || [],
+          borderColor:cols[i], backgroundColor:fills[i],
+          borderWidth:ytd?2:2.5, borderDash:ytd?[5,3]:[], tension:0.35, fill:false,
+          pointRadius:4, pointHoverRadius:6, pointBackgroundColor:cols[i],
+          pointBorderColor:'#fff', pointBorderWidth:1.5 };
+      });
       lineChart.update();
+      if (typeof rebuildLineLegend === 'function') rebuildLineLegend(yrs);
+      var lt = document.querySelector('[data-q-text="linechart-title"]');
+      if (lt) lt.textContent = 'Reuniones por mes · ' + yrs[0] + ' – ' + yrs[yrs.length - 1];
     }
   } catch (e) { console.warn('lineChart update fallo', e); }
 
@@ -762,13 +770,12 @@ function applyData(d) {
     var qSecEl = document.getElementById('q-section-label');
     if (qSecEl) qSecEl.textContent = 'Desglose por instrumento · ' + cq.label;
 
-    // setYoy buttons: rebuild dinámico con los últimos 3 años → 2 pares
+    // setYoy buttons: un par por cada dos años consecutivos disponibles
+    // (con 2023–2026 salen 3: 23vs24, 24vs25, 25vs26).
     var yoyContainer = document.querySelector('[data-q-buttons="yoy-pairs"]');
     if (yoyContainer && yrsAsc.length >= 2) {
-      var last3 = yrsAsc.slice(-3);
       var pairs = [];
-      if (last3.length >= 3) pairs.push([last3[0], last3[1]]);
-      pairs.push([last3[last3.length - 2], last3[last3.length - 1]]);
+      for (var pi = 0; pi < yrsAsc.length - 1; pi++) pairs.push([yrsAsc[pi], yrsAsc[pi + 1]]);
       yoyContainer.innerHTML = pairs.map(function(p, i) {
         var active = (i === pairs.length - 1) ? ' active' : '';
         var key = p[0] + '-' + p[1];
@@ -2126,6 +2133,9 @@ def transform(html: str) -> str:
     # 7) Selector de trimestre del tab AUM que rola con la fecha
     html = add_aum_q_rolling(html)
 
+    # 8) Todos los años del Excel en el tab Reuniones (incluye 2023)
+    html = add_2023_series(html)
+
     return html
 
 
@@ -2467,6 +2477,28 @@ def add_aum_q_rolling(html: str) -> str:
             html = html.replace(old, new, 1)
         else:
             print("  WARN: no encontré el bloque AUM %d para el roll de trimestre" % i)
+    return html
+
+
+REEMPLAZOS_2023 = [("var LINE_COLORS = ['#E84C3D','#F59E0B','#1B4B9B'];\nvar LINE_FILLS  = ['rgba(232,76,61,0.08)','rgba(245,158,11,0.08)','rgba(27,75,155,0.08)'];\nvar YEARS       = [2024,2025,2026];\n", "// Series por año, del más antiguo al más reciente: el año en curso se queda\n// siempre con el azul de marca. El teal se agregó para el 4º año (2023) —\n// validado con el script de paletas: pasa croma, separación CVD y visión\n// normal contra los otros tres.\nvar LINE_COLORS = ['#2E9E8F','#E84C3D','#F59E0B','#1B4B9B'];\nvar LINE_FILLS  = ['rgba(46,158,143,0.08)','rgba(232,76,61,0.08)','rgba(245,158,11,0.08)','rgba(27,75,155,0.08)'];\nvar YEARS       = [2023,2024,2025,2026];\n\n// Toma los N colores finales para que el año más reciente conserve el azul.\nfunction lineColors(n) { return LINE_COLORS.slice(Math.max(0, LINE_COLORS.length - n)); }\nfunction lineFills(n)  { return LINE_FILLS.slice(Math.max(0, LINE_FILLS.length - n)); }\n"), ("  data: { labels: months, datasets: YEARS.map(function(y,i) {\n    return { label:String(y), data:data[y], borderColor:LINE_COLORS[i],\n      backgroundColor:LINE_FILLS[i], borderWidth:y===2026?2:2.5,\n      borderDash:y===2026?[5,3]:[], tension:0.35, fill:false,\n      pointRadius:4, pointHoverRadius:6, pointBackgroundColor:LINE_COLORS[i],\n      pointBorderColor:'#fff', pointBorderWidth:1.5 };\n  })},", "  data: { labels: months, datasets: YEARS.map(function(y,i) {\n    var _c = lineColors(YEARS.length), _f = lineFills(YEARS.length);\n    var _ytd = (y === YEARS[YEARS.length - 1]);   // el año en curso va punteado\n    return { label:String(y), data:data[y], borderColor:_c[i],\n      backgroundColor:_f[i], borderWidth:_ytd?2:2.5,\n      borderDash:_ytd?[5,3]:[], tension:0.35, fill:false,\n      pointRadius:4, pointHoverRadius:6, pointBackgroundColor:_c[i],\n      pointBorderColor:'#fff', pointBorderWidth:1.5 };\n  })},"), ('(function() {\n  var leg = document.getElementById(\'line-legend\');\n  if (!leg) return;\n  YEARS.forEach(function(y,i) {\n    var item = document.createElement(\'span\');\n    item.className = \'legend-item\'; item.style.cursor = \'pointer\';\n    item.style.userSelect = \'none\'; item.style.opacity = \'1\'; item.dataset.index = i;\n    item.innerHTML = \'<span class="legend-dot" style="background:\' + LINE_COLORS[i] + (y===2026?\';border-top:2px dashed \'+LINE_COLORS[i]+\';background:transparent;\':\'\') + \'"></span>\' + y + (y===2026?\' (YTD)\':\'\');', '// Leyenda del line chart. Se reconstruye al cargar el Excel porque la cantidad\n// de años depende de las hojas "Clientes foto YYYY" que traiga el archivo.\nfunction rebuildLineLegend(years) {\n  var leg = document.getElementById(\'line-legend\');\n  if (!leg) return;\n  var ys = years && years.length ? years : YEARS;\n  var cols = lineColors(ys.length);\n  leg.innerHTML = \'\';\n  ys.forEach(function(y, i) {\n    var ytd = (i === ys.length - 1);\n    var item = document.createElement(\'span\');\n    item.className = \'legend-item\'; item.style.cursor = \'pointer\';\n    item.style.userSelect = \'none\'; item.style.opacity = \'1\'; item.dataset.index = i;\n    item.innerHTML = \'<span class="legend-dot" style="background:\' + cols[i]\n      + (ytd ? \';border-top:2px dashed \' + cols[i] + \';background:transparent;\' : \'\')\n      + \'"></span>\' + y + (ytd ? \' (YTD)\' : \'\');'), ('<div class="card-title">Reuniones por mes · 2024 – 2026</div>', '<div class="card-title" data-q-text="linechart-title">Reuniones por mes · 2023 – 2026</div>'), ('  window.HEATMAP_YEARS = yrs.slice(0, 3).reverse();', '  // Todos los años del Excel (yrs viene del más reciente al más antiguo)\n  window.HEATMAP_YEARS = yrs.slice().reverse();'), ('(window.HEATMAP_YEARS||[2024,2025,2026])', '(window.HEATMAP_YEARS||YEARS)'), ("  var c1 = pair==='2425'?'#E84C3D':'#F59E0B', c2 = pair==='2425'?'#F59E0B':'#1B4B9B';\n  var d1=data[years[0]], d2=data[years[1]];\n  var max=Math.max.apply(null,d1.concat(d2.filter(function(v){return v>0;})));\n  var n=pair==='2526'?4:12, html='';", "  // Cada año conserva el color que tiene en el line chart, en vez de colores\n  // atados a las claves viejas ('2425'/'2526').\n  var ys = window.__YEARS__ || YEARS;\n  var cols = lineColors(ys.length);\n  var i1 = ys.indexOf(years[0]), i2 = ys.indexOf(years[1]);\n  var c1 = cols[i1 >= 0 ? i1 : 0], c2 = cols[i2 >= 0 ? i2 : cols.length - 1];\n  var d1=data[years[0]]||[], d2=data[years[1]]||[];\n  // Si el par incluye el año en curso, cortar en el mes de corte para no\n  // mostrar meses todavía sin cargar (antes eran 4 meses fijos).\n  var cyNow = window.__CURRENT_Q__ && window.__CURRENT_Q__.year;\n  var n = (years[1] === cyNow && window.__MES_CORTE__) ? window.__MES_CORTE__ : 12;\n  var vis = d1.slice(0,n).concat(d2.slice(0,n));\n  var max = Math.max.apply(null, vis.concat([1]));\n  var html='';"), ("    var diff=d2[i]-d1[i],sign=diff>0?'+':'',cls=diff>0?'pos':diff<0?'neg':'';", "    var v1=d1[i]||0, v2=d2[i]||0;\n    var diff=v2-v1,sign=diff>0?'+':'',cls=diff>0?'pos':diff<0?'neg':'';"), ('      +\'<div class="yoy-bars"><div class="yoy-bar" style="width:\'+Math.max(2,d1[i]/max*100)+\'%;background:\'+c1+\';opacity:.55"></div>\'\n      +\'<div class="yoy-bar" style="width:\'+Math.max(2,d2[i]/max*100)+\'%;background:\'+c2+\'"></div></div>\'\n      +\'<span class="nums">\'+d1[i]+\'</span><span class="nums">\'+d2[i]+\'</span>\'', '      +\'<div class="yoy-bars"><div class="yoy-bar" style="width:\'+Math.max(2,v1/max*100)+\'%;background:\'+c1+\';opacity:.55"></div>\'\n      +\'<div class="yoy-bar" style="width:\'+Math.max(2,v2/max*100)+\'%;background:\'+c2+\'"></div></div>\'\n      +\'<span class="nums">\'+v1+\'</span><span class="nums">\'+v2+\'</span>\'')]
+
+
+# Cierre del bloque: el IIFE viejo terminaba en "})();" y la función nombrada
+# termina en "}" + la llamada inicial.
+REEMPLAZOS_2023.append((
+    "    leg.appendChild(item);\n  });\n})();",
+    "    leg.appendChild(item);\n  });\n}\nrebuildLineLegend(YEARS);",
+))
+
+
+def add_2023_series(html: str) -> str:
+    """Incluye todos los años del Excel (no sólo 3) en el tab Reuniones:
+    line chart, leyenda, heatmap y pares YoY."""
+    for i, (old, new) in enumerate(REEMPLAZOS_2023, 1):
+        if old in html:
+            html = html.replace(old, new)
+        else:
+            print("  WARN: no encontré el bloque %d de la serie 2023" % i)
     return html
 
 

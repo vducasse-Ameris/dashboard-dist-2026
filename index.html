@@ -549,7 +549,7 @@ footer {
 
   <div class="section-label">Evolución mensual — click en la leyenda para mostrar/ocultar años</div>
   <div class="card" style="margin-bottom:1.25rem;">
-    <div class="card-title">Reuniones por mes · 2024 – 2026</div>
+    <div class="card-title" data-q-text="linechart-title">Reuniones por mes · 2023 – 2026</div>
     <div class="card-sub">2023 excluido por baja representatividad de datos · Click en la leyenda para filtrar años</div>
     <div class="chart-wrap" style="height:240px;"><canvas id="lineChart"></canvas></div>
     <div id="line-legend" class="legend" style="margin-top:10px;"></div>
@@ -1327,9 +1327,17 @@ var qMetas = {
 };
 
 // ── CHART HELPERS ─────────────────────────────────────────────────────────────
-var LINE_COLORS = ['#E84C3D','#F59E0B','#1B4B9B'];
-var LINE_FILLS  = ['rgba(232,76,61,0.08)','rgba(245,158,11,0.08)','rgba(27,75,155,0.08)'];
-var YEARS       = [2024,2025,2026];
+// Series por año, del más antiguo al más reciente: el año en curso se queda
+// siempre con el azul de marca. El teal se agregó para el 4º año (2023) —
+// validado con el script de paletas: pasa croma, separación CVD y visión
+// normal contra los otros tres.
+var LINE_COLORS = ['#2E9E8F','#E84C3D','#F59E0B','#1B4B9B'];
+var LINE_FILLS  = ['rgba(46,158,143,0.08)','rgba(232,76,61,0.08)','rgba(245,158,11,0.08)','rgba(27,75,155,0.08)'];
+var YEARS       = [2023,2024,2025,2026];
+
+// Toma los N colores finales para que el año más reciente conserve el azul.
+function lineColors(n) { return LINE_COLORS.slice(Math.max(0, LINE_COLORS.length - n)); }
+function lineFills(n)  { return LINE_FILLS.slice(Math.max(0, LINE_FILLS.length - n)); }
 var GRID_C      = 'rgba(27,75,155,0.06)';
 var TICK_C      = '#7D93B5';
 var TICK_FONT   = { size:10, family:'IBM Plex Mono' };
@@ -1344,10 +1352,12 @@ function yScale(max) {
 var lineChart = new Chart(document.getElementById('lineChart'), {
   type: 'line',
   data: { labels: months, datasets: YEARS.map(function(y,i) {
-    return { label:String(y), data:data[y], borderColor:LINE_COLORS[i],
-      backgroundColor:LINE_FILLS[i], borderWidth:y===2026?2:2.5,
-      borderDash:y===2026?[5,3]:[], tension:0.35, fill:false,
-      pointRadius:4, pointHoverRadius:6, pointBackgroundColor:LINE_COLORS[i],
+    var _c = lineColors(YEARS.length), _f = lineFills(YEARS.length);
+    var _ytd = (y === YEARS[YEARS.length - 1]);   // el año en curso va punteado
+    return { label:String(y), data:data[y], borderColor:_c[i],
+      backgroundColor:_f[i], borderWidth:_ytd?2:2.5,
+      borderDash:_ytd?[5,3]:[], tension:0.35, fill:false,
+      pointRadius:4, pointHoverRadius:6, pointBackgroundColor:_c[i],
       pointBorderColor:'#fff', pointBorderWidth:1.5 };
   })},
   options: { responsive:true, maintainAspectRatio:false, animation:{duration:300},
@@ -1355,14 +1365,22 @@ var lineChart = new Chart(document.getElementById('lineChart'), {
     plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false}},
     scales:{x:xScale(),y:yScale()} }
 });
-(function() {
+// Leyenda del line chart. Se reconstruye al cargar el Excel porque la cantidad
+// de años depende de las hojas "Clientes foto YYYY" que traiga el archivo.
+function rebuildLineLegend(years) {
   var leg = document.getElementById('line-legend');
   if (!leg) return;
-  YEARS.forEach(function(y,i) {
+  var ys = years && years.length ? years : YEARS;
+  var cols = lineColors(ys.length);
+  leg.innerHTML = '';
+  ys.forEach(function(y, i) {
+    var ytd = (i === ys.length - 1);
     var item = document.createElement('span');
     item.className = 'legend-item'; item.style.cursor = 'pointer';
     item.style.userSelect = 'none'; item.style.opacity = '1'; item.dataset.index = i;
-    item.innerHTML = '<span class="legend-dot" style="background:' + LINE_COLORS[i] + (y===2026?';border-top:2px dashed '+LINE_COLORS[i]+';background:transparent;':'') + '"></span>' + y + (y===2026?' (YTD)':'');
+    item.innerHTML = '<span class="legend-dot" style="background:' + cols[i]
+      + (ytd ? ';border-top:2px dashed ' + cols[i] + ';background:transparent;' : '')
+      + '"></span>' + y + (ytd ? ' (YTD)' : '');
     item.addEventListener('click', function() {
       var idx = parseInt(this.dataset.index);
       var meta = lineChart.getDatasetMeta(idx);
@@ -1370,23 +1388,35 @@ var lineChart = new Chart(document.getElementById('lineChart'), {
     });
     leg.appendChild(item);
   });
-})();
+}
+rebuildLineLegend(YEARS);
 
 // ── YOY ───────────────────────────────────────────────────────────────────────
 function setYoy(pair, btn) {
   document.querySelectorAll('[onclick*="setYoy"]').forEach(function(t){t.classList.remove('active');});
   btn.classList.add('active');
   var years; if (pair.indexOf('-')>=0) { var p=pair.split('-'); years=[parseInt(p[0],10),parseInt(p[1],10)]; } else { years = pair==='2425'?[2024,2025]:[2025,2026]; }
-  var c1 = pair==='2425'?'#E84C3D':'#F59E0B', c2 = pair==='2425'?'#F59E0B':'#1B4B9B';
-  var d1=data[years[0]], d2=data[years[1]];
-  var max=Math.max.apply(null,d1.concat(d2.filter(function(v){return v>0;})));
-  var n=pair==='2526'?4:12, html='';
+  // Cada año conserva el color que tiene en el line chart, en vez de colores
+  // atados a las claves viejas ('2425'/'2526').
+  var ys = window.__YEARS__ || YEARS;
+  var cols = lineColors(ys.length);
+  var i1 = ys.indexOf(years[0]), i2 = ys.indexOf(years[1]);
+  var c1 = cols[i1 >= 0 ? i1 : 0], c2 = cols[i2 >= 0 ? i2 : cols.length - 1];
+  var d1=data[years[0]]||[], d2=data[years[1]]||[];
+  // Si el par incluye el año en curso, cortar en el mes de corte para no
+  // mostrar meses todavía sin cargar (antes eran 4 meses fijos).
+  var cyNow = window.__CURRENT_Q__ && window.__CURRENT_Q__.year;
+  var n = (years[1] === cyNow && window.__MES_CORTE__) ? window.__MES_CORTE__ : 12;
+  var vis = d1.slice(0,n).concat(d2.slice(0,n));
+  var max = Math.max.apply(null, vis.concat([1]));
+  var html='';
   for (var i=0;i<n;i++) {
-    var diff=d2[i]-d1[i],sign=diff>0?'+':'',cls=diff>0?'pos':diff<0?'neg':'';
+    var v1=d1[i]||0, v2=d2[i]||0;
+    var diff=v2-v1,sign=diff>0?'+':'',cls=diff>0?'pos':diff<0?'neg':'';
     html+='<div class="yoy-row"><span class="month-label">'+fullMonths[i].substring(0,3)+'</span>'
-      +'<div class="yoy-bars"><div class="yoy-bar" style="width:'+Math.max(2,d1[i]/max*100)+'%;background:'+c1+';opacity:.55"></div>'
-      +'<div class="yoy-bar" style="width:'+Math.max(2,d2[i]/max*100)+'%;background:'+c2+'"></div></div>'
-      +'<span class="nums">'+d1[i]+'</span><span class="nums">'+d2[i]+'</span>'
+      +'<div class="yoy-bars"><div class="yoy-bar" style="width:'+Math.max(2,v1/max*100)+'%;background:'+c1+';opacity:.55"></div>'
+      +'<div class="yoy-bar" style="width:'+Math.max(2,v2/max*100)+'%;background:'+c2+'"></div></div>'
+      +'<span class="nums">'+v1+'</span><span class="nums">'+v2+'</span>'
       +'<span class="delta '+cls+'">'+sign+diff+'</span></div>';
   }
   document.getElementById('yoy-container').innerHTML = html;
@@ -1421,13 +1451,13 @@ setYoy('2425', document.querySelector('[onclick*="setYoy"]'));
 function buildHeatmap() {
   var el=document.getElementById('heatmap'); if(!el) return;
   var allVals=[];
-  (window.HEATMAP_YEARS||[2024,2025,2026]).forEach(function(y){(data[y]||[]).forEach(function(v){if(v>0)allVals.push(v);});});
+  (window.HEATMAP_YEARS||YEARS).forEach(function(y){(data[y]||[]).forEach(function(v){if(v>0)allVals.push(v);});});
   var max=Math.max.apply(null,allVals);
   function getColor(v){if(v===0)return '#F5F7FA';var t=Math.sqrt(v/max);if(t>0.85)return '#B33A2E';if(t>0.70)return '#D4890A';if(t>0.55)return '#0D2D6B';if(t>0.40)return '#1B4B9B';if(t>0.25)return '#3A7BC8';if(t>0.12)return '#7FB3E8';return '#C8DDF4';}
   function txtCol(v){return Math.sqrt(v/max)>0.40?'#fff':'#1B4B9B';}
   var html='<div class="heatmap-grid"><div class="hm-label"></div>';
   months.forEach(function(m){html+='<div class="hm-month">'+m+'</div>';});
-  (window.HEATMAP_YEARS||[2024,2025,2026]).forEach(function(y){
+  (window.HEATMAP_YEARS||YEARS).forEach(function(y){
     html+='<div class="hm-label">'+y+'</div>';
     (data[y]||[]).forEach(function(v){html+='<div class="hm-cell" style="background:'+getColor(v)+';color:'+(v>0?txtCol(v):'#B8C8DC')+'" title="'+v+' reuniones">'+(v>0?v:'')+'</div>';});
   });
@@ -2789,6 +2819,8 @@ function applyData(d) {
   window.areasData         = d.areasData         || [];
   window.__REUN_POR_ENTIDAD__ = d.reunPorEntidad || {};
   window.fotoYTD           = d.fotoYTD || { year:0, prevYear:0, month:0, monthNames:[], rows:[] };
+  window.__YEARS__         = d.years || YEARS;
+  window.__MES_CORTE__     = (d.meta && d.meta.mes_corte) || null;
   // Estos quedan idénticos a los inline (no son data sensible — son aliases JS):
   window.data2024 = d.data['2024']; window.data2025 = d.data['2025']; window.data2026 = d.data['2026'];
 
@@ -2796,16 +2828,22 @@ function applyData(d) {
   // (en 2027 esto pasará a mostrar 2025/2026/2027 automáticamente).
   try {
     if (typeof lineChart !== 'undefined' && lineChart && lineChart.data && d.years) {
-      var yrs3 = d.years.slice(-3);
-      for (var i = 0; i < 3; i++) {
-        var yr = yrs3[i];
-        if (yr == null) continue;
-        var ds = lineChart.data.datasets[i];
-        if (!ds) continue;
-        ds.label = String(yr);
-        ds.data = d.data[String(yr)] || [];
-      }
+      // Todos los años que traiga el Excel, no sólo los 3 últimos: así el 2023
+      // (y cualquier hoja "Clientes foto" anterior) entra al gráfico.
+      var yrs = d.years.slice(-LINE_COLORS.length);
+      var cols = lineColors(yrs.length), fills = lineFills(yrs.length);
+      lineChart.data.datasets = yrs.map(function(yr, i) {
+        var ytd = (i === yrs.length - 1);
+        return { label:String(yr), data:d.data[String(yr)] || [],
+          borderColor:cols[i], backgroundColor:fills[i],
+          borderWidth:ytd?2:2.5, borderDash:ytd?[5,3]:[], tension:0.35, fill:false,
+          pointRadius:4, pointHoverRadius:6, pointBackgroundColor:cols[i],
+          pointBorderColor:'#fff', pointBorderWidth:1.5 };
+      });
       lineChart.update();
+      if (typeof rebuildLineLegend === 'function') rebuildLineLegend(yrs);
+      var lt = document.querySelector('[data-q-text="linechart-title"]');
+      if (lt) lt.textContent = 'Reuniones por mes · ' + yrs[0] + ' – ' + yrs[yrs.length - 1];
     }
   } catch (e) { console.warn('lineChart update fallo', e); }
 
@@ -2973,13 +3011,12 @@ function applyData(d) {
     var qSecEl = document.getElementById('q-section-label');
     if (qSecEl) qSecEl.textContent = 'Desglose por instrumento · ' + cq.label;
 
-    // setYoy buttons: rebuild dinámico con los últimos 3 años → 2 pares
+    // setYoy buttons: un par por cada dos años consecutivos disponibles
+    // (con 2023–2026 salen 3: 23vs24, 24vs25, 25vs26).
     var yoyContainer = document.querySelector('[data-q-buttons="yoy-pairs"]');
     if (yoyContainer && yrsAsc.length >= 2) {
-      var last3 = yrsAsc.slice(-3);
       var pairs = [];
-      if (last3.length >= 3) pairs.push([last3[0], last3[1]]);
-      pairs.push([last3[last3.length - 2], last3[last3.length - 1]]);
+      for (var pi = 0; pi < yrsAsc.length - 1; pi++) pairs.push([yrsAsc[pi], yrsAsc[pi + 1]]);
       yoyContainer.innerHTML = pairs.map(function(p, i) {
         var active = (i === pairs.length - 1) ? ' active' : '';
         var key = p[0] + '-' + p[1];
@@ -3268,7 +3305,8 @@ function rebuildYearTabs(d) {
   }
 
   // Heatmap: 3 años más recientes (ascendente)
-  window.HEATMAP_YEARS = yrs.slice(0, 3).reverse();
+  // Todos los años del Excel (yrs viene del más reciente al más antiguo)
+  window.HEATMAP_YEARS = yrs.slice().reverse();
 
   // Disparar render inicial en el año actual
   var elM = document.querySelector('[data-yr="' + cy + '"]');
