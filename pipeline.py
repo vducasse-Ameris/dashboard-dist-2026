@@ -614,22 +614,34 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     # ── MONTHLY SUMS (por año disponible) ───────────────────────────────
     monthly_by_year = {yr: _monthly(year_dfs[yr]) for yr in years_avail}
     d_cur = monthly_by_year[cur_year]
-    ytd = sum(d_cur[: today_ts.month])
 
-    # ── ÚLTIMO TRIMESTRE COMPLETO ───────────────────────────────────────
-    # Hoy en QN → último completo es Q(N-1) del mismo año (Q4 año anterior si hoy en Q1)
+    # ── MES DE CORTE ────────────────────────────────────────────────────
+    # "A la fecha" = el mes en curso, salvo que el Excel todavía no lo tenga
+    # cargado (ej. primeros días de agosto con data hasta julio). En ese caso
+    # cortamos en el último mes con reuniones, para no comparar contra meses
+    # vacíos ni mostrar columnas en blanco.
     cur_month = today_ts.month
-    if cur_month <= 3:
-        last_q_year, last_q = cur_year - 1, 4
-    elif cur_month <= 6:
-        last_q_year, last_q = cur_year, 1
-    elif cur_month <= 9:
-        last_q_year, last_q = cur_year, 2
-    else:
-        last_q_year, last_q = cur_year, 3
-    last_q_months = list(range((last_q - 1) * 3 + 1, last_q * 3 + 1))
+    last_month_data = max((i + 1 for i, v in enumerate(d_cur) if v > 0), default=0)
+    # Techo: el mes en curso si el año del foto es el de hoy; si el foto es de
+    # un año anterior, el año completo.
+    cap_month = cur_month if today_ts.year == cur_year else 12
+    ref_month = min(cap_month, last_month_data) if last_month_data else cap_month
+    ytd = sum(d_cur[:ref_month])
+
+    # ── TRIMESTRE EN CURSO ──────────────────────────────────────────────
+    # El dashboard sigue el trimestre actual, no el último cerrado: en agosto
+    # muestra Q3, con los meses del trimestre que ya transcurrieron.
+    last_q = (ref_month - 1) // 3 + 1
+    last_q_year = cur_year
+    # Sólo los meses del trimestre ya transcurridos. El YoY suma esos mismos
+    # meses del año anterior, así nunca se compara un Q parcial contra uno
+    # completo.
+    last_q_months = [
+        m for m in range((last_q - 1) * 3 + 1, last_q * 3 + 1) if m <= ref_month
+    ]
     last_q_month_names = [MESES[m - 1] for m in last_q_months]
     last_q_label = f"Q{last_q} {last_q_year}"
+    last_q_parcial = len(last_q_months) < 3
 
     # Q1 del año actual (siempre los 3 primeros meses) — para compat con KPIs viejos
     q1_cur = sum(d_cur[:3])
@@ -694,7 +706,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         had_prev = set()
 
     df_cur = df_cur.copy()
-    df_cur["_ytd"] = df_cur[[m for m in MESES[: today_ts.month] if m in df_cur.columns]].sum(axis=1).astype(float)
+    df_cur["_ytd"] = df_cur[[m for m in MESES[:ref_month] if m in df_cur.columns]].sum(axis=1).astype(float)
     had_ytd = set(df_cur[df_cur["_ytd"] > 0]["_cn"])
 
     recontact_data = {}
@@ -1188,7 +1200,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     # Reproduce la hoja "Clientes foto {cur_year}" tal cual la ve el Excel:
     # una fila por contraparte con sus reuniones mes a mes, cortado en el mes
     # en curso. Es la vista cruda que el área usa para revisar cobertura.
-    ytd_month = today_ts.month
+    ytd_month = ref_month
     df_prev_foto = year_dfs.get(cur_year - 1)
     prev_ytd_by_cn: dict = {}
     if df_prev_foto is not None and not df_prev_foto.empty:
@@ -1200,6 +1212,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             prev_ytd_by_cn[row["_cn"]] = prev_ytd_by_cn.get(row["_cn"], 0) + v
 
     foto_rows = []
+    foto_excluidas = []
     for _, row in df_cur.iterrows():
         cn = row["_cn"]
         meses_vals = [
@@ -1210,7 +1223,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         prio = prio if prio in THRESH else "?"
         last = last_contact.get(cn) if len(last_contact) else None
         has_last = last is not None and not pd.isna(last)
-        foto_rows.append({
+        rec = {
             "name": str(row["Cliente"]).strip(),
             "prio": prio,
             "tipo": tipo_dict.get(cn) or "Dist",
@@ -1220,7 +1233,15 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "prevYtd": prev_ytd_by_cn.get(cn, 0),
             "last": str(last.date()) if has_last else None,
             "dias": int((today_ts - last).days) if has_last else None,
-        })
+        }
+        # Fuera del listado las contrapartes sin historial de contacto. Se
+        # conservan las que sí registran reuniones en el foto aunque no
+        # aparezcan en Apuntes (pasa cuando el nombre no calza entre hojas):
+        # sacarlas descuadraría los totales contra el resto del dashboard.
+        if not has_last and rec["anio"] == 0 and rec["prevYtd"] == 0:
+            foto_excluidas.append(rec["name"])
+            continue
+        foto_rows.append(rec)
     # Orden por defecto: más reuniones YTD primero, luego prioridad y nombre.
     foto_rows.sort(key=lambda r: (-r["ytd"], PRIO_ORD.get(r["prio"], 3), r["name"].lower()))
 
@@ -1235,6 +1256,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "rows": foto_rows,
         "prevYtdTotal": int(sum(prev_ytd_by_cn.values())),
         "prevYtdMatched": int(sum(r["prevYtd"] for r in foto_rows)),
+        "excluidas": sorted(foto_excluidas, key=str.lower),
     }
 
     # ── RESULT ──────────────────────────────────────────────────────────
@@ -1248,7 +1270,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     df_prev_year = year_dfs.get(cur_year - 1)
     ytd_prev = (
         sum(int(df_prev_year[m].sum()) if m in df_prev_year.columns else 0
-            for m in MESES[: today_ts.month])
+            for m in MESES[:ref_month])
         if df_prev_year is not None and not df_prev_year.empty else 0
     )
     pct_change_ytd = round((ytd - ytd_prev) / ytd_prev * 100) if ytd_prev else 0
@@ -1288,13 +1310,14 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "currentQ": {
             "year": last_q_year,
             "q": last_q,
-            "label": last_q_label,           # "Q1 2026"
+            "label": last_q_label,           # "Q3 2026"
             "label_year_prev": f"Q{last_q} {last_q_year - 1}",
-            "months": last_q_months,         # [1,2,3]
+            "months": last_q_months,         # meses transcurridos del Q
             "monthNames": last_q_month_names,
             "reuniones": reuniones_q,
             "reuniones_prev": reuniones_q_prev,
             "pct_change": pct_change_q,
+            "parcial": last_q_parcial,       # el Q todavía está en curso
         },
         "kpi": {
             "ytd": ytd,

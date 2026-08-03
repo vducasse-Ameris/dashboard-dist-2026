@@ -624,11 +624,13 @@ function applyData(d) {
       var MES_ABBR = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
       var dCur = d.data && d.data[String(cy)] ? d.data[String(cy)] : [];
       var parts = [];
-      // Mostrar Q del trimestre completo + 1 o 2 meses posteriores con datos
-      parts.push(cq.label.split(' ')[0] + ': ' + (cq.reuniones || 0));
-      var startM = cq.q * 3;  // primer mes después del Q completo (idx 0-based en MES_ABBR)
-      for (var i = startM; i < 12 && dCur[i] > 0; i++) {
-        parts.push(MES_ABBR[i] + ': ' + dCur[i]);
+      // Desglose del YTD por trimestre: los cerrados completos y el actual
+      // hasta el mes de corte, marcado "en curso".
+      var lastM = (cq.months && cq.months.length) ? cq.months[cq.months.length - 1] : cq.q * 3;
+      for (var qi = 1; qi <= cq.q; qi++) {
+        var tot = 0;
+        for (var m = (qi - 1) * 3 + 1; m <= Math.min(qi * 3, lastM); m++) tot += (dCur[m - 1] || 0);
+        parts.push('Q' + qi + ': ' + tot + (qi === cq.q && cq.parcial ? ' (en curso)' : ''));
       }
       elYtdSub.innerHTML = parts.join(' &nbsp;&middot;&nbsp; ');
     }
@@ -638,7 +640,11 @@ function applyData(d) {
       document.querySelectorAll(sel).forEach(function(el) { el.textContent = text; });
     };
     setText('[data-q-section="vision-general"]', 'Visión general ' + cq.label);
-    setText('[data-q-text="reuniones-q-label"]', 'Reuniones ' + cq.label);
+    // Con el Q en curso el label deja claro hasta qué mes va la cifra
+    var MES_A = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    var qLastM = (cq.months && cq.months.length) ? cq.months[cq.months.length - 1] : null;
+    var qSuffix = (cq.parcial && qLastM) ? ' · a ' + MES_A[qLastM - 1] : '';
+    setText('[data-q-text="reuniones-q-label"]', 'Reuniones ' + cq.label + qSuffix);
     setText('[data-q-text="reuniones-ytd-label"]', 'Reuniones ' + cy + ' YTD');
     setText('[data-q-text="top-clientes-q-card"]', 'Top clientes ' + cq.label + ' por segmento');
 
@@ -646,7 +652,9 @@ function applyData(d) {
     var elVs = document.querySelector('[data-q-text="reuniones-q-vs"]');
     if (elVs && cq.reuniones_prev != null) {
       var sign = (cq.pct_change || 0) >= 0 ? '+' : '';
-      elVs.textContent = 'vs ' + cq.reuniones_prev + ' en ' + cq.label_year_prev + ' (' + sign + (cq.pct_change || 0) + '%)';
+      // El Q parcial se compara contra los mismos meses del año anterior
+      elVs.textContent = 'vs ' + cq.reuniones_prev + ' en ' + cq.label_year_prev
+        + (cq.parcial ? ' (mismo tramo)' : '') + ' (' + sign + (cq.pct_change || 0) + '%)';
     }
 
     // Header badge: "Q1 2026 · Mar 2026" → "Q? YYYY · Mes YYYY"
@@ -728,8 +736,9 @@ function applyData(d) {
       var el = document.querySelector('[data-q-th="' + qi + '"]');
       if (!el) continue;
       var lbl = 'Q' + qi + ' ' + cy;
-      if (qi < cq.q || (qi === cq.q && cq.q < 4)) lbl += ' ✓';
-      else if (qi === cq.q + 1) lbl += ' (YTD)';
+      // cq.q es el trimestre en curso: los anteriores están cerrados
+      if (qi < cq.q) lbl += ' ✓';
+      else if (qi === cq.q) lbl += cq.parcial ? ' (en curso)' : ' ✓';
       el.textContent = lbl;
     }
 
@@ -2181,7 +2190,8 @@ FOTO_PANEL_HTML = r"""<!-- ═════════════════�
     <div id="foto-table" style="overflow-x:auto;"></div>
   </div>
 
-  <div style="margin-top:1rem;font-size:10px;color:var(--text3);" data-foto-text="footnote">
+  <div style="margin-top:1rem;font-size:10px;color:var(--text3);line-height:1.6;" data-foto-text="excluidas"></div>
+  <div style="margin-top:6px;font-size:10px;color:var(--text3);" data-foto-text="footnote">
     Fuente: hoja «Clientes foto» del Follow Up. Los meses son los del propio foto (no los apuntes), por lo que los totales cuadran exactamente con el Excel.
   </div>
 
@@ -2279,6 +2289,11 @@ function renderFoto(){
     setT('section','Clientes foto '+fotoYTD.year+' — consolidado '+rango);
     setT('kpi-reun-label','Reuniones '+fotoYTD.year+' YTD');
     setT('intro','Todas las contrapartes del foto con sus reuniones mes a mes, de '+rango.toLowerCase()+' de '+fotoYTD.year+'. Misma estructura que la hoja <em>Clientes foto '+fotoYTD.year+'</em> del Follow Up.');
+    var exc=(fotoYTD.excluidas||[]);
+    setT('excluidas', exc.length
+      ? ('Se excluyeron <strong>'+exc.length+'</strong> contrapartes sin historial de contacto: '
+         + exc.map(_fEsc).join(' · '))
+      : '');
     var orfanas=(fotoYTD.prevYtdTotal||0)-(fotoYTD.prevYtdMatched||0);
     setT('footnote','Fuente: hoja «Clientes foto '+fotoYTD.year+'» del Follow Up. Los meses vienen del propio foto (no de los apuntes), por lo que los totales cuadran exactamente con el Excel. La columna '+fotoYTD.prevYear+' es el mismo tramo Ene–'+FOTO_MES_ABBR[nMonths-1]+' del año anterior.'
       + (orfanas>0 ? ' Ojo: sólo cubre contrapartes que siguen en el foto '+fotoYTD.year+' — quedan '+orfanas+' reuniones de '+fotoYTD.prevYear+' de clientes que ya salieron del foto, por eso la columna suma '+fotoYTD.prevYtdMatched+' y no '+fotoYTD.prevYtdTotal+'.' : ''));
