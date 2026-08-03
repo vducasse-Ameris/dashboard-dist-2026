@@ -187,6 +187,45 @@ def _monthly(df: pd.DataFrame) -> list[int]:
     return [int(df[m].sum()) if m in df.columns else 0 for m in MESES]
 
 
+def _corte_y_trimestre(
+    d_cur: list[int], cur_month: int, es_anio_actual: bool
+) -> tuple[int, int, list[int]]:
+    """Decide hasta qué mes corta el dashboard y qué trimestre muestra.
+
+    Dos reglas distintas, a propósito:
+
+    - El TRIMESTRE lo manda el calendario. Si abro el dashboard en diciembre
+      quiero ver Q4, aunque el Excel venga con un mes de rezago.
+    - El MES DE CORTE lo manda la data: es el mes en curso, pero acotado al
+      último mes con reuniones cargadas. Así el YoY nunca compara un tramo
+      parcial de este año contra meses completos del anterior, ni el foto
+      muestra columnas en blanco.
+
+    Devuelve (ref_month, trimestre, meses_del_trimestre_con_data). La lista
+    de meses queda vacía si el trimestre ya empezó pero no tiene data — el
+    caller lo reporta como "sin datos cargados" en vez de mostrar un 0.
+
+    >>> _corte_y_trimestre([5]*7 + [0]*5, 8, True)   # ago, data hasta jul
+    (7, 3, [7])
+    >>> _corte_y_trimestre([5]*7 + [0]*5, 12, True)  # dic, data hasta jul
+    (7, 4, [])
+    >>> _corte_y_trimestre([5]*11 + [0], 12, True)   # dic, data hasta nov
+    (11, 4, [10, 11])
+    >>> _corte_y_trimestre([5]*12, 12, True)         # dic, año completo
+    (12, 4, [10, 11, 12])
+    >>> _corte_y_trimestre([5]*7 + [0]*5, 3, False)  # foto de un año anterior
+    (7, 4, [])
+    """
+    # Techo: el mes en curso si el foto es del año de hoy; si el foto es de un
+    # año anterior, el año ya terminó y el techo es diciembre.
+    cap_month = cur_month if es_anio_actual else 12
+    last_month_data = max((i + 1 for i, v in enumerate(d_cur) if v > 0), default=0)
+    ref_month = min(cap_month, last_month_data) if last_month_data else cap_month
+    q = (cap_month - 1) // 3 + 1
+    meses = [m for m in range((q - 1) * 3 + 1, q * 3 + 1) if m <= ref_month]
+    return ref_month, q, meses
+
+
 def _top10(df: pd.DataFrame, cols: list[str]) -> list:
     df = df.copy()
     df["_t"] = df[[c for c in cols if c in df.columns]].sum(axis=1).astype(float)
@@ -615,33 +654,17 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
     monthly_by_year = {yr: _monthly(year_dfs[yr]) for yr in years_avail}
     d_cur = monthly_by_year[cur_year]
 
-    # ── MES DE CORTE ────────────────────────────────────────────────────
-    # "A la fecha" = el mes en curso, salvo que el Excel todavía no lo tenga
-    # cargado (ej. primeros días de agosto con data hasta julio). En ese caso
-    # cortamos en el último mes con reuniones, para no comparar contra meses
-    # vacíos ni mostrar columnas en blanco.
-    cur_month = today_ts.month
-    last_month_data = max((i + 1 for i, v in enumerate(d_cur) if v > 0), default=0)
-    # Techo: el mes en curso si el año del foto es el de hoy; si el foto es de
-    # un año anterior, el año completo.
-    cap_month = cur_month if today_ts.year == cur_year else 12
-    ref_month = min(cap_month, last_month_data) if last_month_data else cap_month
+    # ── MES DE CORTE + TRIMESTRE EN CURSO ───────────────────────────────
+    ref_month, last_q, last_q_months = _corte_y_trimestre(
+        d_cur, today_ts.month, today_ts.year == cur_year
+    )
     ytd = sum(d_cur[:ref_month])
-
-    # ── TRIMESTRE EN CURSO ──────────────────────────────────────────────
-    # El dashboard sigue el trimestre actual, no el último cerrado: en agosto
-    # muestra Q3, con los meses del trimestre que ya transcurrieron.
-    last_q = (ref_month - 1) // 3 + 1
     last_q_year = cur_year
-    # Sólo los meses del trimestre ya transcurridos. El YoY suma esos mismos
-    # meses del año anterior, así nunca se compara un Q parcial contra uno
-    # completo.
-    last_q_months = [
-        m for m in range((last_q - 1) * 3 + 1, last_q * 3 + 1) if m <= ref_month
-    ]
     last_q_month_names = [MESES[m - 1] for m in last_q_months]
     last_q_label = f"Q{last_q} {last_q_year}"
     last_q_parcial = len(last_q_months) < 3
+    # El trimestre ya empezó pero el Excel todavía no trae ninguno de sus meses.
+    last_q_sin_datos = not last_q_months
 
     # Q1 del año actual (siempre los 3 primeros meses) — para compat con KPIs viejos
     q1_cur = sum(d_cur[:3])
@@ -1318,6 +1341,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "reuniones_prev": reuniones_q_prev,
             "pct_change": pct_change_q,
             "parcial": last_q_parcial,       # el Q todavía está en curso
+            "sinDatos": last_q_sin_datos,    # el Q no tiene ningún mes cargado
         },
         "kpi": {
             "ytd": ytd,
@@ -1341,6 +1365,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "meta": {
             "n_clientes": int(len(df_cur)),
             "fecha_corte": str(today_ts.date()),
+            "mes_corte": ref_month,          # último mes con data (1-12)
             "years_disponibles": years_avail,
             "warnings": validation_warnings,
         },

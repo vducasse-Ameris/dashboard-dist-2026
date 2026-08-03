@@ -640,17 +640,24 @@ function applyData(d) {
       document.querySelectorAll(sel).forEach(function(el) { el.textContent = text; });
     };
     setText('[data-q-section="vision-general"]', 'Visión general ' + cq.label);
-    // Con el Q en curso el label deja claro hasta qué mes va la cifra
+    // Con el Q en curso el label deja claro hasta qué mes va la cifra. Si el
+    // trimestre ya empezó pero el Excel no trae ninguno de sus meses, lo
+    // decimos en vez de mostrar un 0 que parece una caída.
     var MES_A = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
     var qLastM = (cq.months && cq.months.length) ? cq.months[cq.months.length - 1] : null;
-    var qSuffix = (cq.parcial && qLastM) ? ' · a ' + MES_A[qLastM - 1] : '';
+    var qSuffix = cq.sinDatos ? ' · sin datos cargados'
+                : ((cq.parcial && qLastM) ? ' · a ' + MES_A[qLastM - 1] : '');
     setText('[data-q-text="reuniones-q-label"]', 'Reuniones ' + cq.label + qSuffix);
     setText('[data-q-text="reuniones-ytd-label"]', 'Reuniones ' + cy + ' YTD');
     setText('[data-q-text="top-clientes-q-card"]', 'Top clientes ' + cq.label + ' por segmento');
 
     // Sub "vs N en QX YYYY-1 (+P%)"
     var elVs = document.querySelector('[data-q-text="reuniones-q-vs"]');
-    if (elVs && cq.reuniones_prev != null) {
+    if (elVs && cq.sinDatos) {
+      // Sin meses del Q cargados no hay contra qué comparar: un "vs 0" haría
+      // parecer que el año pasado tampoco hubo reuniones.
+      elVs.textContent = 'Sube el Excel con los meses de ' + cq.label.split(' ')[0] + ' para ver el avance';
+    } else if (elVs && cq.reuniones_prev != null) {
       var sign = (cq.pct_change || 0) >= 0 ? '+' : '';
       // El Q parcial se compara contra los mismos meses del año anterior
       elVs.textContent = 'vs ' + cq.reuniones_prev + ' en ' + cq.label_year_prev
@@ -662,8 +669,10 @@ function applyData(d) {
     if (elBadge && d.meta && d.meta.fecha_corte) {
       var MES_FULL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
       var parts2 = d.meta.fecha_corte.split('-');
-      var mesIdx = parseInt(parts2[1], 10) - 1;
-      elBadge.textContent = cq.label + ' · ' + MES_FULL[mesIdx] + ' ' + parts2[0];
+      // El badge muestra el último mes con data, no el mes de hoy: si el Excel
+      // viene con rezago, decir "Ago" cuando los datos llegan a julio engaña.
+      var mesIdx = (d.meta.mes_corte ? d.meta.mes_corte : parseInt(parts2[1], 10)) - 1;
+      elBadge.textContent = cq.label + ' · ' + MES_FULL[mesIdx] + ' ' + cy;
     }
 
     // Header brand "Dashboard de seguimiento · YYYY – YYYY"
