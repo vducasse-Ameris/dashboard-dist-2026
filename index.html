@@ -935,7 +935,7 @@ footer {
   <div id="aum-panel-q">
 
     <div class="section-label">Selecciona el trimestre activo</div>
-    <div style="display:flex;gap:8px;margin-bottom:1.25rem;">
+    <div style="display:flex;gap:8px;margin-bottom:1.25rem;" id="aum-q-selector">
       <button class="ftab active" id="qsel-1t" onclick="selectQuarter('1T26',this)">Q1 · 1T26</button>
       <button class="ftab" id="qsel-2t" onclick="selectQuarter('2T26',this)">Q2 · 2T26</button>
       <button class="ftab" id="qsel-3t" onclick="selectQuarter('3T26',this)">Q3 · 3T26</button>
@@ -1497,10 +1497,39 @@ buildHeatmap();
 
 // ── AUM (LAZY INIT) ───────────────────────────────────────────────────────────
 var aumChartsInited = false;
+// ── TRIMESTRES DEL TAB AUM ───────────────────────────────────────────────────
+// Las claves ("1T26".."4T26") las arma el pipeline desde el año del Excel, así
+// que se derivan de la data en vez de escribirlas fijas: en 2027 pasan solas a
+// 1T27..4T27.
+function aumQKeys() {
+  var ks = Object.keys(window.aumData || {}).filter(function(k){ return /^[1-4]T\d\d$/.test(k); });
+  // Ordena por año y luego por trimestre ("1T27" > "4T26")
+  ks.sort(function(a,b){ return (a.slice(1)+a.charAt(0)).localeCompare(b.slice(1)+b.charAt(0)); });
+  return ks.length === 4 ? ks : ['1T26','2T26','3T26','4T26'];
+}
+
+// Trimestre que viene seleccionado al abrir el tab: el en curso según la fecha.
+function aumDefaultQKey() {
+  var q = (window.__CURRENT_Q__ && window.__CURRENT_Q__.q) || 1;
+  if (q < 1) q = 1; if (q > 4) q = 4;
+  return aumQKeys()[q - 1];
+}
+
+// Reconstruye los botones del selector con las claves reales del año cargado.
+function rebuildAumQButtons() {
+  var wrap = document.getElementById('aum-q-selector');
+  if (!wrap) return;
+  var ks = aumQKeys(), def = aumDefaultQKey();
+  wrap.innerHTML = ks.map(function(k, i) {
+    return '<button class="ftab' + (k === def ? ' active' : '') + '" id="qsel-' + (i+1) + 't"'
+         + ' onclick="selectQuarter(\'' + k + '\',this)">Q' + (i+1) + ' · ' + k + '</button>';
+  }).join('');
+}
+
 function initAumCharts() {
   if (aumChartsInited) return;
   aumChartsInited = true;
-  if (window.__METAS_RESULTS__ && typeof _buildAumChartsUSD === 'function') { _buildAumChartsUSD(window.__METAS_RESULTS__); var _b=document.querySelector('[onclick*="selectQuarter"][onclick*="1T26"]'); if(_b) selectQuarter('1T26',_b); return; }
+  if (window.__METAS_RESULTS__ && typeof _buildAumChartsUSD === 'function') { _buildAumChartsUSD(window.__METAS_RESULTS__); var _dk=aumDefaultQKey(); var _b=document.querySelector('[onclick*="selectQuarter(\''+_dk+'\'"]'); if(_b) selectQuarter(_dk,_b); return; }
 
   var elQ = document.getElementById('aumQChart');
   if (elQ) {
@@ -1511,7 +1540,7 @@ function initAumCharts() {
     window.aumQChartInst = new Chart(elQ, {
       type:'bar',
       data:{labels:quarters,datasets:keys.map(function(k,i){return{label:labels[i],
-        data:['1T26','2T26','3T26','4T26'].map(function(q){return aumData[q][k];}),
+        data:aumQKeys().map(function(q){return (aumData[q]||{})[k]||0;}),
         backgroundColor:colors[i],stack:'s',borderSkipped:false,
         borderRadius:i===keys.length-1?[3,3,0,0]:0};})},
       options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
@@ -1528,10 +1557,15 @@ function initAumCharts() {
 
   var elY = document.getElementById('aumYtdChart');
   if (elY) {
+    // Hitos acumulados: suma corrida de los totales trimestrales de la meta.
+    // Antes estaban escritos a mano con los valores de 2026.
+    var _acum = [0], _run = 0;
+    aumQKeys().forEach(function(q){ _run += ((aumData[q]||{}).total || 0); _acum.push(Math.round(_run*1000)/1000); });
+    var _ymax = Math.ceil((_acum[_acum.length-1] || 1) * 1.15);
     new Chart(elY,{type:'line',
       data:{labels:['Inicio','Cierre Q1','Cierre Q2','Cierre Q3','Cierre Q4'],
         datasets:[
-          {label:'Hito acumulado meta',data:[0,15.443,26.603,49.608,65.320],
+          {label:'Hito acumulado meta',data:_acum,
             borderColor:'#1B4B9B',backgroundColor:'rgba(27,75,155,0.08)',borderWidth:2.5,
             fill:true,tension:0.2,pointRadius:5,pointBackgroundColor:'#1B4B9B',pointBorderColor:'#fff',pointBorderWidth:2},
           {label:'Logro YTD',data:[0,null,null,null,null],
@@ -1540,15 +1574,16 @@ function initAumCharts() {
         ]},
       options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
         plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y===null?ctx.dataset.label+': pendiente':' '+ctx.dataset.label+': CLP '+ctx.parsed.y.toFixed(2)+'B';}}}},
-        scales:{x:xScale(),y:Object.assign(yScale(75),{
+        scales:{x:xScale(),y:Object.assign(yScale(_ymax),{
           title:{display:true,text:'CLP Miles de millones (acum.)',color:TICK_C,font:{size:9}},
           ticks:{callback:function(v){return 'CLP '+v+'B';},color:TICK_C,font:TICK_FONT}})}}
     });
   }
 
-  // Init quarter selector
-  var btn = document.querySelector('[onclick*="selectQuarter"][onclick*="1T26"]');
-  if (btn) selectQuarter('1T26', btn);
+  // Init quarter selector — arranca en el trimestre en curso, no en Q1
+  var dk = aumDefaultQKey();
+  var btn = document.querySelector('[onclick*="selectQuarter(\'' + dk + '\'"]');
+  if (btn) selectQuarter(dk, btn);
 }
 
 function showAumTab(which, btn) {
@@ -1572,7 +1607,7 @@ function selectQuarter(q, btn) {
   if (window.aumQChartInst) {
     window.aumQChartInst.data.datasets.forEach(function(ds,i){
       var key=['deuda','inm','inter','notas'][i];
-      ds.data=['1T26','2T26','3T26','4T26'].map(function(qt){return aumData[qt][key];});
+      ds.data=aumQKeys().map(function(qt){return (aumData[qt]||{})[key]||0;});
     });
     window.aumQChartInst.update();
   }
@@ -2930,6 +2965,9 @@ function applyData(d) {
     // AUM: actualizar quarters dinámicos para charts y labels visibles
     var yy = String(cy).slice(-2);
     window.AUM_QUARTERS = ['Q1 ' + cy, 'Q2 ' + cy, 'Q3 ' + cy, 'Q4 ' + cy];
+    // Selector de trimestre del tab AUM: claves del año cargado y arranque en
+    // el trimestre en curso (antes quedaba fijo en Q1 · 1T26).
+    if (typeof rebuildAumQButtons === 'function') rebuildAumQButtons();
     var qCurEl = document.getElementById('q-current-label');
     if (qCurEl) qCurEl.textContent = cq.label;
     var qSecEl = document.getElementById('q-section-label');

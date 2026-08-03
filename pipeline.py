@@ -353,15 +353,32 @@ _DIST_ADVISORS = {
 }
 # InstrumentArea → clave de meta (sólo estas 3; el resto se excluye)
 _AREA_TO_META = {"Deuda": "deuda", "Inmobiliario": "inm", "Internacionales": "inter"}
-# Orden cronológico de los cortes y mapeo a periodo trimestral de la Tabla
-_CORTE_ORDER = ["4Q25", "1Q26", "2Q26", "3Q26", "4Q26"]
-# Periodo Tabla (1T26...) → (corte previo, corte del trimestre)
-_PERIODO_CORTES = {
-    "1T26": ("4Q25", "1Q26"),
-    "2T26": ("1Q26", "2Q26"),
-    "3T26": ("2Q26", "3Q26"),
-    "4T26": ("3Q26", "4Q26"),
-}
+def _cortes_del_anio(yy: str) -> list[str]:
+    """Cortes en orden cronológico del ciclo de metas del año `yy` ('26').
+
+    Arranca en el 4Q del año anterior, que es la base contra la que se mide Q1.
+
+    >>> _cortes_del_anio('26')
+    ['4Q25', '1Q26', '2Q26', '3Q26', '4Q26']
+    >>> _cortes_del_anio('27')
+    ['4Q26', '1Q27', '2Q27', '3Q27', '4Q27']
+    >>> _cortes_del_anio('00')[0]
+    '4Q99'
+    """
+    prev = f"{(int(yy) - 1) % 100:02d}"
+    return [f"4Q{prev}"] + [f"{q}Q{yy}" for q in (1, 2, 3, 4)]
+
+
+def _periodo_cortes(yy: str) -> dict[str, tuple[str, str]]:
+    """Periodo de la Tabla ('1T26') → (corte previo, corte del trimestre).
+
+    >>> _periodo_cortes('26')['1T26']
+    ('4Q25', '1Q26')
+    >>> _periodo_cortes('27')['4T27']
+    ('3Q27', '4Q27')
+    """
+    orden = _cortes_del_anio(yy)
+    return {f"{q}T{yy}": (orden[q - 1], orden[q]) for q in (1, 2, 3, 4)}
 
 
 def compute_metas_results(xlsm_input) -> dict:
@@ -422,6 +439,16 @@ def compute_metas_results(xlsm_input) -> dict:
             pond = 0.0
         targets_clp.setdefault(periodo, {})[key] = {"target_clp": target_clp, "pond": pond}
 
+    # El año del ciclo de metas lo dictan los periodos de la Tabla ("1T26" → 26),
+    # no una constante: así el archivo de 2027 funciona sin tocar el código.
+    _yys = sorted({
+        m.group(1) for p in targets_clp
+        for m in [re.match(r"[1-4]T(\d{2})$", p)] if m
+    })
+    yy_metas = _yys[-1] if _yys else str(date.today().year)[-2:]
+    corte_order = _cortes_del_anio(yy_metas)
+    periodo_cortes = _periodo_cortes(yy_metas)
+
     # ── SALDOS POR CORTE → cumplimiento USD (SALDO al cierre del corte) ──
     # El cumplimiento de cada trimestre es el SALDO de AUM al cierre del corte
     # (no un delta). Filtro de advisors per-corte (sin 'Ameris'), 3 áreas,
@@ -440,7 +467,7 @@ def compute_metas_results(xlsm_input) -> dict:
     cortes_disponibles = set(ds["Corte"].dropna().unique())
     _fx_latest = 1.0
     _corte_latest = None
-    for _c in reversed(_CORTE_ORDER):
+    for _c in reversed(corte_order):
         if _c in fx_por_corte:
             _fx_latest = fx_por_corte[_c]
             _corte_latest = _c
@@ -459,7 +486,7 @@ def compute_metas_results(xlsm_input) -> dict:
 
     # ── Armar byPeriodo (todo USD) ──────────────────────────────────────
     by_periodo: dict = {}
-    for periodo, cortes in _PERIODO_CORTES.items():
+    for periodo, cortes in periodo_cortes.items():
         cut_prev, cut_now = cortes
         fx = fx_por_corte.get(cut_now) or _fx_latest
         tgt_periodo = targets_clp.get(periodo, {})
@@ -511,7 +538,7 @@ def compute_metas_results(xlsm_input) -> dict:
             corte = str(fechas.max().date())
 
     # ── Serie de evolución del saldo por instrumento (cortes cronológicos) ──
-    cuts_chrono = [c for c in _CORTE_ORDER if c in cortes_disponibles]
+    cuts_chrono = [c for c in corte_order if c in cortes_disponibles]
 
     def _corte_label(c):  # "4Q25" -> "Q4 '25"
         return f"Q{c[0]} '{c[-2:]}"

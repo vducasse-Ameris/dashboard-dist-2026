@@ -754,6 +754,9 @@ function applyData(d) {
     // AUM: actualizar quarters dinámicos para charts y labels visibles
     var yy = String(cy).slice(-2);
     window.AUM_QUARTERS = ['Q1 ' + cy, 'Q2 ' + cy, 'Q3 ' + cy, 'Q4 ' + cy];
+    // Selector de trimestre del tab AUM: claves del año cargado y arranque en
+    // el trimestre en curso (antes quedaba fijo en Q1 · 1T26).
+    if (typeof rebuildAumQButtons === 'function') rebuildAumQButtons();
     var qCurEl = document.getElementById('q-current-label');
     if (qCurEl) qCurEl.textContent = cq.label;
     var qSecEl = document.getElementById('q-section-label');
@@ -2120,6 +2123,9 @@ def transform(html: str) -> str:
     # 6) Tab "Clientes foto" (réplica de la hoja del Follow Up)
     html = add_foto_tab(html)
 
+    # 7) Selector de trimestre del tab AUM que rola con la fecha
+    html = add_aum_q_rolling(html)
+
     return html
 
 
@@ -2447,6 +2453,20 @@ def add_foto_tab(html: str) -> str:
     else:
         print("  WARN: no encontré renderRiesgo2026 para insertar el JS de Clientes foto")
 
+    return html
+
+
+REEMPLAZOS_AUM = [('<div style="display:flex;gap:8px;margin-bottom:1.25rem;">\n      <button class="ftab active" id="qsel-1t"', '<div style="display:flex;gap:8px;margin-bottom:1.25rem;" id="aum-q-selector">\n      <button class="ftab active" id="qsel-1t"'), ('function initAumCharts() {', '// ── TRIMESTRES DEL TAB AUM ───────────────────────────────────────────────────\n// Las claves ("1T26".."4T26") las arma el pipeline desde el año del Excel, así\n// que se derivan de la data en vez de escribirlas fijas: en 2027 pasan solas a\n// 1T27..4T27.\nfunction aumQKeys() {\n  var ks = Object.keys(window.aumData || {}).filter(function(k){ return /^[1-4]T\\d\\d$/.test(k); });\n  // Ordena por año y luego por trimestre ("1T27" > "4T26")\n  ks.sort(function(a,b){ return (a.slice(1)+a.charAt(0)).localeCompare(b.slice(1)+b.charAt(0)); });\n  return ks.length === 4 ? ks : [\'1T26\',\'2T26\',\'3T26\',\'4T26\'];\n}\n\n// Trimestre que viene seleccionado al abrir el tab: el en curso según la fecha.\nfunction aumDefaultQKey() {\n  var q = (window.__CURRENT_Q__ && window.__CURRENT_Q__.q) || 1;\n  if (q < 1) q = 1; if (q > 4) q = 4;\n  return aumQKeys()[q - 1];\n}\n\n// Reconstruye los botones del selector con las claves reales del año cargado.\nfunction rebuildAumQButtons() {\n  var wrap = document.getElementById(\'aum-q-selector\');\n  if (!wrap) return;\n  var ks = aumQKeys(), def = aumDefaultQKey();\n  wrap.innerHTML = ks.map(function(k, i) {\n    return \'<button class="ftab\' + (k === def ? \' active\' : \'\') + \'" id="qsel-\' + (i+1) + \'t"\'\n         + \' onclick="selectQuarter(\\\'\' + k + \'\\\',this)">Q\' + (i+1) + \' · \' + k + \'</button>\';\n  }).join(\'\');\n}\n\nfunction initAumCharts() {'), ('var _b=document.querySelector(\'[onclick*="selectQuarter"][onclick*="1T26"]\'); if(_b) selectQuarter(\'1T26\',_b); return; }', 'var _dk=aumDefaultQKey(); var _b=document.querySelector(\'[onclick*="selectQuarter(\\\'\'+_dk+\'\\\'"]\'); if(_b) selectQuarter(_dk,_b); return; }'), ('  // Init quarter selector\n  var btn = document.querySelector(\'[onclick*="selectQuarter"][onclick*="1T26"]\');\n  if (btn) selectQuarter(\'1T26\', btn);', '  // Init quarter selector — arranca en el trimestre en curso, no en Q1\n  var dk = aumDefaultQKey();\n  var btn = document.querySelector(\'[onclick*="selectQuarter(\\\'\' + dk + \'\\\'"]\');\n  if (btn) selectQuarter(dk, btn);'), ("        data:['1T26','2T26','3T26','4T26'].map(function(q){return aumData[q][k];}),", '        data:aumQKeys().map(function(q){return (aumData[q]||{})[k]||0;}),'), ("      ds.data=['1T26','2T26','3T26','4T26'].map(function(qt){return aumData[qt][key];});", '      ds.data=aumQKeys().map(function(qt){return (aumData[qt]||{})[key]||0;});'), ("    new Chart(elY,{type:'line',", "    // Hitos acumulados: suma corrida de los totales trimestrales de la meta.\n    // Antes estaban escritos a mano con los valores de 2026.\n    var _acum = [0], _run = 0;\n    aumQKeys().forEach(function(q){ _run += ((aumData[q]||{}).total || 0); _acum.push(Math.round(_run*1000)/1000); });\n    var _ymax = Math.ceil((_acum[_acum.length-1] || 1) * 1.15);\n    new Chart(elY,{type:'line',"), ("          {label:'Hito acumulado meta',data:[0,15.443,26.603,49.608,65.320],", "          {label:'Hito acumulado meta',data:_acum,"), ('scales:{x:xScale(),y:Object.assign(yScale(75),{', 'scales:{x:xScale(),y:Object.assign(yScale(_ymax),{')]
+
+
+def add_aum_q_rolling(html: str) -> str:
+    """Selector de trimestre del tab AUM: claves derivadas del año cargado y
+    arranque en el trimestre en curso (antes quedaba fijo en Q1 · 1T26)."""
+    for i, (old, new) in enumerate(REEMPLAZOS_AUM, 1):
+        if old in html:
+            html = html.replace(old, new, 1)
+        else:
+            print("  WARN: no encontré el bloque AUM %d para el roll de trimestre" % i)
     return html
 
 
