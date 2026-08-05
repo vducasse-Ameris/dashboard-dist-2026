@@ -841,6 +841,7 @@ function applyData(d) {
     if (typeof _renderCriticalList === 'function') _renderCriticalList();
     if (typeof _renderAreas === 'function')        _renderAreas();
     renderComparativaQ(d);
+    renderComparativaYTD(d);
     renderCrossSell(d);
     renderCrossGastoReun(d);
     renderCrossSaldoReun();
@@ -2118,6 +2119,9 @@ def transform(html: str) -> str:
     # 9) Sacar la pestaña Riesgo (Clientes foto la reemplaza)
     html = remove_riesgo_tab(html)
 
+    # 10) Comparativa YTD del tab Reuniones (vs mismo período año anterior)
+    html = add_comparativa_ytd(html)
+
     return html
 
 
@@ -2510,6 +2514,83 @@ def add_2023_series(html: str) -> str:
             html = html.replace(old, new)
         else:
             print("  WARN: no encontré el bloque %d de la serie 2023" % i)
+    return html
+
+
+COMPARATIVA_YTD_VIEJO = '  <div class="section-label">Comparativa YTD Enero–Marzo</div>\n  <div class="kpi-row kpi-row-3">\n    <div class="kpi">\n      <div class="kpi-label">Q1 2024</div>\n      <div class="kpi-value">83</div>\n      <div class="kpi-sub" style="color:var(--text3)">Base de comparación</div>\n    </div>\n    <div class="kpi">\n      <div class="kpi-label">Q1 2025</div>\n      <div class="kpi-value">104</div>\n      <div class="kpi-sub pos">+25% vs Q1 2024</div>\n    </div>\n    <div class="kpi accent">\n      <div class="kpi-label"><span data-q-text="kpi-q-current">Q1 2026</span></div>\n      <div class="kpi-value">109</div>\n      <div class="kpi-sub pos">+5% vs Q1 2025</div>\n    </div>\n  </div>'
+
+COMPARATIVA_YTD_HTML = r"""  <div class="section-label" data-q-text="comparativa-ytd-label">Comparativa YTD &mdash; mismo per&iacute;odo cada a&ntilde;o</div>
+  <div class="kpi-row kpi-row-3" id="comparativa-ytd"></div>"""
+
+COMPARATIVA_YTD_JS = r"""// ── COMPARATIVA YTD (tab Reuniones) ──────────────────────────────────────────
+// Reuniones del mismo tramo Ene–<mes de corte> en cada año disponible, con la
+// variación contra el año anterior. Antes esta sección tenía los números de
+// 2024 escritos a mano y nunca se actualizaba al subir el Excel.
+//
+// La dirección la llevan la flecha y el signo del número, no sólo el color:
+// verde y rojo son indistinguibles para daltonismo deuteranope.
+function renderComparativaYTD(d) {
+  var wrap = document.getElementById('comparativa-ytd');
+  if (!wrap) return;
+  var n = (d.meta && d.meta.mes_corte) || 12;
+  var yrs = (d.years || []).slice(-4);
+  if (!yrs.length) return;
+
+  var MES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var lbl = document.querySelector('[data-q-text="comparativa-ytd-label"]');
+  if (lbl) {
+    lbl.textContent = 'Comparativa YTD Enero–' + MES_FULL[n - 1]
+      + ' — mismo período cada año';
+  }
+
+  var tot = function(y) {
+    var arr = (d.data && d.data[String(y)]) || [];
+    var s = 0; for (var i = 0; i < n; i++) s += (arr[i] || 0);
+    return s;
+  };
+
+  wrap.className = 'kpi-row kpi-row-' + Math.min(Math.max(yrs.length, 2), 4);
+  wrap.innerHTML = yrs.map(function(y, i) {
+    var v = tot(y);
+    var esActual = (i === yrs.length - 1);
+    // El año en curso se marca con borde, no con fondo azul: sobre ese azul el
+    // verde da 1.6:1 de contraste y la flecha no se leería.
+    var estilo = esActual ? ' style="border-color:var(--a1);border-width:2px;"' : '';
+    var sub;
+    if (i === 0) {
+      sub = '<div class="kpi-sub" style="color:var(--text3);">Base de comparación</div>';
+    } else {
+      var prev = tot(yrs[i - 1]);
+      var dif = v - prev;
+      var pct = prev ? Math.round(dif / prev * 100) : 0;
+      var cls = dif > 0 ? 'pos' : (dif < 0 ? 'neg' : '');
+      var flecha = dif > 0 ? '▲' : (dif < 0 ? '▼' : '—');
+      sub = '<div class="kpi-sub ' + cls + '"><span style="font-size:12px;">' + flecha + '</span> '
+          + (dif > 0 ? '+' : '') + dif + ' (' + (pct > 0 ? '+' : '') + pct + '%) '
+          + '<span style="color:var(--text3);">vs ' + yrs[i - 1] + '</span></div>';
+    }
+    return '<div class="kpi"' + estilo + '>'
+         + '<div class="kpi-label">' + y + (esActual ? ' · en curso' : '') + '</div>'
+         + '<div class="kpi-value">' + v + '</div>' + sub + '</div>';
+  }).join('');
+}
+
+"""
+
+
+def add_comparativa_ytd(html: str) -> str:
+    """Comparativa YTD del tab Reuniones: reuniones del mismo tramo
+    Ene-<mes de corte> en cada año, con flecha y variación. Antes eran
+    valores de 2024 escritos a mano que nunca se actualizaban."""
+    if COMPARATIVA_YTD_VIEJO in html:
+        html = html.replace(COMPARATIVA_YTD_VIEJO, COMPARATIVA_YTD_HTML, 1)
+    else:
+        print("  WARN: no encontré la sección Comparativa YTD")
+    ancla = "// ── CLIENTES FOTO — consolidado YTD por contraparte"
+    if ancla in html:
+        html = html.replace(ancla, COMPARATIVA_YTD_JS + ancla, 1)
+    else:
+        print("  WARN: no encontré dónde inyectar renderComparativaYTD")
     return html
 
 

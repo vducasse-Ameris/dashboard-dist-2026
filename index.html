@@ -577,24 +577,8 @@ footer {
     <div class="chart-wrap" style="height:200px;"><canvas id="peakChart"></canvas></div>
   </div>
 
-  <div class="section-label">Comparativa YTD Enero–Marzo</div>
-  <div class="kpi-row kpi-row-3">
-    <div class="kpi">
-      <div class="kpi-label">Q1 2024</div>
-      <div class="kpi-value">83</div>
-      <div class="kpi-sub" style="color:var(--text3)">Base de comparación</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Q1 2025</div>
-      <div class="kpi-value">104</div>
-      <div class="kpi-sub pos">+25% vs Q1 2024</div>
-    </div>
-    <div class="kpi accent">
-      <div class="kpi-label"><span data-q-text="kpi-q-current">Q1 2026</span></div>
-      <div class="kpi-value">109</div>
-      <div class="kpi-sub pos">+5% vs Q1 2025</div>
-    </div>
-  </div>
+  <div class="section-label" data-q-text="comparativa-ytd-label">Comparativa YTD &mdash; mismo per&iacute;odo cada a&ntilde;o</div>
+  <div class="kpi-row kpi-row-3" id="comparativa-ytd"></div>
 
 
   <!-- ── VISTA MENSUAL ────────────────────────────────────────────── -->
@@ -2017,6 +2001,59 @@ function renderSubtemas(){
   el.innerHTML=h;
 }
 
+// ── COMPARATIVA YTD (tab Reuniones) ──────────────────────────────────────────
+// Reuniones del mismo tramo Ene–<mes de corte> en cada año disponible, con la
+// variación contra el año anterior. Antes esta sección tenía los números de
+// 2024 escritos a mano y nunca se actualizaba al subir el Excel.
+//
+// La dirección la llevan la flecha y el signo del número, no sólo el color:
+// verde y rojo son indistinguibles para daltonismo deuteranope.
+function renderComparativaYTD(d) {
+  var wrap = document.getElementById('comparativa-ytd');
+  if (!wrap) return;
+  var n = (d.meta && d.meta.mes_corte) || 12;
+  var yrs = (d.years || []).slice(-4);
+  if (!yrs.length) return;
+
+  var MES_FULL = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  var lbl = document.querySelector('[data-q-text="comparativa-ytd-label"]');
+  if (lbl) {
+    lbl.textContent = 'Comparativa YTD Enero–' + MES_FULL[n - 1]
+      + ' — mismo período cada año';
+  }
+
+  var tot = function(y) {
+    var arr = (d.data && d.data[String(y)]) || [];
+    var s = 0; for (var i = 0; i < n; i++) s += (arr[i] || 0);
+    return s;
+  };
+
+  wrap.className = 'kpi-row kpi-row-' + Math.min(Math.max(yrs.length, 2), 4);
+  wrap.innerHTML = yrs.map(function(y, i) {
+    var v = tot(y);
+    var esActual = (i === yrs.length - 1);
+    // El año en curso se marca con borde, no con fondo azul: sobre ese azul el
+    // verde da 1.6:1 de contraste y la flecha no se leería.
+    var estilo = esActual ? ' style="border-color:var(--a1);border-width:2px;"' : '';
+    var sub;
+    if (i === 0) {
+      sub = '<div class="kpi-sub" style="color:var(--text3);">Base de comparación</div>';
+    } else {
+      var prev = tot(yrs[i - 1]);
+      var dif = v - prev;
+      var pct = prev ? Math.round(dif / prev * 100) : 0;
+      var cls = dif > 0 ? 'pos' : (dif < 0 ? 'neg' : '');
+      var flecha = dif > 0 ? '▲' : (dif < 0 ? '▼' : '—');
+      sub = '<div class="kpi-sub ' + cls + '"><span style="font-size:12px;">' + flecha + '</span> '
+          + (dif > 0 ? '+' : '') + dif + ' (' + (pct > 0 ? '+' : '') + pct + '%) '
+          + '<span style="color:var(--text3);">vs ' + yrs[i - 1] + '</span></div>';
+    }
+    return '<div class="kpi"' + estilo + '>'
+         + '<div class="kpi-label">' + y + (esActual ? ' · en curso' : '') + '</div>'
+         + '<div class="kpi-value">' + v + '</div>' + sub + '</div>';
+  }).join('');
+}
+
 // ── CLIENTES FOTO — consolidado YTD por contraparte ──────────────────────────
 // Reproduce la hoja "Clientes foto YYYY" del Follow Up: una fila por contraparte
 // con sus reuniones mes a mes hasta el mes en curso. Data: d.fotoYTD del pipeline.
@@ -2966,6 +3003,7 @@ function applyData(d) {
     if (typeof _renderCriticalList === 'function') _renderCriticalList();
     if (typeof _renderAreas === 'function')        _renderAreas();
     renderComparativaQ(d);
+    renderComparativaYTD(d);
     renderCrossSell(d);
     renderCrossGastoReun(d);
     renderCrossSaldoReun();
