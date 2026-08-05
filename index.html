@@ -638,6 +638,11 @@ footer {
       <button onclick="toggleVistaM(event)" id="vista-m-btn" style="font-size:10px;color:var(--text3);padding:2px 8px;border-radius:4px;background:var(--card2);border:1px solid var(--border);cursor:pointer;white-space:nowrap;flex-shrink:0;">&#9660; expandir</button>
     </div>
     <div id="monthly-table" style="display:none;"></div>
+    <div style="margin-top:10px;font-size:10px;color:var(--text3);">
+      Cuenta las filas de la hoja <em>Apuntes</em>, una por reuni&oacute;n registrada. La
+      <em>Comparativa YTD</em> de m&aacute;s arriba usa las columnas de mes de <em>Clientes foto</em>,
+      as&iacute; que los totales pueden diferir si una hoja va m&aacute;s al d&iacute;a que la otra.
+    </div>
   </div>
 
   <!-- ── SUBTEMAS ──────────────────────────────────────────────────── -->
@@ -1930,7 +1935,27 @@ function renderMonthly(){
     var map={}; for(var mo=1;mo<=12;mo++){(monthlyDetailData[st.yr+'_'+mo]||[]).forEach(function(r){if(!map[r.nombre])map[r.nombre]={nombre:r.nombre,prio:r.prio,tipo:r.tipo,reun:0,subtemas:[]};map[r.nombre].reun+=r.reun;(r.subtemas||[]).forEach(function(s){if(map[r.nombre].subtemas.indexOf(s)<0)map[r.nombre].subtemas.push(s);});});}
     rows=Object.values(map); titleStr=st.yr+' &mdash; Todo el a&ntilde;o';
   } else { rows=monthlyDetailData[st.yr+'_'+st.mo]||[]; titleStr=MN[st.mo]+' '+st.yr; }
-  rows=rows.filter(function(r){if(st.prio!=='ALL'&&r.prio!==st.prio)return false;if(st.tipo&&st.tipo!=='ALL'&&r.tipo!==st.tipo)return false;if(st.search&&r.nombre.toLowerCase().indexOf(st.search)<0)return false;return true;});
+  var pasaFiltro=function(r){if(st.prio!=='ALL'&&r.prio!==st.prio)return false;if(st.tipo&&st.tipo!=='ALL'&&r.tipo!==st.tipo)return false;if(st.search&&r.nombre.toLowerCase().indexOf(st.search)<0)return false;return true;};
+  rows=rows.filter(pasaFiltro);
+
+  // ── Mismo período del año anterior, por cliente ──────────────────────────
+  // Si se mira el año en curso completo, el año anterior se corta en el mes de
+  // corte: si no, se compararían 8 meses contra 12.
+  var MESA=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var yrPrev=parseInt(st.yr,10)-1;
+  var esActual=(parseInt(st.yr,10)===(window.__CURRENT_Q__&&window.__CURRENT_Q__.year));
+  var tope=(!st.mo&&esActual&&window.__MES_CORTE__)?window.__MES_CORTE__:12;
+  var prev={},prevRows=[];
+  var addPrev=function(r){if(!prev[r.nombre]){prev[r.nombre]={nombre:r.nombre,prio:r.prio,tipo:r.tipo,reun:0};prevRows.push(prev[r.nombre]);}prev[r.nombre].reun+=r.reun;};
+  if(!st.mo){for(var pm=1;pm<=tope;pm++)(monthlyDetailData[yrPrev+'_'+pm]||[]).forEach(addPrev);}
+  else (monthlyDetailData[yrPrev+'_'+st.mo]||[]).forEach(addPrev);
+  var lblPrev=st.mo?(MESA[st.mo-1]+' '+yrPrev):(yrPrev+(tope<12?' (Ene–'+MESA[tope-1]+')':''));
+  var hayPrev=prevRows.length>0;
+  // Clientes que sí vimos en ese período el año pasado y no en éste.
+  var vistos={};rows.forEach(function(r){vistos[r.nombre]=1;});
+  var perdidos=prevRows.filter(function(r){return !vistos[r.nombre]&&pasaFiltro(r);});
+  var prevTot=rows.reduce(function(a,r){return a+((prev[r.nombre]||{}).reun||0);},0)
+             +perdidos.reduce(function(a,r){return a+r.reun;},0);
   // All-year view: sort purely by reuniones desc; monthly view: by prio then reun
   if(!st.mo){
     rows.sort(function(a,b){return b.reun-a.reun;});
@@ -1939,7 +1964,16 @@ function renderMonthly(){
   }
   var total=rows.reduce(function(a,r){return a+r.reun;},0);
   var hp=rows.filter(function(r){return r.prio==='HP';}).length; var mp=rows.filter(function(r){return r.prio==='MP';}).length; var lp=rows.filter(function(r){return r.prio==='LP';}).length;
-  if(es) es.innerHTML = '<strong>'+titleStr+'</strong> &nbsp;&#183;&nbsp; '+total+' reuniones &nbsp;&#183;&nbsp; '+rows.length+' clientes'+(st.prio==='ALL'?' &nbsp;&#183;&nbsp; <span style="color:#1B4B9B;">HP:'+hp+'</span> <span style="color:#2E6BAF;">MP:'+mp+'</span> <span style="color:#5A93CC;">LP:'+lp+'</span>':'');
+  if(es){
+    var difT=total-prevTot, pctT=prevTot?Math.round(difT/prevTot*100):0;
+    var clsT=difT>0?'pos':(difT<0?'neg':''), flT=difT>0?'▲':(difT<0?'▼':'—');
+    es.innerHTML = '<strong>'+titleStr+'</strong> &nbsp;&#183;&nbsp; '+total+' reuniones &nbsp;&#183;&nbsp; '+rows.length+' clientes'
+      +(st.prio==='ALL'?' &nbsp;&#183;&nbsp; <span style="color:#1B4B9B;">HP:'+hp+'</span> <span style="color:#2E6BAF;">MP:'+mp+'</span> <span style="color:#5A93CC;">LP:'+lp+'</span>':'')
+      +(hayPrev?'<div style="margin-top:4px;">vs <strong>'+prevTot+'</strong> en '+lblPrev
+        +' &nbsp;<span class="'+clsT+'">'+flT+' '+(difT>0?'+':'')+difT+(prevTot?' ('+(pctT>0?'+':'')+pctT+'%)':'')+'</span>'
+        +(perdidos.length?' &nbsp;&#183;&nbsp; <span style="color:var(--text3);">'+perdidos.length+' cliente'+(perdidos.length>1?'s':'')+' de '+yrPrev+' sin reuniones en este período</span>':'')
+        +'</div>':'');
+  }
   if(!rows.length){el.innerHTML='<div style="padding:20px;text-align:center;color:var(--text3);">Sin reuniones en este per&#237;odo</div>';return;}
   var h=''; rows.forEach(function(r,i){var col=pC[r.prio]||'#8FA3BE';var subs=(r.subtemas||[]).map(function(s){return '<span style="font-size:9px;padding:1px 6px;border-radius:10px;background:var(--card2);color:var(--text3);border:1px solid var(--border);">'+s+'</span>';}).join(' ');
   h+='<div style="display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);">';
@@ -1948,7 +1982,17 @@ function renderMonthly(){
   h+='<span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:3px;letter-spacing:.05em;background:'+(r.tipo==="Inst"?"#6B4C9B":"#E8ECF4")+';color:'+(r.tipo==="Inst"?"#FFFFFF":"#3D5278")+';text-align:center;flex-shrink:0;margin-top:1px;text-transform:uppercase;white-space:nowrap;">'+(r.tipo==="Inst"?'Institucional':'Distribuidor')+'</span>';
   h+='<div style="flex:1;min-width:0;"><div style="font-size:12px;font-weight:500;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">'+r.nombre+'</div>';
   if(subs) h+='<div style="display:flex;gap:4px;margin-top:3px;flex-wrap:wrap;">'+subs+'</div>'; h+='</div>';
-  h+='<div style="text-align:right;flex-shrink:0;min-width:40px;"><span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--text);">'+r.reun+'</span><div style="font-size:9px;color:var(--text3);">reun.</div></div></div>';});
+  h+='<div style="text-align:right;flex-shrink:0;min-width:40px;"><span style="font-family:monospace;font-size:13px;font-weight:700;color:var(--text);">'+r.reun+'</span><div style="font-size:9px;color:var(--text3);">reun.</div></div>';
+  // Variación contra el mismo período del año anterior. La flecha y el signo
+  // llevan la dirección: verde y rojo no se distinguen en deuteranopía.
+  if(hayPrev){
+    var vp=(prev[r.nombre]||{}).reun||0, dif=r.reun-vp;
+    var cls=dif>0?'pos':(dif<0?'neg':''), fl=dif>0?'▲':(dif<0?'▼':'=');
+    h+='<div style="text-align:right;flex-shrink:0;min-width:78px;">'
+      +'<span class="'+cls+'" style="font-family:monospace;font-size:12px;font-weight:600;">'+fl+' '+(dif>0?'+':'')+(dif||0)+'</span>'
+      +'<div style="font-size:9px;color:var(--text3);white-space:nowrap;">'+(vp?('vs '+vp+' en '+yrPrev):('nuevo vs '+yrPrev))+'</div></div>';
+  }
+  h+='</div>';});
   el.innerHTML=h;
 }
 
