@@ -79,12 +79,11 @@ El dashboard auto-detecta años desde el Excel y rola sus labels solo.
 
 | Componente | Cómo rola |
 |---|---|
-| KPIs de Q (Reuniones Q1, Top Clientes Q, Activación Q…) | Pipeline calcula el **último trimestre completo** según `today` |
-| YTD del año actual | Suma de los meses transcurridos hasta hoy |
+| KPIs de Q (Reuniones Q, Top Clientes Q, Activación Q…) | Pipeline usa el **trimestre en curso** del calendario, cortado en el último mes con datos |
+| YTD del año actual | Suma hasta el mes en curso, acotado al último mes con reuniones cargadas |
 | Comparaciones vs año anterior | Pipeline lee la hoja `Clientes foto YYYY-1` |
 | Tabs de año (Vista mensual / Subtemas) | Reconstruidos desde la lista de hojas `Clientes foto YYYY` |
-| Heatmap | Usa los 3 años más recientes |
-| Metas AUM | Parsea la hoja `Metas{cur_year}` |
+| Heatmap / gráfico de línea / pares YoY | Usan todos los años con hoja `Clientes foto` |
 | Nuevos distribuidores | Compara `Clientes foto cur_year` vs `…cur_year-1` (sección Distribuidores). Si no hay nuevos, esconde la sección. |
 | Header / Footer / Consolidado / Semáforo / setYoy | Labels Q-relativos rolan via JS |
 
@@ -95,7 +94,6 @@ El dashboard auto-detecta años desde el Excel y rola sus labels solo.
      como separadores)
    - `Apuntes  2027` (con dos espacios entre "Apuntes" y el año, como las
      demás)
-   - `Metas2027` (con las metas Q por Q, mismo formato que `Metas2026`)
 2. Subir el Excel al dashboard. Todo rola solo:
    - Año actual pasa a 2027
    - Top Clientes Q1 2026 → Top Clientes QX 2027 (según el trimestre)

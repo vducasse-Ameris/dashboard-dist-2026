@@ -170,23 +170,8 @@ body { font-family:'IBM Plex Sans',sans-serif; background:var(--bg); color:var(-
 .sem-badge .sem-n { font-size:22px; font-weight:600; line-height:1; font-family:'IBM Plex Mono',monospace; }
 .sem-badge .sem-l { font-size:9px; margin-top:3px; font-weight:500; letter-spacing:.03em; }
 
-/* ── AUM CARDS ── */
-.aum-card {
-  background:var(--card); border:1px solid var(--border);
-  border-radius:var(--rl); padding:18px 20px;
-  border-left:4px solid var(--a1);
-}
-.aum-placeholder {
-  background:repeating-linear-gradient(-45deg, var(--card2), var(--card2) 4px, var(--card) 4px, var(--card) 12px);
-  border-radius:var(--r); height:80px;
-  display:flex; align-items:center; justify-content:center;
-  font-size:11px; color:var(--text3); font-style:italic;
-}
 .progress-wrap { height:8px; background:var(--card2); border-radius:4px; overflow:hidden; margin:6px 0; }
 .progress-bar  { height:8px; border-radius:4px; transition:width .6s ease; }
-.pct-badge {
-  font-size:10px; font-weight:600; padding:2px 7px; border-radius:4px; display:inline-block;
-}
 
 /* ── FOOTER ── */
 footer {
@@ -283,11 +268,6 @@ footer {
   <button id="upload-btn" disabled onclick="document.getElementById('xlsm-input').click();">
     <span id="upload-btn-icon">⏳</span> <span id="upload-btn-text">Cargando motor…</span>
   </button>
-  <input type="file" id="metas-input" accept=".xlsx,.xlsm" style="display:none;">
-  <button id="metas-btn" class="ub-secondary" disabled onclick="document.getElementById('metas-input').click();"
-          title="Opcional: archivo de resultados de metas (avance AUM)">
-    <span id="metas-btn-text">↑ Resultados metas</span>
-  </button>
   <div class="ub-status" id="upload-status">
     <span class="ub-spinner" id="upload-spinner"></span>
     <span id="upload-status-text">Iniciando Python en el navegador (primera vez ~15 s, después instantáneo)…</span>
@@ -324,7 +304,6 @@ footer {
   <button class="tab-btn" onclick="showTab('reuniones',this)"><span class="tab-icon">◈</span>Reuniones</button>
   <button class="tab-btn" onclick="showTab('clientes',this)"><span class="tab-icon">◇</span>Clientes</button>
   <button class="tab-btn" onclick="showTab('foto',this)"><span class="tab-icon">▣</span>Clientes foto</button>
-  <button class="tab-btn" onclick="showTab('metas-aum',this)"><span class="tab-icon">◆</span>Metas AUM</button>
 </button>
 </div>
 
@@ -799,14 +778,6 @@ footer {
   </div>
 
 
-  <!-- ── SALDO vs REUNIONES POR DISTRIBUIDOR (auto) ───── -->
-  <div class="section-label">Saldo vs reuniones — por distribuidor</div>
-  <div class="card" style="margin-bottom:1.25rem;">
-    <div class="card-title">MarketValue total vs reuniones · distribuidores en saldos por corte y con reuniones</div>
-    <div class="card-sub">Saldo = MarketValue total (todos los fondos, USD) al corte más reciente. Sólo distribuidores presentes en la hoja Saldos por corte <strong>y</strong> con reuniones. Requiere cargar el Excel Follow Up <strong>y</strong> el archivo de resultados de metas.</div>
-    <div id="cross-saldo-reun" style="margin-top:10px;"></div>
-  </div>
-
   <!-- ── GASTO vs REUNIONES POR DISTRIBUIDOR (auto) ───── -->
   <div class="section-label">Gasto vs reuniones — por distribuidor</div>
   <div class="card" style="margin-bottom:1.25rem;">
@@ -896,315 +867,8 @@ footer {
 
 </div>
 
-<!-- ═══════════════════════════════════════════════ TAB 5: METAS AUM -->
-<div class="panel" id="tab-metas-aum">
-
-  <!-- Aviso logros pendientes -->
-  <div style="background:var(--card2);border:1px solid var(--border);border-radius:var(--rl);padding:14px 20px;margin-bottom:1.25rem;border-left:4px solid var(--a1);display:flex;align-items:flex-start;gap:12px;">
-    <span style="font-size:20px;opacity:.5;">◎</span>
-    <div>
-      <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px;">Metas planteadas · Logros pendientes de información</div>
-      <div style="font-size:11px;color:var(--text2);line-height:1.6;" id="aum-aviso-text">Solo se muestran metas de <strong>Aumento de Patrimonio (AUM)</strong>. Las barras de progreso se activarán cuando se provea información real desde Britech. Las Internacionales tienen distribución trimestral irregular (Q3 concentra el mayor volumen).</div>
-    </div>
-  </div>
-
-  <!-- Sub-pestañas AUM -->
-  <div style="display:flex;gap:0;border-bottom:2px solid var(--border2);margin-bottom:1.25rem;">
-    <button id="aum-tab-q" onclick="showAumTab('q',this)"
-      style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;padding:9px 20px;border:none;background:transparent;cursor:pointer;color:var(--a1);border-bottom:2px solid var(--a1);margin-bottom:-2px;letter-spacing:.01em;">
-      ◈ &nbsp;Progreso trimestral
-    </button>
-    <button id="aum-tab-y" onclick="showAumTab('y',this)"
-      style="font-family:'IBM Plex Sans',sans-serif;font-size:12px;font-weight:500;padding:9px 20px;border:none;background:transparent;cursor:pointer;color:var(--text3);border-bottom:2px solid transparent;margin-bottom:-2px;letter-spacing:.01em;">
-      ◆ &nbsp;Progreso anual (YTD)
-    </button>
-  </div>
-
-  <!-- ── SUB-TAB: TRIMESTRAL ── -->
-  <div id="aum-panel-q">
-
-    <div class="section-label">Selecciona el trimestre activo</div>
-    <div style="display:flex;gap:8px;margin-bottom:1.25rem;" id="aum-q-selector">
-      <button class="ftab active" id="qsel-1t" onclick="selectQuarter('1T26',this)">Q1 · 1T26</button>
-      <button class="ftab" id="qsel-2t" onclick="selectQuarter('2T26',this)">Q2 · 2T26</button>
-      <button class="ftab" id="qsel-3t" onclick="selectQuarter('3T26',this)">Q3 · 3T26</button>
-      <button class="ftab" id="qsel-4t" onclick="selectQuarter('4T26',this)">Q4 · 4T26</button>
-    </div>
-
-    <!-- KPI meta trimestral total -->
-    <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
-      <div class="kpi accent" style="grid-column:span 1;">
-        <div class="kpi-label">Meta total trimestre</div>
-        <div class="kpi-value" style="font-size:20px;" id="q-total-meta">CLP 15.44B</div>
-        <div class="kpi-sub">Suma de los 4 instrumentos</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Logro trimestre</div>
-        <div class="kpi-value" style="font-size:20px;color:var(--text3);" id="q-total-logro">— pendiente</div>
-        <div class="kpi-sub" id="q-total-pct">Dato no disponible aún</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Trimestre en curso</div>
-        <div class="kpi-value" id="q-current-label">Q1 2026</div>
-        <div class="kpi-sub">Ene – Mar 2026</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Ponderación AUM</div>
-        <div class="kpi-value" id="aum-pond-value">34.5%</div>
-        <div class="kpi-sub" id="aum-cump-sub">Del scorecard total distribución</div>
-      </div>
-    </div>
-
-    <!-- 4 cards instrumentos -->
-    <div class="section-label" id="q-section-label">Desglose por instrumento · Q1 2026</div>
-    <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
-
-      <div class="aum-card" style="border-left-color:#1B4B9B;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-          <div>
-            <div class="kpi-label">Deuda Directa</div>
-            <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-deuda-meta">CLP 7.93B</div>
-          </div>
-          <span style="font-size:9px;background:#EBF0F8;color:#1B4B9B;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-deuda-pond" title="Peso en el scorecard">17.15%</span>
-        </div>
-        <div class="progress-wrap"><div class="progress-bar" id="q-deuda-bar" style="width:0%;background:#1B4B9B;"></div></div>
-        <div id="q-deuda-extra" style="font-size:10px;margin-top:4px;display:none;"></div>
-        <div style="display:flex;justify-content:space-between;margin-top:5px;">
-          <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-deuda-logro" style="color:var(--text2);">pendiente</span></span>
-          <span style="font-size:10px;color:var(--text3);">Fuente: Britech</span>
-        </div>
-      </div>
-
-      <div class="aum-card" style="border-left-color:#2E6BAF;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-          <div>
-            <div class="kpi-label">Inmobiliario</div>
-            <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-inm-meta">CLP 1.52B</div>
-          </div>
-          <span style="font-size:9px;background:#EBF0F8;color:#2E6BAF;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-inm-pond" title="Peso en el scorecard">3.15%</span>
-        </div>
-        <div class="progress-wrap"><div class="progress-bar" id="q-inm-bar" style="width:0%;background:#2E6BAF;"></div></div>
-        <div id="q-inm-extra" style="font-size:10px;margin-top:4px;display:none;"></div>
-        <div style="display:flex;justify-content:space-between;margin-top:5px;">
-          <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-inm-logro" style="color:var(--text2);">pendiente</span></span>
-          <span style="font-size:10px;color:var(--text3);">Fuente: Britech</span>
-        </div>
-      </div>
-
-      <div class="aum-card" style="border-left-color:#5A93CC;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-          <div>
-            <div class="kpi-label">Internacionales</div>
-            <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-inter-meta">CLP 5.76B</div>
-          </div>
-          <span style="font-size:9px;background:#EBF0F8;color:#5A93CC;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-inter-pond" title="Peso en el scorecard">14.35%</span>
-        </div>
-        <div class="progress-wrap"><div class="progress-bar" id="q-inter-bar" style="width:0%;background:#5A93CC;"></div></div>
-        <div id="q-inter-extra" style="font-size:10px;margin-top:4px;display:none;"></div>
-        <div style="display:flex;justify-content:space-between;margin-top:5px;">
-          <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-inter-logro" style="color:var(--text2);">pendiente</span></span>
-          <span style="font-size:10px;color:var(--text3);">Fuente: Britech</span>
-        </div>
-      </div>
-
-      <div class="aum-card" style="border-left-color:#A8C5E0;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;">
-          <div>
-            <div class="kpi-label">Notas Estructuradas</div>
-            <div style="font-size:17px;font-weight:600;color:var(--text);font-family:'IBM Plex Mono',monospace;" id="q-notas-meta">CLP 237M</div>
-          </div>
-          <span style="font-size:9px;background:#EBF0F8;color:#7D93B5;padding:2px 6px;border-radius:4px;font-weight:600;" id="q-notas-pond" title="Peso en el scorecard">0.35%</span>
-        </div>
-        <div class="progress-wrap"><div class="progress-bar" id="q-notas-bar" style="width:0%;background:#A8C5E0;"></div></div>
-        <div style="display:flex;justify-content:space-between;margin-top:5px;">
-          <span style="font-size:10px;color:var(--text3);">Logro: <span id="q-notas-logro" style="color:var(--text2);">pendiente</span></span>
-          <span style="font-size:10px;color:var(--text3);">Fuente: Britech + Masstro</span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Gráfico trimestral comparativo -->
-    <div class="card">
-      <div class="card-title">Metas por instrumento — comparativa entre trimestres</div>
-      <div class="card-sub">Los Internacionales concentran el mayor volumen en Q3 · Deuda e Inmobiliario tienen meta fija por trimestre</div>
-      <div class="chart-wrap" style="height:220px;"><canvas id="aumQChart"></canvas></div>
-      <div id="aumq-legend" class="legend" style="margin-top:8px;"></div>
-    </div>
-  </div>
-
-  <!-- ── SUB-TAB: YTD ANUAL ── -->
-  <div id="aum-panel-y" style="display:none;">
-
-    <div class="section-label">Progreso acumulado año 2026 (YTD)</div>
-    <div class="kpi-row kpi-row-4" style="margin-bottom:1.25rem;">
-      <div class="kpi accent">
-        <div class="kpi-label">Meta AUM anual total</div>
-        <div class="kpi-value" style="font-size:18px;">CLP 65.32B</div>
-        <div class="kpi-sub">Suma 4 instrumentos · 2026</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Logro YTD</div>
-        <div class="kpi-value" id="ytd-kpi-logro" style="font-size:18px;color:var(--text3);">— pendiente</div>
-        <div class="kpi-sub">Acumulado desde 01 ene 2026</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">Meta Q1 acumulada</div>
-        <div class="kpi-value" style="font-size:18px;">CLP 15.44B</div>
-        <div class="kpi-sub">Referencia hito Q1</div>
-      </div>
-      <div class="kpi">
-        <div class="kpi-label">% del año transcurrido</div>
-        <div class="kpi-value">25%</div>
-        <div class="kpi-sub">Q1 completado (Ene–Mar)</div>
-      </div>
-    </div>
-
-    <!-- Tabla YTD por instrumento -->
-    <div class="card" style="margin-bottom:1.25rem;overflow-x:auto;">
-      <div class="card-title">Metas anuales por instrumento — 2026</div>
-      <div class="card-sub">Desglose trimestral y total anual · Logros se registrarán cuando estén disponibles desde Britech</div>
-      <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:12px;">
-        <thead>
-          <tr style="background:#1B4B9B;">
-            <th style="padding:8px 12px;text-align:left;color:#fff;font-weight:500;border-radius:4px 0 0 0;">Instrumento</th>
-            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Q1 Meta</th>
-            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Q2 Meta</th>
-            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Q3 Meta</th>
-            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Q4 Meta</th>
-            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Meta Anual</th>
-            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Pond.</th>
-            <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;border-radius:0 4px 0 0;">Logro YTD</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
-              <span style="width:8px;height:8px;background:#1B4B9B;border-radius:2px;display:inline-block;flex-shrink:0;"></span>Deuda Directa</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">7.93B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">7.93B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">7.93B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">7.93B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">31.70B</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);">17.15%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-deuda-logro"">pendiente</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
-              <span style="width:8px;height:8px;background:#2E6BAF;border-radius:2px;display:inline-block;flex-shrink:0;"></span>Inmobiliario</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.52B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.52B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.52B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.52B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">6.07B</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);">3.15%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-inm-logro"">pendiente</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
-              <span style="width:8px;height:8px;background:#5A93CC;border-radius:2px;display:inline-block;flex-shrink:0;"></span>Internacionales</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">5.76B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">1.48B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:#B33A2E;">13.33B ▲</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">6.04B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">26.61B</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);">14.35%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-inter-logro"">pendiente</td>
-          </tr>
-          <tr style="border-bottom:1px solid var(--border);">
-            <td style="padding:8px 12px;display:flex;align-items:center;gap:8px;">
-              <span style="width:8px;height:8px;background:#A8C5E0;border-radius:2px;display:inline-block;flex-shrink:0;"></span>Notas Estructuradas</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">237M</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">237M</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">237M</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);">237M</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">946M</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);">0.35%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-notas-logro"">pendiente</td>
-          </tr>
-          <tr style="background:var(--card2);">
-            <td style="padding:8px 12px;font-weight:600;color:var(--text);">Total AUM</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">15.44B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">11.16B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;color:#B33A2E;">23.00B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">15.72B</td>
-            <td style="text-align:center;padding:8px 12px;font-family:'IBM Plex Mono',monospace;font-weight:600;">65.32B</td>
-            <td style="text-align:center;padding:8px 12px;font-weight:600;color:var(--a1);">35%</td>
-            <td style="text-align:center;padding:8px 12px;color:var(--text3);font-style:italic; id="ytd-total-logro"">pendiente</td>
-          </tr>
-        </tbody>
-      </table>
-      <div style="font-size:10px;color:var(--text3);margin-top:8px;">▲ Q3 concentra el mayor volumen de Internacionales (13.33B de 26.61B anuales = 50%) · Todos los valores en CLP</div>
-    </div>
-
-    <!-- Gráfico YTD: metas acumuladas por trimestre -->
-    <div class="card">
-      <div class="card-title">Curva de meta acumulada 2026 — AUM total</div>
-      <div class="card-sub">Suma acumulada de metas trimestrales · La línea muestra el hito esperado al cierre de cada trimestre</div>
-      <div class="chart-wrap" style="height:210px;"><canvas id="aumYtdChart"></canvas></div>
-    </div>
-
-    <!-- Otras metas no-AUM -->
-    <div class="section-label" style="margin-top:1.25rem;">Otras metas de gestión 2026</div>
-    <div class="equal-col">
-      <div class="card">
-        <div class="card-title">Reuniones con socios · Mantención y Fidelización (pond. 20%)</div>
-        <div class="card-sub">Meta: 6 por trimestre · 24 anuales · Fuente: CRM</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;">
-          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
-            <div style="font-size:9px;color:var(--text3);">Q1 meta</div>
-            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">6</div>
-            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
-          </div>
-          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
-            <div style="font-size:9px;color:var(--text3);">Q2 meta</div>
-            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">6</div>
-            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
-          </div>
-          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
-            <div style="font-size:9px;color:var(--text3);">Q3 meta</div>
-            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">6</div>
-            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
-          </div>
-          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
-            <div style="font-size:9px;color:var(--text3);">Q4 meta</div>
-            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">6</div>
-            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
-          </div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-title">Nuevos distribuidores con contrato · Clientes (pond. 10%)</div>
-        <div class="card-sub">Meta: 2 por trimestre · 8 anuales · Fuente: CRM (deals)</div>
-        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:10px;">
-          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
-            <div style="font-size:9px;color:var(--text3);">Q1 meta</div>
-            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">2</div>
-            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
-          </div>
-          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
-            <div style="font-size:9px;color:var(--text3);">Q2 meta</div>
-            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">2</div>
-            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
-          </div>
-          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
-            <div style="font-size:9px;color:var(--text3);">Q3 meta</div>
-            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">2</div>
-            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
-          </div>
-          <div style="text-align:center;background:var(--card2);border-radius:6px;padding:10px 4px;">
-            <div style="font-size:9px;color:var(--text3);">Q4 meta</div>
-            <div style="font-size:20px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);">2</div>
-            <div style="font-size:9px;color:var(--text3);margin-top:4px;">logro: —</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
-</div>
-
 <footer>
-  <span>Fuente: Consolidado_Follow-Ups_metas_dist.xlsx</span>
+  <span>Fuente: Follow Up clientes.xlsm</span>
   <span id="footer-date" data-q-text="footer-date">Q1 2026 · 2024–2026 · Perú incluido</span>
 </footer>
 
@@ -1248,7 +912,6 @@ function showTab(tabId, btn) {
     panel.classList.add('panel-active');
   }
   if (btn) btn.classList.add('active');
-  if (tabId === 'metas-aum') { setTimeout(initAumCharts, 30); }
   setTimeout(function() {
     if (window.Chart && Chart.instances) {
       for (var id in Chart.instances) {
@@ -1279,18 +942,6 @@ var areasData = [];
 var criticalList = [];
 
 
-var aumData = {
-  '1T26': { deuda:7.925, inm:1.517, inter:5.764, notas:0.237, total:15.443 },
-  '2T26': { deuda:7.925, inm:1.517, inter:1.481, notas:0.237, total:11.160 },
-  '3T26': { deuda:7.925, inm:1.517, inter:13.326,notas:0.237, total:23.005 },
-  '4T26': { deuda:7.925, inm:1.517, inter:6.037, notas:0.237, total:15.716 }
-};
-var qMetas = {
-  '1T26': { deuda:'CLP 7.93B', inm:'CLP 1.52B', inter:'CLP 5.76B', notas:'CLP 237M', label:'Q1 2026', range:'Ene - Mar 2026' },
-  '2T26': { deuda:'CLP 7.93B', inm:'CLP 1.52B', inter:'CLP 1.48B', notas:'CLP 237M', label:'Q2 2026', range:'Abr - Jun 2026' },
-  '3T26': { deuda:'CLP 7.93B', inm:'CLP 1.52B', inter:'CLP 13.33B',notas:'CLP 237M', label:'Q3 2026', range:'Jul - Sep 2026' },
-  '4T26': { deuda:'CLP 7.93B', inm:'CLP 1.52B', inter:'CLP 6.04B', notas:'CLP 237M', label:'Q4 2026', range:'Oct - Dic 2026' }
-};
 
 // ── CHART HELPERS ─────────────────────────────────────────────────────────────
 // Series por año, del más antiguo al más reciente: el año en curso se queda
@@ -1490,124 +1141,6 @@ buildHeatmap();
   var semLeg=document.getElementById('semaforo-leg');
   if(semLeg)semLeg.innerHTML=[['#0E7A4E','>= meta'],['#D4890A','Parcial'],['#B33A2E','Sin contacto']].map(function(it){return '<span class="legend-item"><span class="legend-dot" style="background:'+it[0]+'"></span>'+it[1]+'</span>';}).join('');
 })();
-
-// ── AUM (LAZY INIT) ───────────────────────────────────────────────────────────
-var aumChartsInited = false;
-// ── TRIMESTRES DEL TAB AUM ───────────────────────────────────────────────────
-// Las claves ("1T26".."4T26") las arma el pipeline desde el año del Excel, así
-// que se derivan de la data en vez de escribirlas fijas: en 2027 pasan solas a
-// 1T27..4T27.
-function aumQKeys() {
-  var ks = Object.keys(window.aumData || {}).filter(function(k){ return /^[1-4]T\d\d$/.test(k); });
-  // Ordena por año y luego por trimestre ("1T27" > "4T26")
-  ks.sort(function(a,b){ return (a.slice(1)+a.charAt(0)).localeCompare(b.slice(1)+b.charAt(0)); });
-  return ks.length === 4 ? ks : ['1T26','2T26','3T26','4T26'];
-}
-
-// Trimestre que viene seleccionado al abrir el tab: el en curso según la fecha.
-function aumDefaultQKey() {
-  var q = (window.__CURRENT_Q__ && window.__CURRENT_Q__.q) || 1;
-  if (q < 1) q = 1; if (q > 4) q = 4;
-  return aumQKeys()[q - 1];
-}
-
-// Reconstruye los botones del selector con las claves reales del año cargado.
-function rebuildAumQButtons() {
-  var wrap = document.getElementById('aum-q-selector');
-  if (!wrap) return;
-  var ks = aumQKeys(), def = aumDefaultQKey();
-  wrap.innerHTML = ks.map(function(k, i) {
-    return '<button class="ftab' + (k === def ? ' active' : '') + '" id="qsel-' + (i+1) + 't"'
-         + ' onclick="selectQuarter(\'' + k + '\',this)">Q' + (i+1) + ' · ' + k + '</button>';
-  }).join('');
-}
-
-function initAumCharts() {
-  if (aumChartsInited) return;
-  aumChartsInited = true;
-  if (window.__METAS_RESULTS__ && typeof _buildAumChartsUSD === 'function') { _buildAumChartsUSD(window.__METAS_RESULTS__); var _dk=aumDefaultQKey(); var _b=document.querySelector('[onclick*="selectQuarter(\''+_dk+'\'"]'); if(_b) selectQuarter(_dk,_b); return; }
-
-  var elQ = document.getElementById('aumQChart');
-  if (elQ) {
-    var quarters=(window.AUM_QUARTERS||['Q1 2026','Q2 2026','Q3 2026','Q4 2026']);
-    var keys=['deuda','inm','inter','notas'];
-    var colors=['rgba(27,75,155,0.85)','rgba(46,107,175,0.85)','rgba(90,147,204,0.85)','rgba(168,197,224,0.85)'];
-    var labels=['Deuda Directa','Inmobiliario','Internacionales','Notas Estr.'];
-    window.aumQChartInst = new Chart(elQ, {
-      type:'bar',
-      data:{labels:quarters,datasets:keys.map(function(k,i){return{label:labels[i],
-        data:aumQKeys().map(function(q){return (aumData[q]||{})[k]||0;}),
-        backgroundColor:colors[i],stack:'s',borderSkipped:false,
-        borderRadius:i===keys.length-1?[3,3,0,0]:0};})},
-      options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
-        plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,
-          callbacks:{label:function(ctx){return ' '+ctx.dataset.label+': CLP '+ctx.parsed.y.toFixed(2)+'B';},
-            footer:function(ctx){return 'Total: CLP '+ctx.reduce(function(a,c){return a+c.parsed.y;},0).toFixed(2)+'B';}}}},
-        scales:{x:Object.assign({stacked:true},xScale()),y:Object.assign({stacked:true},yScale(),{
-          title:{display:true,text:'CLP Miles de millones',color:TICK_C,font:{size:9}},
-          ticks:{callback:function(v){return 'CLP '+v+'B';},color:TICK_C,font:TICK_FONT}})}}
-    });
-    var leg=document.getElementById('aumq-legend');
-    if(leg)colors.forEach(function(col,i){leg.innerHTML+='<span class="legend-item"><span class="legend-dot" style="background:'+col+'"></span>'+labels[i]+'</span>';});
-  }
-
-  var elY = document.getElementById('aumYtdChart');
-  if (elY) {
-    // Hitos acumulados: suma corrida de los totales trimestrales de la meta.
-    // Antes estaban escritos a mano con los valores de 2026.
-    var _acum = [0], _run = 0;
-    aumQKeys().forEach(function(q){ _run += ((aumData[q]||{}).total || 0); _acum.push(Math.round(_run*1000)/1000); });
-    var _ymax = Math.ceil((_acum[_acum.length-1] || 1) * 1.15);
-    new Chart(elY,{type:'line',
-      data:{labels:['Inicio','Cierre Q1','Cierre Q2','Cierre Q3','Cierre Q4'],
-        datasets:[
-          {label:'Hito acumulado meta',data:_acum,
-            borderColor:'#1B4B9B',backgroundColor:'rgba(27,75,155,0.08)',borderWidth:2.5,
-            fill:true,tension:0.2,pointRadius:5,pointBackgroundColor:'#1B4B9B',pointBorderColor:'#fff',pointBorderWidth:2},
-          {label:'Logro YTD',data:[0,null,null,null,null],
-            borderColor:'#0E7A4E',backgroundColor:'rgba(14,122,78,0.08)',borderWidth:2.5,
-            borderDash:[5,3],fill:true,tension:0.2,pointRadius:5,pointBackgroundColor:'#0E7A4E',pointBorderColor:'#fff',pointBorderWidth:2}
-        ]},
-      options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:function(ctx){return ctx.parsed.y===null?ctx.dataset.label+': pendiente':' '+ctx.dataset.label+': CLP '+ctx.parsed.y.toFixed(2)+'B';}}}},
-        scales:{x:xScale(),y:Object.assign(yScale(_ymax),{
-          title:{display:true,text:'CLP Miles de millones (acum.)',color:TICK_C,font:{size:9}},
-          ticks:{callback:function(v){return 'CLP '+v+'B';},color:TICK_C,font:TICK_FONT}})}}
-    });
-  }
-
-  // Init quarter selector — arranca en el trimestre en curso, no en Q1
-  var dk = aumDefaultQKey();
-  var btn = document.querySelector('[onclick*="selectQuarter(\'' + dk + '\'"]');
-  if (btn) selectQuarter(dk, btn);
-}
-
-function showAumTab(which, btn) {
-  document.getElementById('aum-panel-q').style.display = which==='q'?'block':'none';
-  document.getElementById('aum-panel-y').style.display = which==='y'?'block':'none';
-  document.getElementById('aum-tab-q').style.color = which==='q'?'var(--a1)':'var(--text3)';
-  document.getElementById('aum-tab-y').style.color = which==='y'?'var(--a1)':'var(--text3)';
-  document.getElementById('aum-tab-q').style.borderBottomColor = which==='q'?'var(--a1)':'transparent';
-  document.getElementById('aum-tab-y').style.borderBottomColor = which==='y'?'var(--a1)':'transparent';
-}
-
-function selectQuarter(q, btn) {
-  document.querySelectorAll('[id^="qsel-"]').forEach(function(b){b.classList.remove('active');});
-  btn.classList.add('active');
-  var d=aumData[q], m=qMetas[q];
-  document.getElementById('q-total-meta').textContent = 'CLP '+d.total.toFixed(2)+'B';
-  document.getElementById('q-current-label').textContent = m.label;
-  document.querySelector('#q-current-label').nextElementSibling.textContent = m.range;
-  document.getElementById('q-section-label').textContent = 'Desglose por instrumento '+m.label;
-  ['deuda','inm','inter','notas'].forEach(function(f){document.getElementById('q-'+f+'-meta').textContent=m[f];}); if (typeof _updateAumLogrosQ === 'function') _updateAumLogrosQ(q, d);
-  if (window.aumQChartInst) {
-    window.aumQChartInst.data.datasets.forEach(function(ds,i){
-      var key=['deuda','inm','inter','notas'][i];
-      ds.data=aumQKeys().map(function(qt){return (aumData[qt]||{})[key]||0;});
-    });
-    window.aumQChartInst.update();
-  }
-}
 
 // ── CLIENTS ───────────────────────────────────────────────────────────────────
 function setClients(year, btn) {
@@ -2368,8 +1901,6 @@ await micropip.install('openpyxl')
     btn.disabled = false;
     btnIcon.textContent = '↑';
     btnText.textContent = 'Subir Excel';
-    var mbtn = document.getElementById('metas-btn');
-    if (mbtn) mbtn.disabled = false;
     return py;
   } catch (err) {
     spinner.style.display = 'none';
@@ -2408,302 +1939,6 @@ function _renderWarnings(warnings) {
     + warnings.map(w => '<li>' + w + '</li>').join('')
     + '</ul>';
   bar.appendChild(div);
-}
-
-// ── Resultados de metas (archivo separado, opcional) ────────────────────────
-async function processMetasResults(file) {
-  const py = await pyodideReady;
-  const statusText = document.getElementById('upload-status-text');
-  const input = document.getElementById('metas-input');
-  try {
-    const buf = await file.arrayBuffer();
-    py.globals.set('metas_bytes_js', new Uint8Array(buf));
-    const jsonStr = py.runPython(`
-import json
-metas_bytes = metas_bytes_js.to_bytes()
-json.dumps(pipeline.compute_metas_results(metas_bytes), ensure_ascii=False, default=str)
-`);
-    const res = JSON.parse(jsonStr);
-    window.__METAS_RESULTS__ = res;
-    renderMetasAvance(res);
-    statusText.innerHTML = '<span class="ub-check">✓ Resultados de metas cargados (' + file.name + ')</span>';
-  } catch (err) {
-    var info = _extractPyError(err);
-    statusText.innerHTML = '<span class="ub-error">Error en resultados de metas: ' + info.text + '</span>';
-    console.error(err);
-  } finally {
-    if (input) input.value = '';
-  }
-}
-
-function _fmtB(v) {
-  var b = v / 1e9;
-  if (Math.abs(b) >= 1) return 'CLP ' + b.toFixed(2) + 'B';
-  if (Math.abs(v) >= 1e6) return 'CLP ' + Math.round(v / 1e6) + 'M';
-  return 'CLP ' + Math.round(v).toLocaleString('es-CL');
-}
-
-// Formato USD (los valores AUM vienen en USD)
-function _fmtUSD(v) {
-  var a = Math.abs(v);
-  if (a >= 1e6) return 'US$ ' + (v / 1e6).toFixed(2) + 'M';
-  if (a >= 1e3) return 'US$ ' + (v / 1e3).toFixed(0) + 'k';
-  return 'US$ ' + Math.round(v).toLocaleString('en-US');
-}
-
-// Devuelve {txt, color} para un logro dado su target (maneja negativos)
-function _logroDisplay(logro, target) {
-  var neg = logro < 0;
-  var pct = target > 0 ? Math.round(logro / target * 100) : 0;
-  if (neg) return { txt: _fmtB(logro) + ' · rescate neto', color: '#B33A2E', pct: pct, neg: true };
-  return {
-    txt: _fmtB(logro) + ' · ' + pct + '%',
-    color: pct >= 100 ? '#0E7A4E' : 'var(--text2)',
-    pct: pct, neg: false,
-  };
-}
-
-// Actualiza el trimestre `q` (ej "1T26") con metas + cumplimiento en USD.
-// Lee todo de window.__METAS_RESULTS__.byPeriodo (no usa aumData CLP).
-function _updateAumLogrosQ(q, targets) {
-  var res = window.__METAS_RESULTS__;
-  var metaIds = { deuda: 'q-deuda-meta', inm: 'q-inm-meta', inter: 'q-inter-meta' };
-  var logIds  = { deuda: 'q-deuda-logro', inm: 'q-inm-logro', inter: 'q-inter-logro' };
-  var bars    = { deuda: 'q-deuda-bar',   inm: 'q-inm-bar',   inter: 'q-inter-bar' };
-  var pondIds = { deuda: 'q-deuda-pond', inm: 'q-inm-pond', inter: 'q-inter-pond' };
-  var baseColor = { deuda: '#1B4B9B', inm: '#2E6BAF', inter: '#5A93CC' };
-  var totalEl = document.getElementById('q-total-logro');
-  var totalMetaEl = document.getElementById('q-total-meta');
-
-  // Ocultar la card de Notas Estructuradas (ya no se mide)
-  var notasMeta = document.getElementById('q-notas-meta');
-  if (notasMeta) { var nc = notasMeta.closest('.aum-card'); if (nc) nc.style.display = res ? 'none' : ''; }
-
-  var data = res && res.byPeriodo && res.byPeriodo[q];
-  if (!data) {
-    // Sin resultados cargados → dejar 'pendiente' y barras vacías
-    ['deuda', 'inm', 'inter'].forEach(function(k) {
-      var el = document.getElementById(logIds[k]);
-      if (el) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; }
-      var bar = document.getElementById(bars[k]);
-      if (bar) { bar.style.width = '0%'; bar.style.background = baseColor[k]; }
-    });
-    if (totalEl) { totalEl.textContent = '— pendiente'; totalEl.style.color = 'var(--text3)'; }
-    return;
-  }
-
-  var totalMeta = 0, totalLogro = 0, anyLogro = false, sumCump = 0, sumPond = 0;
-  ['deuda', 'inm', 'inter'].forEach(function(k) {
-    var d = data[k]; if (!d) return;
-    totalMeta += (d.target || 0);
-    sumPond += (d.pond || 0);
-    // Meta card en USD
-    var me = document.getElementById(metaIds[k]);
-    if (me) me.textContent = _fmtUSD(d.target || 0);
-    // Badge de ponderación
-    var pe = document.getElementById(pondIds[k]);
-    if (pe && d.pond) pe.textContent = (d.pond * 100).toFixed(2) + '%';
-    // Logro + barra
-    var el = document.getElementById(logIds[k]);
-    var bar = document.getElementById(bars[k]);
-    if (d.logro === null || d.logro === undefined) {
-      if (el) { el.textContent = 'corte pendiente'; el.style.color = 'var(--text2)'; }
-      if (bar) { bar.style.width = '0%'; bar.style.background = baseColor[k]; }
-      return;
-    }
-    anyLogro = true;
-    totalLogro += d.logro;
-    sumCump += (d.cump_pond || 0);
-    var pct = Math.round((d.ratio || 0) * 100);
-    var neg = d.logro < 0;
-    if (el) {
-      el.textContent = _fmtUSD(d.logro) + ' · ' + (neg ? 'rescate' : pct + '%');
-      el.style.color = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : 'var(--text2)');
-    }
-    if (bar) {
-      var w = neg ? 0 : Math.max(0, Math.min(100, pct));
-      bar.style.width = w + '%';
-      bar.style.background = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : baseColor[k]);
-    }
-    // Línea extra: variación vs corte anterior (momentum) + brecha vs meta
-    var extraEl = document.getElementById('q-' + k + '-extra');
-    if (extraEl) {
-      var parts = [];
-      if (d.delta_prev !== null && d.delta_prev !== undefined) {
-        var dp = d.delta_prev;
-        var arrow = dp > 0 ? '▲' : (dp < 0 ? '▼' : '–');
-        var dpCol = dp > 0 ? '#0E7A4E' : (dp < 0 ? '#B33A2E' : 'var(--text3)');
-        parts.push('<span style="color:' + dpCol + ';">' + arrow + ' ' + (dp >= 0 ? '+' : '') + _fmtUSD(dp) + ' vs corte ant.</span>');
-      }
-      if (d.gap !== null && d.gap !== undefined) {
-        if (d.gap > 0) parts.push('<span style="color:var(--text3);">faltan ' + _fmtUSD(d.gap) + '</span>');
-        else parts.push('<span style="color:#0E7A4E;">+' + _fmtUSD(-d.gap) + ' sobre meta</span>');
-      }
-      extraEl.innerHTML = parts.join(' &nbsp;·&nbsp; ');
-      extraEl.style.display = parts.length ? 'block' : 'none';
-    }
-  });
-
-  if (totalMetaEl) totalMetaEl.textContent = _fmtUSD(totalMeta);
-  if (totalEl) {
-    if (!anyLogro) { totalEl.textContent = 'corte pendiente'; totalEl.style.color = 'var(--text3)'; }
-    else { totalEl.textContent = _fmtUSD(totalLogro); totalEl.style.color = totalLogro < 0 ? '#B33A2E' : (totalLogro >= totalMeta ? '#0E7A4E' : 'var(--text)'); }
-  }
-  var pctEl = document.getElementById('q-total-pct');
-  if (pctEl) {
-    if (!anyLogro) { pctEl.textContent = 'Corte del trimestre aún no disponible'; }
-    else {
-      var pctMeta = totalMeta ? Math.round(totalLogro / totalMeta * 100) : 0;
-      var cumpPts = sumCump * 100;
-      pctEl.innerHTML = (totalLogro < 0 ? 'rescate neto' : pctMeta + '% de la meta')
-        + ' · aporte ponderado: <strong style="color:' + (cumpPts < 0 ? '#B33A2E' : '#0E7A4E') + ';">'
-        + (cumpPts >= 0 ? '+' : '') + cumpPts.toFixed(2) + ' pts</strong>';
-    }
-  }
-  var pondValEl = document.getElementById('aum-pond-value');
-  var cumpSubEl = document.getElementById('aum-cump-sub');
-  if (pondValEl) pondValEl.textContent = (sumPond * 100).toFixed(1) + '%';
-  if (cumpSubEl) {
-    if (!anyLogro) { cumpSubEl.textContent = 'Del scorecard total distribución'; }
-    else {
-      var cp = sumCump * 100;
-      cumpSubEl.innerHTML = 'Del scorecard · cumplió <strong style="color:' + (cp < 0 ? '#B33A2E' : '#0E7A4E') + ';">'
-        + (cp >= 0 ? '+' : '') + cp.toFixed(2) + ' pts</strong> en ' + q;
-    }
-  }
-}
-
-// Reconstruye los 2 charts AUM (barras trimestrales + línea acumulada) en USD
-function _buildAumChartsUSD(res) {
-  if (typeof Chart === 'undefined' || !res || !res.byPeriodo) return;
-  var bp = res.byPeriodo;
-  var cy = (window.__CURRENT_Q__ && window.__CURRENT_Q__.year) || 2026;
-  var yy = String(cy).slice(-2);
-  var pers = ['1T' + yy, '2T' + yy, '3T' + yy, '4T' + yy];
-  var qLabels = ['Q1 ' + cy, 'Q2 ' + cy, 'Q3 ' + cy, 'Q4 ' + cy];
-  var metas = ['deuda', 'inm', 'inter'];
-  var mLabel = { deuda: 'Deuda Privada', inm: 'Inmobiliario', inter: 'Internacionales' };
-  var mColor = { deuda: 'rgba(27,75,155,0.85)', inm: 'rgba(46,107,175,0.85)', inter: 'rgba(90,147,204,0.85)' };
-
-  // Barras: meta USD (millones) por trimestre por instrumento (stacked)
-  var elQ = document.getElementById('aumQChart');
-  if (elQ) {
-    var ex = Chart.getChart(elQ); if (ex) ex.destroy();
-    var datasets = metas.map(function(k, i) {
-      return {
-        label: mLabel[k],
-        data: pers.map(function(per) { var d = bp[per] && bp[per][k]; return d ? (d.target || 0) / 1e6 : 0; }),
-        backgroundColor: mColor[k], stack: 's', borderSkipped: false,
-        borderRadius: i === metas.length - 1 ? [3, 3, 0, 0] : 0
-      };
-    });
-    window.aumQChartInst = new Chart(elQ, {
-      type: 'bar',
-      data: { labels: qLabels, datasets: datasets },
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
-        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: {
-          label: function(ctx) { return ' ' + ctx.dataset.label + ': US$ ' + ctx.parsed.y.toFixed(2) + 'M'; },
-          footer: function(ctx) { return 'Total: US$ ' + ctx.reduce(function(a, c) { return a + c.parsed.y; }, 0).toFixed(2) + 'M'; }
-        }}},
-        scales: { x: Object.assign({ stacked: true }, xScale()), y: Object.assign({ stacked: true }, yScale(), {
-          title: { display: true, text: 'US$ millones', color: TICK_C, font: { size: 9 } },
-          ticks: { callback: function(v) { return 'US$' + v + 'M'; }, color: TICK_C, font: TICK_FONT } }) }
-      }
-    });
-    var leg = document.getElementById('aumq-legend');
-    if (leg) { leg.innerHTML = ''; metas.forEach(function(k) { leg.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + mColor[k] + '"></span>' + mLabel[k] + '</span>'; }); }
-  }
-
-  // Línea: meta acumulada vs logro acumulado (USD millones)
-  var elY = document.getElementById('aumYtdChart');
-  if (elY) {
-    var ex2 = Chart.getChart(elY); if (ex2) ex2.destroy();
-    var metaCum = [0], logroCum = [0], mc = 0, lc = 0, lValid = true;
-    pers.forEach(function(per) {
-      var dsum = 0, lsum = 0, hasL = false;
-      metas.forEach(function(k) { var d = bp[per] && bp[per][k]; if (d) { dsum += (d.target || 0); if (d.logro != null) { lsum += d.logro; hasL = true; } } });
-      mc += dsum; metaCum.push(mc / 1e6);
-      if (hasL && lValid) { lc += lsum; logroCum.push(lc / 1e6); } else { lValid = false; logroCum.push(null); }
-    });
-    new Chart(elY, {
-      type: 'line',
-      data: { labels: ['Inicio', 'Cierre Q1', 'Cierre Q2', 'Cierre Q3', 'Cierre Q4'], datasets: [
-        { label: 'Hito acumulado meta', data: metaCum, borderColor: '#1B4B9B', backgroundColor: 'rgba(27,75,155,0.08)', borderWidth: 2.5, fill: true, tension: 0.2, pointRadius: 5, pointBackgroundColor: '#1B4B9B', pointBorderColor: '#fff', pointBorderWidth: 2 },
-        { label: 'Logro YTD', data: logroCum, borderColor: '#0E7A4E', backgroundColor: 'rgba(14,122,78,0.08)', borderWidth: 2.5, borderDash: [5, 3], fill: true, tension: 0.2, pointRadius: 5, pointBackgroundColor: '#0E7A4E', pointBorderColor: '#fff', pointBorderWidth: 2 }
-      ]},
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y === null ? ctx.dataset.label + ': pendiente' : ' ' + ctx.dataset.label + ': US$ ' + ctx.parsed.y.toFixed(2) + 'M'; } } } },
-        scales: { x: xScale(), y: Object.assign(yScale(), {
-          title: { display: true, text: 'US$ millones (acum.)', color: TICK_C, font: { size: 9 } },
-          ticks: { callback: function(v) { return 'US$' + v + 'M'; }, color: TICK_C, font: TICK_FONT } }) }
-      }
-    });
-  }
-}
-
-// Actualiza el sub-panel anual (YTD): KPI + celdas de la tabla (USD)
-function _updateAumYTD() {
-  var res = window.__METAS_RESULTS__;
-  var data = res && res.byPeriodo && res.byPeriodo['2026'];
-  var ids = { deuda: 'ytd-deuda-logro', inm: 'ytd-inm-logro', inter: 'ytd-inter-logro' };
-  var kpiEl = document.getElementById('ytd-kpi-logro');
-  var totalEl = document.getElementById('ytd-total-logro');
-  // Ocultar fila de Notas en la tabla YTD
-  var notasCell = document.getElementById('ytd-notas-logro');
-  if (notasCell && res) { var tr = notasCell.closest('tr'); if (tr) tr.style.display = 'none'; }
-  if (!data) return;
-  var totalLogro = 0;
-  ['deuda', 'inm', 'inter'].forEach(function(k) {
-    var el = document.getElementById(ids[k]);
-    var d = data[k];
-    if (d && d.logro != null) totalLogro += d.logro;
-    if (!el || !d) return;
-    if (d.logro == null) { el.textContent = 'corte pendiente'; el.style.fontStyle = 'normal'; return; }
-    var pct = Math.round((d.ratio || 0) * 100);
-    var neg = d.logro < 0;
-    el.textContent = _fmtUSD(d.logro) + ' · ' + (neg ? 'rescate' : pct + '%');
-    el.style.color = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : 'var(--text2)');
-    el.style.fontStyle = 'normal';
-  });
-  if (totalEl) {
-    totalEl.textContent = _fmtUSD(totalLogro);
-    totalEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--text)';
-    totalEl.style.fontStyle = 'normal';
-  }
-  if (kpiEl) {
-    kpiEl.textContent = _fmtUSD(totalLogro);
-    kpiEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--green)';
-  }
-}
-
-// Refresca todo el tab AUM con los resultados cargados
-function renderMetasAvance(res) {
-  // Re-disparar el trimestre activo (para actualizar las cards trimestrales)
-  var activeQ = document.querySelector('[id^="qsel-"].active');
-  if (activeQ && typeof selectQuarter === 'function') {
-    var qm = activeQ.getAttribute('onclick').match(/selectQuarter\('([^']+)'/);
-    if (qm) selectQuarter(qm[1], activeQ);
-  }
-  _updateAumYTD();
-  // Cruce saldo vs reuniones (necesita saldoPorAdvisor de este archivo +
-  // reunPorEntidad del Excel principal ya cargado).
-  if (typeof renderCrossSaldoReun === 'function') renderCrossSaldoReun();
-  // Reconstruir los charts AUM en USD. Si el tab está visible, ya; si no,
-  // se reconstruyen al entrar (initAumCharts chequea __METAS_RESULTS__).
-  window.aumChartsInited = false;
-  var aumPanel = document.getElementById('tab-metas-aum');
-  if (aumPanel && aumPanel.offsetParent !== null && typeof initAumCharts === 'function') {
-    initAumCharts();
-  }
-  // Actualizar el banner de aviso para reflejar que ya hay datos cargados
-  var banner = document.getElementById('aum-aviso-text');
-  if (banner && res && res.corte) {
-    banner.innerHTML = '✓ <strong>Resultados reales cargados</strong> (fuente Britech, corte ' + res.corte +
-      '). Las barras y los logros reflejan el avance real. Valores negativos = rescate neto. ' +
-      'La data vive sólo en tu navegador.';
-  }
 }
 
 async function processExcel(file) {
@@ -2779,7 +2014,6 @@ function applyData(d) {
   window.subtemasClientsA  = d.subtemasClientsA;
   window.activationData    = d.activationData    || {};
   window.areasData         = d.areasData         || [];
-  window.__REUN_POR_ENTIDAD__ = d.reunPorEntidad || {};
   window.fotoYTD           = d.fotoYTD || { year:0, prevYear:0, month:0, monthNames:[], rows:[] };
   window.__YEARS__         = d.years || YEARS;
   window.__MES_CORTE__     = (d.meta && d.meta.mes_corte) || null;
@@ -2814,12 +2048,8 @@ function applyData(d) {
     var k = d.kpi || {};
     var cq = d.currentQ || { label: 'Q1', year: 2026, q: 1, label_year_prev: 'Q1' };
     var cy = d.currentYear || 2026;
-    // Guardar currentQ globalmente para que renderMetasAvance lo use.
+    // currentQ global: lo usan renderMonthly y setYoy.
     window.__CURRENT_Q__ = cq;
-    // Si ya había resultados de metas cargados, re-renderizar con el Q actual.
-    if (window.__METAS_RESULTS__ && typeof renderMetasAvance === 'function') {
-      try { renderMetasAvance(window.__METAS_RESULTS__); } catch (e) {}
-    }
 
     // KPI principal del trimestre: muestra el total del Q actual completo
     var elQ1 = document.querySelector('[data-kpi="q1-value"]');
@@ -2893,28 +2123,20 @@ function applyData(d) {
     // Recontact section label: prev_year → current_year YTD
     setText('[data-q-text="recontact-section"]', 'Tasa de recontacto ' + (cy - 1) + ' → ' + cy + ' YTD · click para ver detalle');
 
-    // AUM data + qMetas (de la hoja Metas{cur_year}). Reset del flag para
-    // que initAumCharts() reconstruya con la data nueva en próxima vista.
-    if (d.aumData)  window.aumData  = d.aumData;
-    if (d.qMetas)   window.qMetas   = d.qMetas;
-    window.aumChartsInited = false;
 
     // Nuevos distribuidores
     var nd = d.nuevosDistribuidores || [];
-    var ndGoal = (d.metasGoals && d.metasGoals.nuevos_distribuidores_anual) || null;
     var ndKpiVal = document.querySelector('[data-q-text="nuevos-kpi-value"]');
     if (ndKpiVal) ndKpiVal.textContent = nd.length;
     setText('[data-q-text="nuevos-kpi-label"]', 'Nuevos distribuidores ' + cy);
     var ndSubEl = document.querySelector('[data-q-text="nuevos-kpi-sub"]');
     if (ndSubEl) {
       var names = nd.slice(0, 4).map(function(n){return n.name;}).join(' · ');
-      var goalTxt = ndGoal ? ' · Meta anual: ' + ndGoal : '';
-      ndSubEl.textContent = (names || 'sin nuevos a la fecha') + goalTxt;
+      ndSubEl.textContent = names || 'sin nuevos a la fecha';
     }
     setText('[data-q-text="nuevos-section"]', 'Nuevos distribuidores ' + cy + ' — detalle');
     setText('[data-q-text="nuevos-footer"]',
-      '* Cliente nuevo = distribuidor presente en el foto ' + cy + ' que no estaba en ' + (cy - 1) +
-      (ndGoal ? ' · Meta anual: ' + ndGoal + ' nuevos (' + Math.round(ndGoal / 4) + ' por trimestre)' : ''));
+      '* Cliente nuevo = distribuidor presente en el foto ' + cy + ' que no estaba en ' + (cy - 1));
     var ndTbody = document.getElementById('nuevos-tbody');
     if (ndTbody) {
       if (nd.length === 0) {
@@ -2962,16 +2184,6 @@ function applyData(d) {
       el.textContent = lbl;
     }
 
-    // AUM: actualizar quarters dinámicos para charts y labels visibles
-    var yy = String(cy).slice(-2);
-    window.AUM_QUARTERS = ['Q1 ' + cy, 'Q2 ' + cy, 'Q3 ' + cy, 'Q4 ' + cy];
-    // Selector de trimestre del tab AUM: claves del año cargado y arranque en
-    // el trimestre en curso (antes quedaba fijo en Q1 · 1T26).
-    if (typeof rebuildAumQButtons === 'function') rebuildAumQButtons();
-    var qCurEl = document.getElementById('q-current-label');
-    if (qCurEl) qCurEl.textContent = cq.label;
-    var qSecEl = document.getElementById('q-section-label');
-    if (qSecEl) qSecEl.textContent = 'Desglose por instrumento · ' + cq.label;
 
     // setYoy buttons: un par por cada dos años consecutivos disponibles
     // (con 2023–2026 salen 3: 23vs24, 24vs25, 25vs26).
@@ -3050,7 +2262,6 @@ function applyData(d) {
     renderComparativaYTD(d);
     renderCrossSell(d);
     renderCrossGastoReun(d);
-    renderCrossSaldoReun();
     if (typeof renderMonthly === 'function')       renderMonthly();
     if (typeof renderSubtemas === 'function')      renderSubtemas();
     if (typeof renderFoto === 'function')          renderFoto();
@@ -3135,48 +2346,6 @@ function _xEmpty(msg) {
   return '<div style="padding:18px 14px;text-align:center;color:var(--text3);font-size:11px;line-height:1.5;">' + msg + '</div>';
 }
 
-// Saldo (MarketValue total) vs reuniones — join saldoPorAdvisor x reunPorEntidad.
-function renderCrossSaldoReun() {
-  var el = document.getElementById('cross-saldo-reun');
-  if (!el) return;
-  var res  = window.__METAS_RESULTS__;
-  var reun = window.__REUN_POR_ENTIDAD__ || {};
-  var saldo = res && res.saldoPorAdvisor;
-  if (!saldo || !Object.keys(saldo).length || !Object.keys(reun).length) {
-    el.innerHTML = _xEmpty('Carga el Excel <strong>Follow Up clientes</strong> y el archivo de <strong>resultados de metas</strong> para ver el cruce.');
-    return;
-  }
-  var rows = [];
-  Object.keys(saldo).forEach(function(n) {
-    if (reun[n]) rows.push({ nombre: reun[n].nombre, saldo: saldo[n].saldoUSD, reun: reun[n].reun });
-  });
-  rows.sort(function(a, b) { return b.saldo - a.saldo; });
-  if (!rows.length) {
-    el.innerHTML = _xEmpty('Ningún distribuidor está simultáneamente en saldos por corte y con reuniones registradas.');
-    return;
-  }
-  var maxV = rows[0].saldo || 1;
-  var corte = res.saldoCorteLabel || '';
-  var head = '<div class="xhead"><span>' + rows.length + ' distribuidores</span>'
-    + (corte ? '<span>MarketValue total · corte ' + corte + '</span>' : '') + '</div>';
-  var body = rows.map(function(c, i) {
-    var w = Math.max(3, Math.round(c.saldo / maxV * 100));
-    return '<div class="xrow">'
-      + '<span class="xrank' + (i === 0 ? ' top' : '') + '">' + (i + 1) + '</span>'
-      + '<div style="flex:1;min-width:0;">'
-      +   '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">'
-      +     '<span class="xname">' + c.nombre + '</span>'
-      +     '<span class="xval">' + _fmtUSD(c.saldo) + '</span>'
-      +   '</div>'
-      +   '<div class="xbar-track"><div class="xbar-fill" style="width:' + w + '%;background:linear-gradient(90deg,#5A93CC,#1B4B9B);"></div></div>'
-      + '</div>'
-      + '<span class="xpill">' + c.reun + ' <small>reun</small></span>'
-      + '</div>';
-  }).join('');
-  el.innerHTML = head + body;
-}
-
-// Gasto vs reuniones por distribuidor (todo computado en compute_data).
 function renderCrossGastoReun(d) {
   var el = document.getElementById('cross-gasto-reun');
   if (!el) return;
@@ -3364,11 +2533,6 @@ function _pyodideSetup() {
   if (input) input.addEventListener('change', function (e) {
     var f = e.target.files && e.target.files[0];
     if (f) processExcel(f);
-  });
-  var metasInput = document.getElementById('metas-input');
-  if (metasInput) metasInput.addEventListener('change', function (e) {
-    var f = e.target.files && e.target.files[0];
-    if (f) processMetasResults(f);
   });
   pyodideReady = bootPyodide();
 }

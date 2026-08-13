@@ -105,11 +105,6 @@ UPLOAD_BAR_HTML = """
   <button id="upload-btn" disabled onclick="document.getElementById('xlsm-input').click();">
     <span id="upload-btn-icon">⏳</span> <span id="upload-btn-text">Cargando motor…</span>
   </button>
-  <input type="file" id="metas-input" accept=".xlsx,.xlsm" style="display:none;">
-  <button id="metas-btn" class="ub-secondary" disabled onclick="document.getElementById('metas-input').click();"
-          title="Opcional: archivo de resultados de metas (avance AUM)">
-    <span id="metas-btn-text">↑ Resultados metas</span>
-  </button>
   <div class="ub-status" id="upload-status">
     <span class="ub-spinner" id="upload-spinner"></span>
     <span id="upload-status-text">Iniciando Python en el navegador (primera vez ~15 s, después instantáneo)…</span>
@@ -162,8 +157,6 @@ await micropip.install('openpyxl')
     btn.disabled = false;
     btnIcon.textContent = '↑';
     btnText.textContent = 'Subir Excel';
-    var mbtn = document.getElementById('metas-btn');
-    if (mbtn) mbtn.disabled = false;
     return py;
   } catch (err) {
     spinner.style.display = 'none';
@@ -202,302 +195,6 @@ function _renderWarnings(warnings) {
     + warnings.map(w => '<li>' + w + '</li>').join('')
     + '</ul>';
   bar.appendChild(div);
-}
-
-// ── Resultados de metas (archivo separado, opcional) ────────────────────────
-async function processMetasResults(file) {
-  const py = await pyodideReady;
-  const statusText = document.getElementById('upload-status-text');
-  const input = document.getElementById('metas-input');
-  try {
-    const buf = await file.arrayBuffer();
-    py.globals.set('metas_bytes_js', new Uint8Array(buf));
-    const jsonStr = py.runPython(`
-import json
-metas_bytes = metas_bytes_js.to_bytes()
-json.dumps(pipeline.compute_metas_results(metas_bytes), ensure_ascii=False, default=str)
-`);
-    const res = JSON.parse(jsonStr);
-    window.__METAS_RESULTS__ = res;
-    renderMetasAvance(res);
-    statusText.innerHTML = '<span class="ub-check">✓ Resultados de metas cargados (' + file.name + ')</span>';
-  } catch (err) {
-    var info = _extractPyError(err);
-    statusText.innerHTML = '<span class="ub-error">Error en resultados de metas: ' + info.text + '</span>';
-    console.error(err);
-  } finally {
-    if (input) input.value = '';
-  }
-}
-
-function _fmtB(v) {
-  var b = v / 1e9;
-  if (Math.abs(b) >= 1) return 'CLP ' + b.toFixed(2) + 'B';
-  if (Math.abs(v) >= 1e6) return 'CLP ' + Math.round(v / 1e6) + 'M';
-  return 'CLP ' + Math.round(v).toLocaleString('es-CL');
-}
-
-// Formato USD (los valores AUM vienen en USD)
-function _fmtUSD(v) {
-  var a = Math.abs(v);
-  if (a >= 1e6) return 'US$ ' + (v / 1e6).toFixed(2) + 'M';
-  if (a >= 1e3) return 'US$ ' + (v / 1e3).toFixed(0) + 'k';
-  return 'US$ ' + Math.round(v).toLocaleString('en-US');
-}
-
-// Devuelve {txt, color} para un logro dado su target (maneja negativos)
-function _logroDisplay(logro, target) {
-  var neg = logro < 0;
-  var pct = target > 0 ? Math.round(logro / target * 100) : 0;
-  if (neg) return { txt: _fmtB(logro) + ' · rescate neto', color: '#B33A2E', pct: pct, neg: true };
-  return {
-    txt: _fmtB(logro) + ' · ' + pct + '%',
-    color: pct >= 100 ? '#0E7A4E' : 'var(--text2)',
-    pct: pct, neg: false,
-  };
-}
-
-// Actualiza el trimestre `q` (ej "1T26") con metas + cumplimiento en USD.
-// Lee todo de window.__METAS_RESULTS__.byPeriodo (no usa aumData CLP).
-function _updateAumLogrosQ(q, targets) {
-  var res = window.__METAS_RESULTS__;
-  var metaIds = { deuda: 'q-deuda-meta', inm: 'q-inm-meta', inter: 'q-inter-meta' };
-  var logIds  = { deuda: 'q-deuda-logro', inm: 'q-inm-logro', inter: 'q-inter-logro' };
-  var bars    = { deuda: 'q-deuda-bar',   inm: 'q-inm-bar',   inter: 'q-inter-bar' };
-  var pondIds = { deuda: 'q-deuda-pond', inm: 'q-inm-pond', inter: 'q-inter-pond' };
-  var baseColor = { deuda: '#1B4B9B', inm: '#2E6BAF', inter: '#5A93CC' };
-  var totalEl = document.getElementById('q-total-logro');
-  var totalMetaEl = document.getElementById('q-total-meta');
-
-  // Ocultar la card de Notas Estructuradas (ya no se mide)
-  var notasMeta = document.getElementById('q-notas-meta');
-  if (notasMeta) { var nc = notasMeta.closest('.aum-card'); if (nc) nc.style.display = res ? 'none' : ''; }
-
-  var data = res && res.byPeriodo && res.byPeriodo[q];
-  if (!data) {
-    // Sin resultados cargados → dejar 'pendiente' y barras vacías
-    ['deuda', 'inm', 'inter'].forEach(function(k) {
-      var el = document.getElementById(logIds[k]);
-      if (el) { el.textContent = 'pendiente'; el.style.color = 'var(--text2)'; }
-      var bar = document.getElementById(bars[k]);
-      if (bar) { bar.style.width = '0%'; bar.style.background = baseColor[k]; }
-    });
-    if (totalEl) { totalEl.textContent = '— pendiente'; totalEl.style.color = 'var(--text3)'; }
-    return;
-  }
-
-  var totalMeta = 0, totalLogro = 0, anyLogro = false, sumCump = 0, sumPond = 0;
-  ['deuda', 'inm', 'inter'].forEach(function(k) {
-    var d = data[k]; if (!d) return;
-    totalMeta += (d.target || 0);
-    sumPond += (d.pond || 0);
-    // Meta card en USD
-    var me = document.getElementById(metaIds[k]);
-    if (me) me.textContent = _fmtUSD(d.target || 0);
-    // Badge de ponderación
-    var pe = document.getElementById(pondIds[k]);
-    if (pe && d.pond) pe.textContent = (d.pond * 100).toFixed(2) + '%';
-    // Logro + barra
-    var el = document.getElementById(logIds[k]);
-    var bar = document.getElementById(bars[k]);
-    if (d.logro === null || d.logro === undefined) {
-      if (el) { el.textContent = 'corte pendiente'; el.style.color = 'var(--text2)'; }
-      if (bar) { bar.style.width = '0%'; bar.style.background = baseColor[k]; }
-      return;
-    }
-    anyLogro = true;
-    totalLogro += d.logro;
-    sumCump += (d.cump_pond || 0);
-    var pct = Math.round((d.ratio || 0) * 100);
-    var neg = d.logro < 0;
-    if (el) {
-      el.textContent = _fmtUSD(d.logro) + ' · ' + (neg ? 'rescate' : pct + '%');
-      el.style.color = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : 'var(--text2)');
-    }
-    if (bar) {
-      var w = neg ? 0 : Math.max(0, Math.min(100, pct));
-      bar.style.width = w + '%';
-      bar.style.background = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : baseColor[k]);
-    }
-    // Línea extra: variación vs corte anterior (momentum) + brecha vs meta
-    var extraEl = document.getElementById('q-' + k + '-extra');
-    if (extraEl) {
-      var parts = [];
-      if (d.delta_prev !== null && d.delta_prev !== undefined) {
-        var dp = d.delta_prev;
-        var arrow = dp > 0 ? '▲' : (dp < 0 ? '▼' : '–');
-        var dpCol = dp > 0 ? '#0E7A4E' : (dp < 0 ? '#B33A2E' : 'var(--text3)');
-        parts.push('<span style="color:' + dpCol + ';">' + arrow + ' ' + (dp >= 0 ? '+' : '') + _fmtUSD(dp) + ' vs corte ant.</span>');
-      }
-      if (d.gap !== null && d.gap !== undefined) {
-        if (d.gap > 0) parts.push('<span style="color:var(--text3);">faltan ' + _fmtUSD(d.gap) + '</span>');
-        else parts.push('<span style="color:#0E7A4E;">+' + _fmtUSD(-d.gap) + ' sobre meta</span>');
-      }
-      extraEl.innerHTML = parts.join(' &nbsp;·&nbsp; ');
-      extraEl.style.display = parts.length ? 'block' : 'none';
-    }
-  });
-
-  if (totalMetaEl) totalMetaEl.textContent = _fmtUSD(totalMeta);
-  if (totalEl) {
-    if (!anyLogro) { totalEl.textContent = 'corte pendiente'; totalEl.style.color = 'var(--text3)'; }
-    else { totalEl.textContent = _fmtUSD(totalLogro); totalEl.style.color = totalLogro < 0 ? '#B33A2E' : (totalLogro >= totalMeta ? '#0E7A4E' : 'var(--text)'); }
-  }
-  var pctEl = document.getElementById('q-total-pct');
-  if (pctEl) {
-    if (!anyLogro) { pctEl.textContent = 'Corte del trimestre aún no disponible'; }
-    else {
-      var pctMeta = totalMeta ? Math.round(totalLogro / totalMeta * 100) : 0;
-      var cumpPts = sumCump * 100;
-      pctEl.innerHTML = (totalLogro < 0 ? 'rescate neto' : pctMeta + '% de la meta')
-        + ' · aporte ponderado: <strong style="color:' + (cumpPts < 0 ? '#B33A2E' : '#0E7A4E') + ';">'
-        + (cumpPts >= 0 ? '+' : '') + cumpPts.toFixed(2) + ' pts</strong>';
-    }
-  }
-  var pondValEl = document.getElementById('aum-pond-value');
-  var cumpSubEl = document.getElementById('aum-cump-sub');
-  if (pondValEl) pondValEl.textContent = (sumPond * 100).toFixed(1) + '%';
-  if (cumpSubEl) {
-    if (!anyLogro) { cumpSubEl.textContent = 'Del scorecard total distribución'; }
-    else {
-      var cp = sumCump * 100;
-      cumpSubEl.innerHTML = 'Del scorecard · cumplió <strong style="color:' + (cp < 0 ? '#B33A2E' : '#0E7A4E') + ';">'
-        + (cp >= 0 ? '+' : '') + cp.toFixed(2) + ' pts</strong> en ' + q;
-    }
-  }
-}
-
-// Reconstruye los 2 charts AUM (barras trimestrales + línea acumulada) en USD
-function _buildAumChartsUSD(res) {
-  if (typeof Chart === 'undefined' || !res || !res.byPeriodo) return;
-  var bp = res.byPeriodo;
-  var cy = (window.__CURRENT_Q__ && window.__CURRENT_Q__.year) || 2026;
-  var yy = String(cy).slice(-2);
-  var pers = ['1T' + yy, '2T' + yy, '3T' + yy, '4T' + yy];
-  var qLabels = ['Q1 ' + cy, 'Q2 ' + cy, 'Q3 ' + cy, 'Q4 ' + cy];
-  var metas = ['deuda', 'inm', 'inter'];
-  var mLabel = { deuda: 'Deuda Privada', inm: 'Inmobiliario', inter: 'Internacionales' };
-  var mColor = { deuda: 'rgba(27,75,155,0.85)', inm: 'rgba(46,107,175,0.85)', inter: 'rgba(90,147,204,0.85)' };
-
-  // Barras: meta USD (millones) por trimestre por instrumento (stacked)
-  var elQ = document.getElementById('aumQChart');
-  if (elQ) {
-    var ex = Chart.getChart(elQ); if (ex) ex.destroy();
-    var datasets = metas.map(function(k, i) {
-      return {
-        label: mLabel[k],
-        data: pers.map(function(per) { var d = bp[per] && bp[per][k]; return d ? (d.target || 0) / 1e6 : 0; }),
-        backgroundColor: mColor[k], stack: 's', borderSkipped: false,
-        borderRadius: i === metas.length - 1 ? [3, 3, 0, 0] : 0
-      };
-    });
-    window.aumQChartInst = new Chart(elQ, {
-      type: 'bar',
-      data: { labels: qLabels, datasets: datasets },
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
-        plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: {
-          label: function(ctx) { return ' ' + ctx.dataset.label + ': US$ ' + ctx.parsed.y.toFixed(2) + 'M'; },
-          footer: function(ctx) { return 'Total: US$ ' + ctx.reduce(function(a, c) { return a + c.parsed.y; }, 0).toFixed(2) + 'M'; }
-        }}},
-        scales: { x: Object.assign({ stacked: true }, xScale()), y: Object.assign({ stacked: true }, yScale(), {
-          title: { display: true, text: 'US$ millones', color: TICK_C, font: { size: 9 } },
-          ticks: { callback: function(v) { return 'US$' + v + 'M'; }, color: TICK_C, font: TICK_FONT } }) }
-      }
-    });
-    var leg = document.getElementById('aumq-legend');
-    if (leg) { leg.innerHTML = ''; metas.forEach(function(k) { leg.innerHTML += '<span class="legend-item"><span class="legend-dot" style="background:' + mColor[k] + '"></span>' + mLabel[k] + '</span>'; }); }
-  }
-
-  // Línea: meta acumulada vs logro acumulado (USD millones)
-  var elY = document.getElementById('aumYtdChart');
-  if (elY) {
-    var ex2 = Chart.getChart(elY); if (ex2) ex2.destroy();
-    var metaCum = [0], logroCum = [0], mc = 0, lc = 0, lValid = true;
-    pers.forEach(function(per) {
-      var dsum = 0, lsum = 0, hasL = false;
-      metas.forEach(function(k) { var d = bp[per] && bp[per][k]; if (d) { dsum += (d.target || 0); if (d.logro != null) { lsum += d.logro; hasL = true; } } });
-      mc += dsum; metaCum.push(mc / 1e6);
-      if (hasL && lValid) { lc += lsum; logroCum.push(lc / 1e6); } else { lValid = false; logroCum.push(null); }
-    });
-    new Chart(elY, {
-      type: 'line',
-      data: { labels: ['Inicio', 'Cierre Q1', 'Cierre Q2', 'Cierre Q3', 'Cierre Q4'], datasets: [
-        { label: 'Hito acumulado meta', data: metaCum, borderColor: '#1B4B9B', backgroundColor: 'rgba(27,75,155,0.08)', borderWidth: 2.5, fill: true, tension: 0.2, pointRadius: 5, pointBackgroundColor: '#1B4B9B', pointBorderColor: '#fff', pointBorderWidth: 2 },
-        { label: 'Logro YTD', data: logroCum, borderColor: '#0E7A4E', backgroundColor: 'rgba(14,122,78,0.08)', borderWidth: 2.5, borderDash: [5, 3], fill: true, tension: 0.2, pointRadius: 5, pointBackgroundColor: '#0E7A4E', pointBorderColor: '#fff', pointBorderWidth: 2 }
-      ]},
-      options: {
-        responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: function(ctx) { return ctx.parsed.y === null ? ctx.dataset.label + ': pendiente' : ' ' + ctx.dataset.label + ': US$ ' + ctx.parsed.y.toFixed(2) + 'M'; } } } },
-        scales: { x: xScale(), y: Object.assign(yScale(), {
-          title: { display: true, text: 'US$ millones (acum.)', color: TICK_C, font: { size: 9 } },
-          ticks: { callback: function(v) { return 'US$' + v + 'M'; }, color: TICK_C, font: TICK_FONT } }) }
-      }
-    });
-  }
-}
-
-// Actualiza el sub-panel anual (YTD): KPI + celdas de la tabla (USD)
-function _updateAumYTD() {
-  var res = window.__METAS_RESULTS__;
-  var data = res && res.byPeriodo && res.byPeriodo['2026'];
-  var ids = { deuda: 'ytd-deuda-logro', inm: 'ytd-inm-logro', inter: 'ytd-inter-logro' };
-  var kpiEl = document.getElementById('ytd-kpi-logro');
-  var totalEl = document.getElementById('ytd-total-logro');
-  // Ocultar fila de Notas en la tabla YTD
-  var notasCell = document.getElementById('ytd-notas-logro');
-  if (notasCell && res) { var tr = notasCell.closest('tr'); if (tr) tr.style.display = 'none'; }
-  if (!data) return;
-  var totalLogro = 0;
-  ['deuda', 'inm', 'inter'].forEach(function(k) {
-    var el = document.getElementById(ids[k]);
-    var d = data[k];
-    if (d && d.logro != null) totalLogro += d.logro;
-    if (!el || !d) return;
-    if (d.logro == null) { el.textContent = 'corte pendiente'; el.style.fontStyle = 'normal'; return; }
-    var pct = Math.round((d.ratio || 0) * 100);
-    var neg = d.logro < 0;
-    el.textContent = _fmtUSD(d.logro) + ' · ' + (neg ? 'rescate' : pct + '%');
-    el.style.color = neg ? '#B33A2E' : (pct >= 100 ? '#0E7A4E' : 'var(--text2)');
-    el.style.fontStyle = 'normal';
-  });
-  if (totalEl) {
-    totalEl.textContent = _fmtUSD(totalLogro);
-    totalEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--text)';
-    totalEl.style.fontStyle = 'normal';
-  }
-  if (kpiEl) {
-    kpiEl.textContent = _fmtUSD(totalLogro);
-    kpiEl.style.color = totalLogro < 0 ? '#B33A2E' : 'var(--green)';
-  }
-}
-
-// Refresca todo el tab AUM con los resultados cargados
-function renderMetasAvance(res) {
-  // Re-disparar el trimestre activo (para actualizar las cards trimestrales)
-  var activeQ = document.querySelector('[id^="qsel-"].active');
-  if (activeQ && typeof selectQuarter === 'function') {
-    var qm = activeQ.getAttribute('onclick').match(/selectQuarter\('([^']+)'/);
-    if (qm) selectQuarter(qm[1], activeQ);
-  }
-  _updateAumYTD();
-  // Cruce saldo vs reuniones (necesita saldoPorAdvisor de este archivo +
-  // reunPorEntidad del Excel principal ya cargado).
-  if (typeof renderCrossSaldoReun === 'function') renderCrossSaldoReun();
-  // Reconstruir los charts AUM en USD. Si el tab está visible, ya; si no,
-  // se reconstruyen al entrar (initAumCharts chequea __METAS_RESULTS__).
-  window.aumChartsInited = false;
-  var aumPanel = document.getElementById('tab-metas-aum');
-  if (aumPanel && aumPanel.offsetParent !== null && typeof initAumCharts === 'function') {
-    initAumCharts();
-  }
-  // Actualizar el banner de aviso para reflejar que ya hay datos cargados
-  var banner = document.getElementById('aum-aviso-text');
-  if (banner && res && res.corte) {
-    banner.innerHTML = '✓ <strong>Resultados reales cargados</strong> (fuente Britech, corte ' + res.corte +
-      '). Las barras y los logros reflejan el avance real. Valores negativos = rescate neto. ' +
-      'La data vive sólo en tu navegador.';
-  }
 }
 
 async function processExcel(file) {
@@ -573,7 +270,6 @@ function applyData(d) {
   window.subtemasClientsA  = d.subtemasClientsA;
   window.activationData    = d.activationData    || {};
   window.areasData         = d.areasData         || [];
-  window.__REUN_POR_ENTIDAD__ = d.reunPorEntidad || {};
   window.fotoYTD           = d.fotoYTD || { year:0, prevYear:0, month:0, monthNames:[], rows:[] };
   window.__YEARS__         = d.years || YEARS;
   window.__MES_CORTE__     = (d.meta && d.meta.mes_corte) || null;
@@ -608,12 +304,8 @@ function applyData(d) {
     var k = d.kpi || {};
     var cq = d.currentQ || { label: 'Q1', year: 2026, q: 1, label_year_prev: 'Q1' };
     var cy = d.currentYear || 2026;
-    // Guardar currentQ globalmente para que renderMetasAvance lo use.
+    // currentQ global: lo usan renderMonthly y setYoy.
     window.__CURRENT_Q__ = cq;
-    // Si ya había resultados de metas cargados, re-renderizar con el Q actual.
-    if (window.__METAS_RESULTS__ && typeof renderMetasAvance === 'function') {
-      try { renderMetasAvance(window.__METAS_RESULTS__); } catch (e) {}
-    }
 
     // KPI principal del trimestre: muestra el total del Q actual completo
     var elQ1 = document.querySelector('[data-kpi="q1-value"]');
@@ -687,28 +379,20 @@ function applyData(d) {
     // Recontact section label: prev_year → current_year YTD
     setText('[data-q-text="recontact-section"]', 'Tasa de recontacto ' + (cy - 1) + ' → ' + cy + ' YTD · click para ver detalle');
 
-    // AUM data + qMetas (de la hoja Metas{cur_year}). Reset del flag para
-    // que initAumCharts() reconstruya con la data nueva en próxima vista.
-    if (d.aumData)  window.aumData  = d.aumData;
-    if (d.qMetas)   window.qMetas   = d.qMetas;
-    window.aumChartsInited = false;
 
     // Nuevos distribuidores
     var nd = d.nuevosDistribuidores || [];
-    var ndGoal = (d.metasGoals && d.metasGoals.nuevos_distribuidores_anual) || null;
     var ndKpiVal = document.querySelector('[data-q-text="nuevos-kpi-value"]');
     if (ndKpiVal) ndKpiVal.textContent = nd.length;
     setText('[data-q-text="nuevos-kpi-label"]', 'Nuevos distribuidores ' + cy);
     var ndSubEl = document.querySelector('[data-q-text="nuevos-kpi-sub"]');
     if (ndSubEl) {
       var names = nd.slice(0, 4).map(function(n){return n.name;}).join(' · ');
-      var goalTxt = ndGoal ? ' · Meta anual: ' + ndGoal : '';
-      ndSubEl.textContent = (names || 'sin nuevos a la fecha') + goalTxt;
+      ndSubEl.textContent = names || 'sin nuevos a la fecha';
     }
     setText('[data-q-text="nuevos-section"]', 'Nuevos distribuidores ' + cy + ' — detalle');
     setText('[data-q-text="nuevos-footer"]',
-      '* Cliente nuevo = distribuidor presente en el foto ' + cy + ' que no estaba en ' + (cy - 1) +
-      (ndGoal ? ' · Meta anual: ' + ndGoal + ' nuevos (' + Math.round(ndGoal / 4) + ' por trimestre)' : ''));
+      '* Cliente nuevo = distribuidor presente en el foto ' + cy + ' que no estaba en ' + (cy - 1));
     var ndTbody = document.getElementById('nuevos-tbody');
     if (ndTbody) {
       if (nd.length === 0) {
@@ -756,16 +440,6 @@ function applyData(d) {
       el.textContent = lbl;
     }
 
-    // AUM: actualizar quarters dinámicos para charts y labels visibles
-    var yy = String(cy).slice(-2);
-    window.AUM_QUARTERS = ['Q1 ' + cy, 'Q2 ' + cy, 'Q3 ' + cy, 'Q4 ' + cy];
-    // Selector de trimestre del tab AUM: claves del año cargado y arranque en
-    // el trimestre en curso (antes quedaba fijo en Q1 · 1T26).
-    if (typeof rebuildAumQButtons === 'function') rebuildAumQButtons();
-    var qCurEl = document.getElementById('q-current-label');
-    if (qCurEl) qCurEl.textContent = cq.label;
-    var qSecEl = document.getElementById('q-section-label');
-    if (qSecEl) qSecEl.textContent = 'Desglose por instrumento · ' + cq.label;
 
     // setYoy buttons: un par por cada dos años consecutivos disponibles
     // (con 2023–2026 salen 3: 23vs24, 24vs25, 25vs26).
@@ -844,7 +518,6 @@ function applyData(d) {
     renderComparativaYTD(d);
     renderCrossSell(d);
     renderCrossGastoReun(d);
-    renderCrossSaldoReun();
     if (typeof renderMonthly === 'function')       renderMonthly();
     if (typeof renderSubtemas === 'function')      renderSubtemas();
     if (typeof renderFoto === 'function')          renderFoto();
@@ -929,48 +602,6 @@ function _xEmpty(msg) {
   return '<div style="padding:18px 14px;text-align:center;color:var(--text3);font-size:11px;line-height:1.5;">' + msg + '</div>';
 }
 
-// Saldo (MarketValue total) vs reuniones — join saldoPorAdvisor x reunPorEntidad.
-function renderCrossSaldoReun() {
-  var el = document.getElementById('cross-saldo-reun');
-  if (!el) return;
-  var res  = window.__METAS_RESULTS__;
-  var reun = window.__REUN_POR_ENTIDAD__ || {};
-  var saldo = res && res.saldoPorAdvisor;
-  if (!saldo || !Object.keys(saldo).length || !Object.keys(reun).length) {
-    el.innerHTML = _xEmpty('Carga el Excel <strong>Follow Up clientes</strong> y el archivo de <strong>resultados de metas</strong> para ver el cruce.');
-    return;
-  }
-  var rows = [];
-  Object.keys(saldo).forEach(function(n) {
-    if (reun[n]) rows.push({ nombre: reun[n].nombre, saldo: saldo[n].saldoUSD, reun: reun[n].reun });
-  });
-  rows.sort(function(a, b) { return b.saldo - a.saldo; });
-  if (!rows.length) {
-    el.innerHTML = _xEmpty('Ningún distribuidor está simultáneamente en saldos por corte y con reuniones registradas.');
-    return;
-  }
-  var maxV = rows[0].saldo || 1;
-  var corte = res.saldoCorteLabel || '';
-  var head = '<div class="xhead"><span>' + rows.length + ' distribuidores</span>'
-    + (corte ? '<span>MarketValue total · corte ' + corte + '</span>' : '') + '</div>';
-  var body = rows.map(function(c, i) {
-    var w = Math.max(3, Math.round(c.saldo / maxV * 100));
-    return '<div class="xrow">'
-      + '<span class="xrank' + (i === 0 ? ' top' : '') + '">' + (i + 1) + '</span>'
-      + '<div style="flex:1;min-width:0;">'
-      +   '<div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;">'
-      +     '<span class="xname">' + c.nombre + '</span>'
-      +     '<span class="xval">' + _fmtUSD(c.saldo) + '</span>'
-      +   '</div>'
-      +   '<div class="xbar-track"><div class="xbar-fill" style="width:' + w + '%;background:linear-gradient(90deg,#5A93CC,#1B4B9B);"></div></div>'
-      + '</div>'
-      + '<span class="xpill">' + c.reun + ' <small>reun</small></span>'
-      + '</div>';
-  }).join('');
-  el.innerHTML = head + body;
-}
-
-// Gasto vs reuniones por distribuidor (todo computado en compute_data).
 function renderCrossGastoReun(d) {
   var el = document.getElementById('cross-gasto-reun');
   if (!el) return;
@@ -1157,11 +788,6 @@ function _pyodideSetup() {
   if (input) input.addEventListener('change', function (e) {
     var f = e.target.files && e.target.files[0];
     if (f) processExcel(f);
-  });
-  var metasInput = document.getElementById('metas-input');
-  if (metasInput) metasInput.addEventListener('change', function (e) {
-    var f = e.target.files && e.target.files[0];
-    if (f) processMetasResults(f);
   });
   pyodideReady = bootPyodide();
 }
@@ -1956,14 +1582,7 @@ def transform(html: str) -> str:
     # Se insertan al final del tab Clientes, después del cross-sell (mismo anchor
     # TAB 4, que sigue presente tras la inserción anterior).
     cross_dist_cards = (
-        '\n  <!-- ── SALDO vs REUNIONES POR DISTRIBUIDOR (auto) ───── -->\n'
-        '  <div class="section-label">Saldo vs reuniones — por distribuidor</div>\n'
-        '  <div class="card" style="margin-bottom:1.25rem;">\n'
-        '    <div class="card-title">MarketValue total vs reuniones · distribuidores en saldos por corte y con reuniones</div>\n'
-        '    <div class="card-sub">Saldo = MarketValue total (todos los fondos, USD) al corte más reciente. Sólo distribuidores presentes en la hoja Saldos por corte <strong>y</strong> con reuniones. Requiere cargar el Excel Follow Up <strong>y</strong> el archivo de resultados de metas.</div>\n'
-        '    <div id="cross-saldo-reun" style="margin-top:10px;"></div>\n'
-        '  </div>\n\n'
-        '  <!-- ── GASTO vs REUNIONES POR DISTRIBUIDOR (auto) ───── -->\n'
+        '\n  <!-- ── GASTO vs REUNIONES POR DISTRIBUIDOR (auto) ───── -->\n'
         '  <div class="section-label">Gasto vs reuniones — por distribuidor</div>\n'
         '  <div class="card" style="margin-bottom:1.25rem;">\n'
         '    <div class="card-title">Gasto comercial vs reuniones por distribuidor</div>\n'
@@ -2127,6 +1746,9 @@ def transform(html: str) -> str:
 
     # 10) Comparativa YTD del tab Reuniones (vs mismo período año anterior)
     html = add_comparativa_ytd(html)
+
+    # 11) Sacar la pestaña Metas AUM y la carga del archivo de resultados
+    html = remove_metas_tab(html)
 
     return html
 
@@ -2481,6 +2103,48 @@ REEMPLAZOS_2023.append((
     "    leg.appendChild(item);\n  });\n})();",
     "    leg.appendChild(item);\n  });\n}\nrebuildLineLegend(YEARS);",
 ))
+
+
+def remove_metas_tab(html: str) -> str:
+    """Saca la pestaña Metas AUM y todo lo que dependía del archivo de
+    resultados de metas.
+
+    Corre al final del pipeline de transform(): para entonces add_foto_tab() ya
+    renumeró el panel a "TAB 5: METAS AUM".
+
+    Se conservan _xEmpty y _fmtCLP (los usa el cruce de Gasto, que queda) y
+    window.__CURRENT_Q__ (lo usan renderMonthly y setYoy).
+    """
+    tramos = [
+        ("<!-- " + "═" * 47 + " TAB 5: METAS AUM -->", "<footer>", "panel"),
+        ("// ── AUM (LAZY INIT) ", "// ── CLIENTS ", "aumQKeys / initAumCharts / selectQuarter"),
+        ("var aumData = {", "\n// ── CHART HELPERS ", "placeholders aumData / qMetas"),
+        ("/* ── AUM CARDS ── */", ".progress-wrap {", "CSS .aum-card / .aum-placeholder"),
+        (".pct-badge {", "\n/* ── FOOTER ── */", "CSS .pct-badge"),
+    ]
+    for desde, hasta, etiqueta in tramos:
+        if desde not in html or hasta not in html:
+            print("  WARN: no encontré el tramo '%s' del tab Metas" % etiqueta)
+            continue
+        i = html.index(desde)
+        j = html.index(hasta, i)
+        html = html[:i] + html[j:]
+
+    sueltos = [
+        ('  <button class="tab-btn" onclick="showTab(\'metas-aum\',this)">'
+         '<span class="tab-icon">◆</span>Metas AUM</button>\n', "botón de la tab-bar"),
+        ("  if (tabId === 'metas-aum') { setTimeout(initAumCharts, 30); }\n", "showTab: initAumCharts"),
+    ]
+    for viejo, etiqueta in sueltos:
+        if viejo in html:
+            html = html.replace(viejo, "", 1)
+        else:
+            print("  WARN: no encontré '%s' del tab Metas" % etiqueta)
+
+    # El footer citaba un archivo de metas que ya no interviene
+    html = html.replace("<span>Fuente: Consolidado_Follow-Ups_metas_dist.xlsx</span>",
+                        "<span>Fuente: Follow Up clientes.xlsm</span>", 1)
+    return html
 
 
 def remove_riesgo_tab(html: str) -> str:
