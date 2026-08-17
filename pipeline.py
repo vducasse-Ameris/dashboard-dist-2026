@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import re
-from datetime import date
+from datetime import date, timedelta
 from io import BytesIO
 from pathlib import Path
 
@@ -981,6 +981,42 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "excluidas": sorted(foto_excluidas, key=str.lower),
     }
 
+    # ── RITMO SEMANAL DEL TRIMESTRE EN CURSO ────────────────────────────
+    # Promedio de reuniones por semana en el trimestre, cortado en la última
+    # semana completa (lunes a domingo). Sale de Apuntes y no del foto: el foto
+    # es mensual y no da granularidad semanal.
+    ritmo_semanal = None
+    if last_q_months:
+        q_ini = date(cur_year, last_q_months[0], 1)
+        hoy_d = today_ts.date()
+        # Domingo de la última semana cerrada (la semana en curso no cuenta).
+        fin_sem = hoy_d - timedelta(days=hoy_d.weekday() + 1)
+        # Si el Excel viene con rezago, cortar en la semana de la última reunión
+        # registrada: si no, las semanas sin cargar diluirían el promedio.
+        ap_cur = df_ap[df_ap["year_num"] == cur_year] if len(df_ap) else df_ap
+        if len(ap_cur):
+            ult = ap_cur["Fecha"].max().date()
+            fin_sem = min(fin_sem, ult + timedelta(days=6 - ult.weekday()))
+        if fin_sem >= q_ini and len(ap_cur):
+            fechas = ap_cur["Fecha"].dt.date
+            n_reun = int(((fechas >= q_ini) & (fechas <= fin_sem)).sum())
+            semanas = ((fin_sem - q_ini).days + 1) / 7
+            ritmo_semanal = {
+                "valor": round(n_reun / semanas, 1) if semanas else 0.0,
+                "reuniones": n_reun,
+                "semanas": round(semanas, 1),
+                "hasta": str(fin_sem),
+            }
+
+    # ── CLIENTES ACTIVOS DEL TRIMESTRE ──────────────────────────────────
+    # Contrapartes del foto con al menos una reunión en los meses del Q ya
+    # transcurridos. Usa el foto, igual que el resto de KPIs del trimestre.
+    q_cols_foto = [m for m in last_q_month_names if m in df_cur.columns]
+    clientes_activos_q = {
+        "activos": int((df_cur[q_cols_foto].sum(axis=1) > 0).sum()) if q_cols_foto else 0,
+        "total": int(len(df_cur)),
+    }
+
     # ── RESULT ──────────────────────────────────────────────────────────
     # data y clientsData keyed por año (string) — dinámico según años disponibles.
     data_out = {str(yr): monthly_by_year[yr] for yr in years_avail}
@@ -1044,6 +1080,8 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "abr": d_cur[3] if len(d_cur) > 3 else 0,
             "may": d_cur[4] if len(d_cur) > 4 else 0,
             "riesgo_by_prio": kpi,
+            "ritmo_semanal": ritmo_semanal,
+            "clientes_activos_q": clientes_activos_q,
             "semaforo": semaforo,
             "reun_ytd_by_prio": reun_ytd_by_prio,
         },

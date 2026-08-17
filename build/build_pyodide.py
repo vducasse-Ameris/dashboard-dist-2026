@@ -348,6 +348,29 @@ function applyData(d) {
     setText('[data-q-text="reuniones-ytd-label"]', 'Reuniones ' + cy + ' YTD');
     setText('[data-q-text="top-clientes-q-card"]', 'Top clientes ' + cq.label + ' por segmento');
 
+    // Ritmo semanal y clientes activos del trimestre. Estaban escritos a mano
+    // con los valores de Q1 2026 (8.0 y 72/190) y nunca se actualizaban.
+    var qCorto = cq.label.split(' ')[0];
+    var setKpi = function(k, v) { var e = document.querySelector('[data-kpi="' + k + '"]'); if (e) e.textContent = v; };
+    var rs = k.ritmo_semanal;
+    if (rs) {
+      var MES_R = ['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+      var pr = String(rs.hasta).split('-');
+      setKpi('ritmo-value', rs.valor.toFixed(1));
+      setKpi('ritmo-sub', 'reuniones por semana en ' + qCorto + ' · ' + rs.semanas
+        + ' sem. al ' + parseInt(pr[2], 10) + ' ' + MES_R[parseInt(pr[1], 10) - 1]);
+    } else {
+      setKpi('ritmo-value', '—');
+      setKpi('ritmo-sub', 'aún sin semanas completas en ' + qCorto);
+    }
+    var ca = k.clientes_activos_q;
+    if (ca) {
+      setText('[data-q-text="activos-label"]', 'Clientes activos ' + qCorto);
+      setKpi('activos-value', ca.activos);
+      setKpi('activos-sub', 'de ' + ca.total + ' en cartera ('
+        + (ca.total ? Math.round(ca.activos / ca.total * 100) : 0) + '%) · con al menos 1 reunión en ' + qCorto);
+    }
+
     // Sub "vs N en QX YYYY-1 (+P%)"
     var elVs = document.querySelector('[data-q-text="reuniones-q-vs"]');
     if (elVs && cq.sinDatos) {
@@ -1750,6 +1773,9 @@ def transform(html: str) -> str:
     # 11) Sacar la pestaña Metas AUM y la carga del archivo de resultados
     html = remove_metas_tab(html)
 
+    # 12) Ritmo semanal y clientes activos calculados (antes fijos en Q1)
+    html = add_ritmo_activos(html)
+
     return html
 
 
@@ -2356,6 +2382,31 @@ def add_monthly_yoy(html: str) -> str:
             html = html.replace(viejo, nuevo, 1)
         else:
             print("  WARN: no encontré %s para el YoY de la vista mensual" % etq)
+    return html
+
+
+KPIS_RITMO_VIEJO = '    <div class="kpi">\n      <div class="kpi-label">Clientes activos Q1</div>\n      <div class="kpi-value">72</div>\n      <div class="kpi-sub">de 190 en cartera (38%) · con al menos 1 reunión en Q1</div>\n    </div>\n    <div class="kpi">\n      <div class="kpi-label">Ritmo semanal actual</div>\n      <div class="kpi-value">8.0</div>\n      <div class="kpi-sub">reuniones por semana en Q1 (13 sem.)</div>\n    </div>\n'
+
+KPIS_RITMO_NUEVO = r"""    <div class="kpi">
+      <div class="kpi-label" data-q-text="activos-label">Clientes activos</div>
+      <div class="kpi-value" data-kpi="activos-value">&mdash;</div>
+      <div class="kpi-sub" data-kpi="activos-sub">&nbsp;</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Ritmo semanal actual</div>
+      <div class="kpi-value" data-kpi="ritmo-value">&mdash;</div>
+      <div class="kpi-sub" data-kpi="ritmo-sub">&nbsp;</div>
+    </div>
+"""
+
+
+def add_ritmo_activos(html: str) -> str:
+    """Ritmo semanal y clientes activos del trimestre: estaban escritos a
+    mano con los valores de Q1 2026 (8.0 y 72/190) y nunca se actualizaban."""
+    if KPIS_RITMO_VIEJO in html:
+        html = html.replace(KPIS_RITMO_VIEJO, KPIS_RITMO_NUEVO, 1)
+    else:
+        print("  WARN: no encontré los KPIs de ritmo / clientes activos")
     return html
 
 
