@@ -514,20 +514,6 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "no": [str(x) for x in sub[sub["_cn"].isin(had_prev) & ~sub["_cn"].isin(had_ytd)]["Cliente"]],
         }
 
-    # ── SEMÁFORO ────────────────────────────────────────────────────────
-    semaforo = {}
-    for prio, meta in [("HP", 2), ("MP", 1), ("LP", 1)]:
-        if "Prioridad" not in df_cur.columns:
-            semaforo[prio] = {"en_meta": 0, "parcial": 0, "sin_cont": 0, "total": 0}
-            continue
-        sub = df_cur[df_cur["Prioridad"] == prio]["_ytd"]
-        semaforo[prio] = {
-            "en_meta": int((sub >= meta).sum()),
-            "parcial": int((sub == 1).sum()) if meta == 2 else 0,
-            "sin_cont": int((sub == 0).sum()),
-            "total": len(sub),
-        }
-
     # ── RISK (año actual) + RISK ALL ────────────────────────────────────
     risk_cur = {"HP": [], "MP": [], "LP": []}
     risk_all = {"HP": [], "MP": [], "LP": []}
@@ -1136,7 +1122,6 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
             "riesgo_by_prio": kpi,
             "ritmo_semanal": ritmo_semanal,
             "clientes_activos_q": clientes_activos_q,
-            "semaforo": semaforo,
             "reun_ytd_by_prio": reun_ytd_by_prio,
         },
         "meta": {

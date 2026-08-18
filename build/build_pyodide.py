@@ -442,13 +442,12 @@ function applyData(d) {
       }
     }
 
-    // Labels Q/año restantes (Consolidado, Semáforo, Footer, AUM, setYoy)
+    // Labels Q/año restantes (Consolidado, Footer, setYoy)
     setText('[data-q-text="nuevos-card-title"]', 'Clientes nuevos incorporados en ' + cy);
     setText('[data-q-text="comparativa-section"]', 'Comparativa ' + cq.label + ' vs ' + cq.label_year_prev + ' — por prioridad');
     setText('[data-q-text="crosssell-section"]', 'Oportunidades de cross-sell — alto contacto, pocos productos');
     setText('[data-q-text="crosssell-title"]', 'Clientes con ≥ 3 reuniones en ' + cy + ' y ≤ 1 producto distinto discutido (fuera de Follow Up)');
     setText('[data-q-text="consolidado-section"]', 'Consolidado ' + cq.label + ' — progreso del año por segmento');
-    setText('[data-q-text="semaforo-title"]', 'Semáforo de contacto ' + cy + ' YTD — por segmento');
     setText('[data-q-text="kpi-q-current"]', cq.label);
     setText('[data-q-text="footer-date"]', cq.label + ' · ' + yrsAsc[0] + '–' + yrsAsc[yrsAsc.length - 1]);
 
@@ -516,7 +515,6 @@ function applyData(d) {
   // 6) Charts anónimos del Resumen — destroy + recreate
   try {
     if (typeof Chart !== 'undefined') {
-      rebuildSemaforoChart(d.kpi.semaforo);
       rebuildPeakChart(d.recentLabels, d.recentVals);
       rebuildReunYtdChart(d.kpi.reun_ytd_by_prio, d.kpi.riesgo_by_prio);
     }
@@ -721,29 +719,6 @@ function rebuildYearTabs(d) {
 // ══════════════════════════════════════════════════════════════════════════
 // Rebuild de charts anónimos (Resumen)
 // ══════════════════════════════════════════════════════════════════════════
-
-function rebuildSemaforoChart(s) {
-  var el = document.getElementById('semaforoChart');
-  if (!el || typeof Chart === 'undefined') return;
-  var existing = Chart.getChart(el);
-  if (existing) existing.destroy();
-  new Chart(el, {
-    type: 'bar',
-    data: {
-      labels: ['HP (' + s.HP.total + ')', 'MP (' + s.MP.total + ')', 'LP (' + s.LP.total + ')'],
-      datasets: [
-        { label: '>= meta',      data: [s.HP.en_meta,  s.MP.en_meta,  s.LP.en_meta],  backgroundColor: '#0E7A4E', borderSkipped: false },
-        { label: 'Parcial',      data: [s.HP.parcial,  s.MP.parcial,  s.LP.parcial],  backgroundColor: '#D4890A', borderSkipped: false },
-        { label: 'Sin contacto', data: [s.HP.sin_cont, s.MP.sin_cont, s.LP.sin_cont], backgroundColor: '#B33A2E', borderSkipped: false }
-      ]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: false, animation: { duration: 300 },
-      plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false, callbacks: { label: function(ctx) { return ' ' + ctx.dataset.label + ': ' + ctx.parsed.y + ' clientes'; }}}},
-      scales: { x: Object.assign({ stacked: true }, xScale()), y: Object.assign({ stacked: true }, yScale()) }
-    }
-  });
-}
 
 function rebuildPeakChart(labels, vals) {
   var el = document.getElementById('peakChart');
@@ -1793,6 +1768,9 @@ def transform(html: str) -> str:
     # 14) Tabla Consolidado por trimestre, generada desde los datos
     html = add_consolidado_dinamico(html)
 
+    # 15) Sacar el semáforo de contacto
+    html = remove_semaforo(html)
+
     return html
 
 
@@ -2392,7 +2370,6 @@ function renderLabelsPeriodo(d) {
   // El título de la pestaña del browser también llevaba el año fijo.
   if (cy) document.title = 'Distribución Ameris — Dashboard ' + cy;
   setT('nuevos-card-sub', 'Distribuidores que realizaron su primera inversión con Ameris en ' + cy);
-  setT('semaforo-ytd', 'YTD Ene–' + MES_S[n-1] + ' ' + cy);
   setT('recontact-sub', 'Clientes que tuvieron reunión en ' + (cy - 1)
     + ' y ya fueron contactados en ' + cy + ' (Ene–' + MES_S[n-1] + ')');
 }
@@ -2640,6 +2617,29 @@ def add_consolidado_dinamico(html: str) -> str:
             html = html.replace(viejo, nuevo, 1)
         else:
             print("  WARN: no encontré %r" % viejo[:45])
+    return html
+
+
+def remove_semaforo(html: str) -> str:
+    """Saca el semáforo de contacto: la card completa y el IIFE que armaba su
+    chart y su leyenda.
+
+    El área lo pidió fuera: la regla (HP ≥ 2 reuniones, MP/LP ≥ 1) era un piso
+    fijo que no escalaba con el mes de corte y contradecía los umbrales de días
+    que el dashboard usaba en otras partes, así que no aportaba señal.
+    """
+    tramos = [
+        ("  <!-- Semáforo -->\n", "  <!-- Semáforo de reuniones YTD -->", "card"),
+        ("(function() {\n  var el=document.getElementById('semaforoChart'); if(!el) return;",
+         "\n// ── CLIENTS ", "IIFE del chart y la leyenda"),
+    ]
+    for desde, hasta, etiqueta in tramos:
+        if desde not in html or hasta not in html:
+            print("  WARN: no encontré el tramo '%s' del semáforo" % etiqueta)
+            continue
+        i = html.index(desde)
+        j = html.index(hasta, i)
+        html = html[:i] + html[j:]
     return html
 
 
