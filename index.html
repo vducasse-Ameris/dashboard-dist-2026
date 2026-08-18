@@ -1,4 +1,4 @@
-<div style="display:flex;align-items:center;gap:8px;padding:6px 0 8px;border-bottom:2px solid var(--border2);"><span style="min-width:20px;"></span><span style="min-width:35px;"></span><span style="flex:1;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Cliente</span><span style="min-width:74px;text-align:right;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">Gasto</span><span style="min-width:44px;text-align:right;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">25/26</span><span style="min-width:72px;text-align:center;font-size:9px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;">CLP/reun</span></div><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -455,53 +455,9 @@ footer {
 
   <!-- Semáforo de reuniones YTD -->
   <div class="card" style="margin-top:1rem;">
-    <div class="card-title">Reuniones YTD 2026 — por segmento</div>
-    <div class="card-sub">Total de reuniones realizadas Ene–May 2026 por prioridad &nbsp;·&nbsp; Total: <strong>167</strong></div>
-    <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">
-
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">HP</span>
-            <span style="font-size:12px;color:var(--text);">110 reuniones · 47/71 clientes contactados</span>
-          </div>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#1B4B9B;">110</span>
-        </div>
-        <div class="progress-wrap">
-          <div class="progress-bar" style="width:65.9%;background:#1B4B9B;"></div>
-        </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px;">66% del total YTD &nbsp;·&nbsp; 47 de 71 clientes HP con al menos 1 reunión</div>
-      </div>
-
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="background:#EBF0F8;color:#2E6BAF;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">MP</span>
-            <span style="font-size:12px;color:var(--text);">42 reuniones · 26/43 clientes contactados</span>
-          </div>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#2E6BAF;">42</span>
-        </div>
-        <div class="progress-wrap">
-          <div class="progress-bar" style="width:25.1%;background:#2E6BAF;"></div>
-        </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px;">25% del total YTD &nbsp;·&nbsp; 26 de 43 clientes MP con al menos 1 reunión</div>
-      </div>
-
-      <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">
-          <div style="display:flex;align-items:center;gap:8px;">
-            <span style="background:#EBF0F8;color:#5A93CC;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">LP</span>
-            <span style="font-size:12px;color:var(--text);">15 reuniones · 12/75 clientes contactados</span>
-          </div>
-          <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:700;color:#5A93CC;">15</span>
-        </div>
-        <div class="progress-wrap">
-          <div class="progress-bar" style="width:9%;background:#5A93CC;"></div>
-        </div>
-        <div style="font-size:10px;color:var(--text3);margin-top:3px;">9% del total YTD &nbsp;·&nbsp; 12 de 75 clientes LP con al menos 1 reunión</div>
-      </div>
-
-    </div>
+    <div class="card-title" data-q-text="ytd-seg-title">Reuniones YTD por segmento</div>
+    <div class="card-sub" data-q-text="ytd-seg-sub">&nbsp;</div>
+    <div id="ytd-segmento" style="display:flex;flex-direction:column;gap:14px;margin-top:12px;"></div>
 
     <!-- Mini chart canvas -->
     <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
@@ -529,7 +485,7 @@ footer {
   <div class="section-label">Evolución mensual — click en la leyenda para mostrar/ocultar años</div>
   <div class="card" style="margin-bottom:1.25rem;">
     <div class="card-title" data-q-text="linechart-title">Reuniones por mes · 2023 – 2026</div>
-    <div class="card-sub">2023 excluido por baja representatividad de datos · Click en la leyenda para filtrar años</div>
+    <div class="card-sub"><span data-q-text="linechart-sub">Click en la leyenda para filtrar años</span></div>
     <div class="chart-wrap" style="height:240px;"><canvas id="lineChart"></canvas></div>
     <div id="line-legend" class="legend" style="margin-top:10px;"></div>
   </div>
@@ -545,14 +501,14 @@ footer {
     </div>
     <div class="card">
       <div class="card-title">Mapa de calor — reuniones por mes y año</div>
-      <div class="card-sub">2024–2026 · Mayor contraste = mayor concentración</div>
+      <div class="card-sub"><span data-q-text="heatmap-sub">Mayor contraste = mayor concentración</span></div>
       <div id="heatmap"></div>
     </div>
   </div>
 
   <div class="card" style="margin-bottom:1.25rem;">
-    <div class="card-title">Actividad reciente — Dic 2025 a Mar 2026</div>
-    <div class="card-sub">Reuniones por mes desde diciembre 2025 · Tendencia más reciente del equipo</div>
+    <div class="card-title"><span data-q-text="peak-title">Actividad reciente</span></div>
+    <div class="card-sub"><span data-q-text="peak-sub">Tendencia más reciente del equipo</span></div>
     <div class="chart-wrap" style="height:200px;"><canvas id="peakChart"></canvas></div>
   </div>
 
@@ -674,7 +630,7 @@ footer {
   <div class="equal-col" style="margin-bottom:1.25rem;">
     <div class="card">
       <div class="card-title">Top clientes por reuniones</div>
-      <div class="card-sub">Histórico 2024–2026</div>
+      <div class="card-sub"><span data-q-text="historico-title">Histórico</span></div>
       <div class="ftabs">
         <button class="ftab active" onclick="setClients('all',this)">Histórico</button>
         <button class="ftab" onclick="setClients('2024',this)">2024</button>
@@ -698,7 +654,7 @@ footer {
   <!-- ── TASA DE RECONTACTO ─────────────────────────────────────────── -->
   <div class="section-label" data-q-text="recontact-section">Tasa de recontacto 2025 → 2026 YTD · click para ver detalle</div>
   <div class="card" style="margin-bottom:1.25rem;">
-    <div class="card-title">Clientes que tuvieron reunión en 2025 y ya fueron contactados en 2026 (Ene–May)</div>
+    <div class="card-title"><span data-q-text="recontact-sub">Clientes recontactados</span></div>
     <div class="card-sub">Haz click en HP, MP o LP para ver qué clientes fueron o no fueron recontactados</div>
     <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px;">
       <div>
@@ -1578,6 +1534,82 @@ function renderSubtemas(){
   el.innerHTML=h;
 }
 
+// ── REUNIONES YTD POR SEGMENTO (tab Resumen) ─────────────────────────────────
+// Antes eran 3 barras y 12 números escritos a mano (110/42/15, 66/25/9%, con el
+// subtítulo fijo "Ene–May 2026"). Ahora sale de kpi.reun_ytd_by_prio y
+// kpi.riesgo_by_prio, que ya venían en el payload.
+function renderYtdSegmento(d) {
+  var el = document.getElementById('ytd-segmento');
+  if (!el) return;
+  var k = d.kpi || {};
+  var reun = k.reun_ytd_by_prio || {}, cart = k.riesgo_by_prio || {};
+  var cy = d.currentYear || '';
+  var n = (d.meta && d.meta.mes_corte) || 12;
+  var MES_S = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var COL = { HP:'#1B4B9B', MP:'#2E6BAF', LP:'#5A93CC' };
+  // El total incluye el bucket "?" (contrapartes sin prioridad en el foto) para
+  // que cuadre con el KPI "Reuniones YTD" del mismo panel.
+  var sinPrio = reun['?'] || 0;
+  var total = ['HP','MP','LP'].reduce(function(a,p){ return a + (reun[p] || 0); }, 0) + sinPrio;
+
+  var setT = function(key, txt) {
+    var e = document.querySelector('[data-q-text="' + key + '"]');
+    if (e) e.textContent = txt;
+  };
+  setT('ytd-seg-title', 'Reuniones YTD ' + cy + ' — por segmento');
+  setT('ytd-seg-sub', 'Total de reuniones realizadas Ene–' + MES_S[n-1] + ' ' + cy
+    + ' por prioridad · Total: ' + total
+    + (sinPrio ? ' (incluye ' + sinPrio + ' sin prioridad asignada en el foto)' : ''));
+
+  el.innerHTML = ['HP','MP','LP'].map(function(p) {
+    var r = reun[p] || 0;
+    var c = cart[p] || {};
+    var act = c.activo || 0, tot = c.total || 0;
+    var pct = total ? Math.round(r / total * 100) : 0;
+    return '<div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+      +   '<div style="display:flex;align-items:center;gap:8px;">'
+      +     '<span style="background:#EBF0F8;color:' + COL[p] + ';font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">' + p + '</span>'
+      +     '<span style="font-size:12px;color:var(--text);">' + r + ' reuniones · ' + act + '/' + tot + ' clientes contactados</span>'
+      +   '</div>'
+      +   '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:' + COL[p] + ';">' + r + '</span>'
+      + '</div>'
+      + '<div class="progress-wrap"><div class="progress-bar" style="width:' + pct + '%;background:' + COL[p] + ';"></div></div>'
+      + '<div style="font-size:10px;color:var(--text3);margin-top:3px;">' + pct + '% del total YTD &nbsp;·&nbsp; '
+      +   act + ' de ' + tot + ' clientes ' + p + ' con al menos 1 reunión</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ── TÍTULOS Y SUBTÍTULOS CON PERÍODO (tab Resumen / Reuniones) ────────────────
+// Todos tenían el rango de años o meses escrito a mano ("2024–2026",
+// "Dic 2025 a Mar 2026", "Ene–May"), así que envejecían con cada corte.
+function renderLabelsPeriodo(d) {
+  var yrs = d.years || [];
+  var cy = d.currentYear || '';
+  var n = (d.meta && d.meta.mes_corte) || 12;
+  var MES_S = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var rango = yrs.length ? (yrs[0] + '–' + yrs[yrs.length - 1]) : '';
+  var setT = function(key, txt) {
+    var e = document.querySelector('[data-q-text="' + key + '"]');
+    if (e) e.textContent = txt;
+  };
+  setT('linechart-sub', 'Click en la leyenda para mostrar u ocultar años');
+  setT('heatmap-sub', rango + ' · Mayor contraste = mayor concentración');
+  setT('historico-title', 'Histórico ' + rango);
+  // El peakChart muestra los 5 meses previos al actual; los labels los calcula
+  // el pipeline, así que el título se toma de ahí.
+  var rl = d.recentLabels || [];
+  if (rl.length) {
+    setT('peak-title', 'Actividad reciente — ' + rl[0] + ' a ' + rl[rl.length - 1]);
+    setT('peak-sub', 'Reuniones por mes desde ' + rl[0] + ' · Tendencia más reciente del equipo');
+  }
+  // El título de la pestaña del browser también llevaba el año fijo.
+  if (cy) document.title = 'Distribución Ameris — Dashboard ' + cy;
+  setT('recontact-sub', 'Clientes que tuvieron reunión en ' + (cy - 1)
+    + ' y ya fueron contactados en ' + cy + ' (Ene–' + MES_S[n-1] + ')');
+}
+
 // ── COMPARATIVA YTD (tab Reuniones) ──────────────────────────────────────────
 // Reuniones del mismo tramo Ene–<mes de corte> en cada año disponible, con la
 // variación contra el año anterior. Antes esta sección tenía los números de
@@ -2283,6 +2315,8 @@ function applyData(d) {
     if (typeof _renderAreas === 'function')        _renderAreas();
     renderComparativaQ(d);
     renderComparativaYTD(d);
+    renderYtdSegmento(d);
+    renderLabelsPeriodo(d);
     renderCrossSell(d);
     renderCrossGastoReun(d);
     if (typeof renderMonthly === 'function')       renderMonthly();

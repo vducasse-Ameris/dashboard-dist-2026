@@ -539,6 +539,8 @@ function applyData(d) {
     if (typeof _renderAreas === 'function')        _renderAreas();
     renderComparativaQ(d);
     renderComparativaYTD(d);
+    renderYtdSegmento(d);
+    renderLabelsPeriodo(d);
     renderCrossSell(d);
     renderCrossGastoReun(d);
     if (typeof renderMonthly === 'function')       renderMonthly();
@@ -1776,6 +1778,9 @@ def transform(html: str) -> str:
     # 12) Ritmo semanal y clientes activos calculados (antes fijos en Q1)
     html = add_ritmo_activos(html)
 
+    # 13) Indicadores y títulos que estaban escritos a mano
+    html = add_labels_dinamicos(html)
+
     return html
 
 
@@ -2218,7 +2223,83 @@ COMPARATIVA_YTD_VIEJO = '  <div class="section-label">Comparativa YTD Enero–Ma
 COMPARATIVA_YTD_HTML = r"""  <div class="section-label" data-q-text="comparativa-ytd-label">Comparativa YTD &mdash; mismo per&iacute;odo cada a&ntilde;o</div>
   <div class="kpi-row kpi-row-3" id="comparativa-ytd"></div>"""
 
-COMPARATIVA_YTD_JS = r"""// ── COMPARATIVA YTD (tab Reuniones) ──────────────────────────────────────────
+COMPARATIVA_YTD_JS = r"""// ── REUNIONES YTD POR SEGMENTO (tab Resumen) ─────────────────────────────────
+// Antes eran 3 barras y 12 números escritos a mano (110/42/15, 66/25/9%, con el
+// subtítulo fijo "Ene–May 2026"). Ahora sale de kpi.reun_ytd_by_prio y
+// kpi.riesgo_by_prio, que ya venían en el payload.
+function renderYtdSegmento(d) {
+  var el = document.getElementById('ytd-segmento');
+  if (!el) return;
+  var k = d.kpi || {};
+  var reun = k.reun_ytd_by_prio || {}, cart = k.riesgo_by_prio || {};
+  var cy = d.currentYear || '';
+  var n = (d.meta && d.meta.mes_corte) || 12;
+  var MES_S = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var COL = { HP:'#1B4B9B', MP:'#2E6BAF', LP:'#5A93CC' };
+  // El total incluye el bucket "?" (contrapartes sin prioridad en el foto) para
+  // que cuadre con el KPI "Reuniones YTD" del mismo panel.
+  var sinPrio = reun['?'] || 0;
+  var total = ['HP','MP','LP'].reduce(function(a,p){ return a + (reun[p] || 0); }, 0) + sinPrio;
+
+  var setT = function(key, txt) {
+    var e = document.querySelector('[data-q-text="' + key + '"]');
+    if (e) e.textContent = txt;
+  };
+  setT('ytd-seg-title', 'Reuniones YTD ' + cy + ' — por segmento');
+  setT('ytd-seg-sub', 'Total de reuniones realizadas Ene–' + MES_S[n-1] + ' ' + cy
+    + ' por prioridad · Total: ' + total
+    + (sinPrio ? ' (incluye ' + sinPrio + ' sin prioridad asignada en el foto)' : ''));
+
+  el.innerHTML = ['HP','MP','LP'].map(function(p) {
+    var r = reun[p] || 0;
+    var c = cart[p] || {};
+    var act = c.activo || 0, tot = c.total || 0;
+    var pct = total ? Math.round(r / total * 100) : 0;
+    return '<div>'
+      + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">'
+      +   '<div style="display:flex;align-items:center;gap:8px;">'
+      +     '<span style="background:#EBF0F8;color:' + COL[p] + ';font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">' + p + '</span>'
+      +     '<span style="font-size:12px;color:var(--text);">' + r + ' reuniones · ' + act + '/' + tot + ' clientes contactados</span>'
+      +   '</div>'
+      +   '<span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:' + COL[p] + ';">' + r + '</span>'
+      + '</div>'
+      + '<div class="progress-wrap"><div class="progress-bar" style="width:' + pct + '%;background:' + COL[p] + ';"></div></div>'
+      + '<div style="font-size:10px;color:var(--text3);margin-top:3px;">' + pct + '% del total YTD &nbsp;·&nbsp; '
+      +   act + ' de ' + tot + ' clientes ' + p + ' con al menos 1 reunión</div>'
+      + '</div>';
+  }).join('');
+}
+
+// ── TÍTULOS Y SUBTÍTULOS CON PERÍODO (tab Resumen / Reuniones) ────────────────
+// Todos tenían el rango de años o meses escrito a mano ("2024–2026",
+// "Dic 2025 a Mar 2026", "Ene–May"), así que envejecían con cada corte.
+function renderLabelsPeriodo(d) {
+  var yrs = d.years || [];
+  var cy = d.currentYear || '';
+  var n = (d.meta && d.meta.mes_corte) || 12;
+  var MES_S = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var rango = yrs.length ? (yrs[0] + '–' + yrs[yrs.length - 1]) : '';
+  var setT = function(key, txt) {
+    var e = document.querySelector('[data-q-text="' + key + '"]');
+    if (e) e.textContent = txt;
+  };
+  setT('linechart-sub', 'Click en la leyenda para mostrar u ocultar años');
+  setT('heatmap-sub', rango + ' · Mayor contraste = mayor concentración');
+  setT('historico-title', 'Histórico ' + rango);
+  // El peakChart muestra los 5 meses previos al actual; los labels los calcula
+  // el pipeline, así que el título se toma de ahí.
+  var rl = d.recentLabels || [];
+  if (rl.length) {
+    setT('peak-title', 'Actividad reciente — ' + rl[0] + ' a ' + rl[rl.length - 1]);
+    setT('peak-sub', 'Reuniones por mes desde ' + rl[0] + ' · Tendencia más reciente del equipo');
+  }
+  // El título de la pestaña del browser también llevaba el año fijo.
+  if (cy) document.title = 'Distribución Ameris — Dashboard ' + cy;
+  setT('recontact-sub', 'Clientes que tuvieron reunión en ' + (cy - 1)
+    + ' y ya fueron contactados en ' + cy + ' (Ene–' + MES_S[n-1] + ')');
+}
+
+// ── COMPARATIVA YTD (tab Reuniones) ──────────────────────────────────────────
 // Reuniones del mismo tramo Ene–<mes de corte> en cada año disponible, con la
 // variación contra el año anterior. Antes esta sección tenía los números de
 // 2024 escritos a mano y nunca se actualizaba al subir el Excel.
@@ -2410,12 +2491,46 @@ def add_ritmo_activos(html: str) -> str:
     return html
 
 
+YTD_SEG_VIEJO = '    <div class="card-title">Reuniones YTD 2026 — por segmento</div>\n    <div class="card-sub">Total de reuniones realizadas Ene–May 2026 por prioridad &nbsp;·&nbsp; Total: <strong>167</strong></div>\n    <div style="display:flex;flex-direction:column;gap:14px;margin-top:12px;">\n\n      <div>\n        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">\n          <div style="display:flex;align-items:center;gap:8px;">\n            <span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">HP</span>\n            <span style="font-size:12px;color:var(--text);">110 reuniones · 47/71 clientes contactados</span>\n          </div>\n          <span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#1B4B9B;">110</span>\n        </div>\n        <div class="progress-wrap">\n          <div class="progress-bar" style="width:65.9%;background:#1B4B9B;"></div>\n        </div>\n        <div style="font-size:10px;color:var(--text3);margin-top:3px;">66% del total YTD &nbsp;·&nbsp; 47 de 71 clientes HP con al menos 1 reunión</div>\n      </div>\n\n      <div>\n        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">\n          <div style="display:flex;align-items:center;gap:8px;">\n            <span style="background:#EBF0F8;color:#2E6BAF;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">MP</span>\n            <span style="font-size:12px;color:var(--text);">42 reuniones · 26/43 clientes contactados</span>\n          </div>\n          <span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#2E6BAF;">42</span>\n        </div>\n        <div class="progress-wrap">\n          <div class="progress-bar" style="width:25.1%;background:#2E6BAF;"></div>\n        </div>\n        <div style="font-size:10px;color:var(--text3);margin-top:3px;">25% del total YTD &nbsp;·&nbsp; 26 de 43 clientes MP con al menos 1 reunión</div>\n      </div>\n\n      <div>\n        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;">\n          <div style="display:flex;align-items:center;gap:8px;">\n            <span style="background:#EBF0F8;color:#5A93CC;font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;">LP</span>\n            <span style="font-size:12px;color:var(--text);">15 reuniones · 12/75 clientes contactados</span>\n          </div>\n          <span style="font-family:\'IBM Plex Mono\',monospace;font-size:13px;font-weight:700;color:#5A93CC;">15</span>\n        </div>\n        <div class="progress-wrap">\n          <div class="progress-bar" style="width:9%;background:#5A93CC;"></div>\n        </div>\n        <div style="font-size:10px;color:var(--text3);margin-top:3px;">9% del total YTD &nbsp;·&nbsp; 12 de 75 clientes LP con al menos 1 reunión</div>\n      </div>\n\n    </div>\n'
+
+YTD_SEG_NUEVO = r"""    <div class="card-title" data-q-text="ytd-seg-title">Reuniones YTD por segmento</div>
+    <div class="card-sub" data-q-text="ytd-seg-sub">&nbsp;</div>
+    <div id="ytd-segmento" style="display:flex;flex-direction:column;gap:14px;margin-top:12px;"></div>
+"""
+
+LABELS_PERIODO = [('2023 excluido por baja representatividad de datos · Click en la leyenda para filtrar años', '<span data-q-text="linechart-sub">Click en la leyenda para filtrar años</span>'), ('2024–2026 · Mayor contraste = mayor concentración', '<span data-q-text="heatmap-sub">Mayor contraste = mayor concentración</span>'), ('Actividad reciente — Dic 2025 a Mar 2026', '<span data-q-text="peak-title">Actividad reciente</span>'), ('Reuniones por mes desde diciembre 2025 · Tendencia más reciente del equipo', '<span data-q-text="peak-sub">Tendencia más reciente del equipo</span>'), ('Histórico 2024–2026', '<span data-q-text="historico-title">Histórico</span>'), ('Clientes que tuvieron reunión en 2025 y ya fueron contactados en 2026 (Ene–May)', '<span data-q-text="recontact-sub">Clientes recontactados</span>')]
+
+
+def add_labels_dinamicos(html: str) -> str:
+    """Cambia por hooks los indicadores que estaban escritos a mano: el
+    bloque "Reuniones YTD por segmento" (3 barras y 12 números fijos) y los
+    títulos con rangos de años o meses hardcodeados."""
+    if YTD_SEG_VIEJO in html:
+        html = html.replace(YTD_SEG_VIEJO, YTD_SEG_NUEVO, 1)
+    else:
+        print("  WARN: no encontré el bloque Reuniones YTD por segmento")
+    for viejo, nuevo in LABELS_PERIODO:
+        if viejo in html:
+            html = html.replace(viejo, nuevo, 1)
+        else:
+            print("  WARN: no encontré el label %r" % viejo[:40])
+    return html
+
+
 def main():
     if not SOURCE_HTML.exists():
         sys.exit(f"No encuentro source HTML: {SOURCE_HTML}")
     print(f"Leyendo {SOURCE_HTML.name}...")
     html = SOURCE_HTML.read_text(encoding="utf-8")
     print(f"  {len(html)//1024} KB")
+    # source.html arrastra un <div> suelto antes del <!DOCTYPE>: es el
+    # encabezado de una tabla que se escapó al guardar el borrador. Rendea
+    # como basura arriba de todo y mete al browser en quirks mode.
+    if not html.lstrip().startswith("<!DOCTYPE"):
+        i = html.find("<!DOCTYPE")
+        if i > 0:
+            print("  (descartado un fragmento suelto antes del <!DOCTYPE>: %d chars)" % i)
+            html = html[i:]
     html = transform(html)
     OUT_HTML.write_text(html, encoding="utf-8")
     print(f"  -> {OUT_HTML.relative_to(REPO_DIR)} ({len(html)//1024} KB)")

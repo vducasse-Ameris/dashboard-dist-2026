@@ -739,10 +739,16 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         recent_vals.append(int(monthly_by_year.get(y, [0]*12)[m-1]) if y in monthly_by_year else 0)
 
     # ── REUNIONES YTD POR PRIORIDAD (para reunYtdChart) ─────────────────
-    reun_ytd_by_prio = {
-        prio: sum(int(r["reun26"]) for r in risk_cur[prio])
-        for prio in ["HP", "MP", "LP"]
-    }
+    # Antes sumaba los 12 meses del foto y descartaba las contrapartes sin
+    # prioridad válida, así que no cuadraba con kpi.ytd. Ahora corta en el mes
+    # de corte y manda las no clasificadas al bucket "?", de modo que
+    # HP+MP+LP+? == ytd exactamente.
+    reun_ytd_by_prio = {"HP": 0, "MP": 0, "LP": 0, "?": 0}
+    _cols_ytd = [m for m in MESES[:ref_month] if m in df_cur.columns]
+    for _, _row in df_cur.iterrows():
+        _pr = prio_dict.get(_row["_cn"])
+        _pr = _pr if _pr in THRESH else "?"
+        reun_ytd_by_prio[_pr] += int(sum(float(_row.get(m, 0) or 0) for m in _cols_ytd))
 
     # ── NUEVOS DISTRIBUIDORES (vs año anterior) ─────────────────────────
     # Distribuidores que están en la sección 'Distribuidores' del foto del año
