@@ -540,6 +540,7 @@ function applyData(d) {
     renderComparativaQ(d);
     renderComparativaYTD(d);
     renderYtdSegmento(d);
+    renderConsolidado(d);
     renderLabelsPeriodo(d);
     renderCrossSell(d);
     renderCrossGastoReun(d);
@@ -697,6 +698,14 @@ function rebuildYearTabs(d) {
     });
     btns.push('<button class="ftab" data-sub-yr="ALL" onclick="setSubYear(\'ALL\',this)">Todos</button>');
     st.innerHTML = btns.join('');
+  }
+
+  // Tab Clientes — botones de año (antes fijos en 2024/2025/2026)
+  var cl = document.querySelector('[data-q-buttons="clientes-year"]');
+  if (cl) {
+    cl.innerHTML = yrs.map(function(yr) {
+      return '<button class="ftab" onclick="setClients(\'' + yr + '\',this)">' + yr + '</button>';
+    }).join('');
   }
 
   // Heatmap: 3 años más recientes (ascendente)
@@ -1781,6 +1790,9 @@ def transform(html: str) -> str:
     # 13) Indicadores y títulos que estaban escritos a mano
     html = add_labels_dinamicos(html)
 
+    # 14) Tabla Consolidado por trimestre, generada desde los datos
+    html = add_consolidado_dinamico(html)
+
     return html
 
 
@@ -2223,7 +2235,91 @@ COMPARATIVA_YTD_VIEJO = '  <div class="section-label">Comparativa YTD Enero–Ma
 COMPARATIVA_YTD_HTML = r"""  <div class="section-label" data-q-text="comparativa-ytd-label">Comparativa YTD &mdash; mismo per&iacute;odo cada a&ntilde;o</div>
   <div class="kpi-row kpi-row-3" id="comparativa-ytd"></div>"""
 
-COMPARATIVA_YTD_JS = r"""// ── REUNIONES YTD POR SEGMENTO (tab Resumen) ─────────────────────────────────
+COMPARATIVA_YTD_JS = r"""// ── CONSOLIDADO POR TRIMESTRE Y SEGMENTO (tab Resumen) ───────────────────────
+// La tabla completa (26 números, encabezados "Q1 2026"…"Q4 2026" y la nota al
+// pie) estaba escrita a mano con los datos de Q1. Ahora se genera entera desde
+// consolidadoQ, así que las columnas y el año ruedan solos.
+function renderConsolidado(d) {
+  var el = document.getElementById('consolidado-tabla');
+  if (!el) return;
+  var c = d.consolidadoQ;
+  if (!c) return;
+  var MES_C = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  var COL = { HP:'#1B4B9B', MP:'#2E6BAF', LP:'#5A93CC' };
+
+  var setT = function(key, txt) {
+    var e = document.querySelector('[data-q-text="' + key + '"]');
+    if (e) e.innerHTML = txt;
+  };
+  setT('cons-title', 'Reuniones y contrapartes por trimestre ' + c.year);
+  setT('cons-sub', '"Reun." = total de reuniones · "CP" = contrapartes distintas '
+    + '(clientes únicos contactados) · Proy. = ritmo Ene–' + MES_C[c.refMonth - 1] + ' llevado a 12 meses');
+
+  // Encabezado: una pareja de columnas por trimestre, marcando cerrados vs curso
+  var th = function(txt, extra) {
+    return '<th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.95);font-weight:600;'
+      + (extra || '') + '">' + txt + '</th>';
+  };
+  var h = '<table style="width:100%;border-collapse:collapse;font-size:11px;min-width:700px;">'
+    + '<thead><tr style="background:#1B4B9B;color:#fff;">'
+    + '<th rowspan="2" style="padding:8px 10px;text-align:left;">Seg.</th>'
+    + '<th rowspan="2" style="padding:8px 10px;text-align:center;">Clientes</th>';
+  for (var q = 1; q <= 4; q++) {
+    var cerrado = q < c.currentQ, curso = q === c.currentQ;
+    var etq = 'Q' + q + ' ' + c.year + (cerrado ? ' ✓' : (curso ? ' (en curso)' : ''));
+    h += '<th colspan="2" style="padding:6px 10px;text-align:center;font-weight:'
+      + (curso ? '600' : '500') + ';color:rgba(255,255,255,'
+      + (cerrado || curso ? '0.95' : '0.7') + ');background:'
+      + (curso ? '#0D2D6B' : 'transparent') + ';border-left:1px solid rgba(255,255,255,0.2);">' + etq + '</th>';
+  }
+  h += '<th rowspan="2" style="padding:8px 10px;text-align:center;border-left:1px solid rgba(255,255,255,0.2);">Total</th>'
+    + '<th rowspan="2" style="padding:8px 10px;text-align:center;">Proy.</th></tr><tr style="background:#1B4B9B;color:#fff;">';
+  for (var q2 = 1; q2 <= 4; q2++) {
+    h += '<th style="padding:4px 8px;text-align:center;font-size:10px;font-weight:500;color:rgba(255,255,255,0.8);border-left:1px solid rgba(255,255,255,0.15);">Reun.</th>'
+      + '<th style="padding:4px 8px;text-align:center;font-size:10px;font-weight:500;color:rgba(255,255,255,0.8);">CP</th>';
+  }
+  h += '</tr></thead><tbody>';
+
+  var mono = "font-family:'IBM Plex Mono',monospace;";
+  var fila = function(f, esTotal) {
+    var col = COL[f.prio] || 'var(--text2)';
+    var bg = esTotal ? 'background:#F4F7FB;font-weight:700;' : '';
+    var r = '<tr style="border-bottom:1px solid var(--border);' + bg + '">';
+    r += esTotal
+      ? '<td style="padding:8px 10px;">Total</td>'
+      : '<td style="padding:8px 10px;"><span style="background:#EBF0F8;color:' + col
+        + ';font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;">' + f.prio + '</span></td>';
+    r += '<td style="text-align:center;padding:8px 10px;' + mono + '">' + f.clientes + '</td>';
+    for (var qi = 0; qi < 4; qi++) {
+      var cel = f.q[qi];
+      var curso = (qi + 1) === c.currentQ;
+      var est = 'text-align:center;padding:8px 10px;' + mono
+        + (curso ? 'background:#EBF0F8;' : '') + 'border-left:1px solid var(--border);';
+      if (!cel) {
+        r += '<td style="' + est + 'color:var(--text3);">—</td><td style="' + est.replace('border-left:1px solid var(--border);','') + 'color:var(--text3);">—</td>';
+      } else {
+        r += '<td style="' + est + 'font-weight:600;">' + cel.reun + '</td>'
+          + '<td style="' + est.replace('border-left:1px solid var(--border);','') + 'color:' + col + ';">' + cel.cp + '</td>';
+      }
+    }
+    r += '<td style="text-align:center;padding:8px 10px;' + mono + 'font-weight:700;border-left:1px solid var(--border);">' + f.totalReun + '</td>';
+    r += '<td style="text-align:center;padding:8px 10px;' + mono + 'color:var(--text3);">' + f.proy + '</td>';
+    return r + '</tr>';
+  };
+  h += c.rows.map(function(f) { return fila(f, false); }).join('') + fila(c.total, true);
+  el.innerHTML = h + '</tbody></table>';
+
+  // Nota al pie: promedio de reuniones por contraparte en cada segmento
+  var partes = c.rows.map(function(f) {
+    var prom = f.totalCp ? (f.totalReun / f.totalCp).toFixed(1) : '0.0';
+    return f.prio + ': ' + f.totalReun + ' reun. en ' + f.totalCp + ' clientes (prom. ' + prom + '/cliente)';
+  });
+  setT('cons-footer', 'CP = contrapartes únicas · ' + partes.join(' · ')
+    + (c.sinPrio ? ' · ' + c.sinPrio + ' contraparte' + (c.sinPrio > 1 ? 's' : '')
+        + ' sin prioridad asignada, incluida' + (c.sinPrio > 1 ? 's' : '') + ' sólo en el Total' : ''));
+}
+
+// ── REUNIONES YTD POR SEGMENTO (tab Resumen) ─────────────────────────────────
 // Antes eran 3 barras y 12 números escritos a mano (110/42/15, 66/25/9%, con el
 // subtítulo fijo "Ene–May 2026"). Ahora sale de kpi.reun_ytd_by_prio y
 // kpi.riesgo_by_prio, que ya venían en el payload.
@@ -2295,6 +2391,8 @@ function renderLabelsPeriodo(d) {
   }
   // El título de la pestaña del browser también llevaba el año fijo.
   if (cy) document.title = 'Distribución Ameris — Dashboard ' + cy;
+  setT('nuevos-card-sub', 'Distribuidores que realizaron su primera inversión con Ameris en ' + cy);
+  setT('semaforo-ytd', 'YTD Ene–' + MES_S[n-1] + ' ' + cy);
   setT('recontact-sub', 'Clientes que tuvieron reunión en ' + (cy - 1)
     + ' y ya fueron contactados en ' + cy + ' (Ene–' + MES_S[n-1] + ')');
 }
@@ -2514,6 +2612,34 @@ def add_labels_dinamicos(html: str) -> str:
             html = html.replace(viejo, nuevo, 1)
         else:
             print("  WARN: no encontré el label %r" % viejo[:40])
+    return html
+
+
+CONSOLIDADO_VIEJO = '    <div class="card-title">Reuniones y contrapartes por trimestre 2026</div>\n    <div class="card-sub">"Reun." = total de reuniones · "CP" = contrapartes distintas (clientes únicos contactados) · Q2–Q4 se completarán durante el año · Proy. = Q1 × 4</div>\n    <table style="width:100%;border-collapse:collapse;font-size:11px;margin-top:10px;min-width:700px;">\n      <thead>\n        <tr style="background:#1B4B9B;">\n          <th style="padding:8px 10px;text-align:left;color:#fff;font-weight:500;border-radius:4px 0 0 0;" rowspan="2">Seg.</th>\n          <th style="padding:8px 10px;text-align:center;color:#fff;font-weight:500;" rowspan="2">Clientes</th>\n          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.95);font-weight:600;background:#0D2D6B;border-left:1px solid rgba(255,255,255,0.2);" colspan="2"><span data-q-th="1">Q1 2026 ✓</span></th>\n          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2"><span data-q-th="2">Q2 2026 (YTD)</span></th>\n          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2"><span data-q-th="3">Q3 2026</span></th>\n          <th style="padding:6px 10px;text-align:center;color:rgba(255,255,255,0.7);font-weight:500;border-left:1px solid rgba(255,255,255,0.15);" colspan="2"><span data-q-th="4">Q4 2026</span></th>\n          <th style="padding:8px 10px;text-align:center;color:#fff;font-weight:500;border-left:1px solid rgba(255,255,255,0.2);" rowspan="2">Total</th>\n          <th style="padding:8px 10px;text-align:center;color:#fff;font-weight:500;border-radius:0 4px 0 0;" rowspan="2">Proy.</th>\n        </tr>\n        <tr style="background:#0D2D6B;">\n          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.9);font-weight:500;font-size:10px;border-left:1px solid rgba(255,255,255,0.2);">Reun.</th>\n          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.9);font-weight:500;font-size:10px;">CP</th>\n          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;border-left:1px solid rgba(255,255,255,0.1);">Reun.</th>\n          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;">CP</th>\n          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;border-left:1px solid rgba(255,255,255,0.1);">Reun.</th>\n          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;">CP</th>\n          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;border-left:1px solid rgba(255,255,255,0.1);">Reun.</th>\n          <th style="padding:5px 8px;text-align:center;color:rgba(255,255,255,0.55);font-weight:400;font-size:10px;">CP</th>\n        </tr>\n      </thead>\n      <tbody>\n        <tr style="border-bottom:1px solid var(--border);">\n          <td style="padding:8px 10px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;">HP</span></td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;">72</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:700;background:#EBF0F8;border-left:2px solid #1B4B9B;">74</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;background:#EBF0F8;color:#1B4B9B;">46</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;border-left:2px solid rgba(27,75,155,0.3);color:var(--text2);">36</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:var(--text2);">18</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;border-left:1px solid var(--border2);">72</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text2);">288</td>\n        </tr>\n        <tr style="border-bottom:1px solid var(--border);">\n          <td style="padding:8px 10px;"><span style="background:#EBF0F8;color:#2E6BAF;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;">MP</span></td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;">43</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:700;background:#EBF0F8;border-left:2px solid #1B4B9B;">27</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;background:#EBF0F8;color:#1B4B9B;">20</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;border-left:2px solid rgba(27,75,155,0.3);color:var(--text2);">15</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:var(--text2);">13</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;border-left:1px solid var(--border2);">42</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text2);">108</td>\n        </tr>\n        <tr style="border-bottom:1px solid var(--border);">\n          <td style="padding:8px 10px;"><span style="background:#EBF0F8;color:#5A93CC;font-size:11px;font-weight:600;padding:2px 8px;border-radius:4px;">LP</span></td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;">75</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:700;background:#EBF0F8;border-left:2px solid #1B4B9B;">9</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;background:#EBF0F8;color:#1B4B9B;">7</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;border-left:2px solid rgba(27,75,155,0.3);color:var(--text2);">6</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:var(--text2);">6</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;border-left:1px solid var(--border2);">15</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text2);">36</td>\n        </tr>\n        <tr style="background:var(--card2);">\n          <td style="padding:8px 10px;font-weight:600;color:var(--text);">Total</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;">190</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:700;background:#dce6f5;border-left:2px solid #1B4B9B;">110</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;background:#dce6f5;color:#1B4B9B;">73</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;color:var(--text3);">—</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;border-left:1px solid var(--border2);">167</td>\n          <td style="text-align:center;padding:8px 10px;font-family:\'IBM Plex Mono\',monospace;font-weight:600;color:var(--text2);">436</td>\n        </tr>\n      </tbody>\n    </table>\n    <div style="margin-top:8px;font-size:10px;color:var(--text3);">CP = contrapartes únicas · HP: 74 reun. en 46 clientes (prom. 1.6/cliente) · MP: 27 reun. en 20 clientes (prom. 1.4/cliente) · LP: 9 reun. en 7 clientes (prom. 1.3/cliente) · Abril 2026: 19 reuniones adicionales registradas</div>\n'
+
+CONSOLIDADO_NUEVO = r"""    <div class="card-title" data-q-text="cons-title">Reuniones y contrapartes por trimestre</div>
+    <div class="card-sub" data-q-text="cons-sub">&nbsp;</div>
+    <div id="consolidado-tabla" style="margin-top:10px;"></div>
+    <div style="margin-top:8px;font-size:10px;color:var(--text3);" data-q-text="cons-footer">&nbsp;</div>
+"""
+
+CONSOLIDADO_OTROS = [('<div class="card-sub">Distribuidores que realizaron su primera inversión con Ameris en 2026</div>', '<div class="card-sub" data-q-text="nuevos-card-sub">Distribuidores que realizaron su primera inversión con Ameris</div>'), ('<strong>YTD Ene–May 2026</strong>', '<strong data-q-text="semaforo-ytd">YTD</strong>'), ('<button class="ftab" onclick="setClients(\'2024\',this)">2024</button>\n        <button class="ftab" onclick="setClients(\'2025\',this)">2025</button>\n        <button class="ftab" onclick="setClients(\'2026\',this)">2026</button>', '<span data-q-buttons="clientes-year"></span>')]
+
+
+def add_consolidado_dinamico(html: str) -> str:
+    """La tabla "Reuniones y contrapartes por trimestre" tenía 26 números y
+    los encabezados Q1..Q4 escritos a mano con los datos de Q1 2026. Pasa a
+    generarse entera desde consolidadoQ, junto con los últimos labels que
+    llevaban el año fijo."""
+    if CONSOLIDADO_VIEJO in html:
+        html = html.replace(CONSOLIDADO_VIEJO, CONSOLIDADO_NUEVO, 1)
+    else:
+        print("  WARN: no encontré la tabla Consolidado")
+    for viejo, nuevo in CONSOLIDADO_OTROS:
+        if viejo in html:
+            html = html.replace(viejo, nuevo, 1)
+        else:
+            print("  WARN: no encontré %r" % viejo[:45])
     return html
 
 

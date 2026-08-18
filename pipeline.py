@@ -987,6 +987,53 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "excluidas": sorted(foto_excluidas, key=str.lower),
     }
 
+    # ── CONSOLIDADO POR TRIMESTRE Y SEGMENTO ────────────────────────────
+    # Reuniones y contrapartes distintas (clientes únicos contactados) por
+    # prioridad en cada trimestre del año. Los trimestres que aún no empiezan
+    # quedan en None y la UI los muestra como "—". Antes esta tabla estaba
+    # escrita a mano con los datos de Q1 2026.
+    def _q_meses(qi):
+        """Meses del trimestre `qi` ya transcurridos y presentes en el foto."""
+        return [MESES[m - 1] for m in range((qi - 1) * 3 + 1, qi * 3 + 1)
+                if m <= ref_month and MESES[m - 1] in df_cur.columns]
+
+    def _celda(sub, qi):
+        cols = _q_meses(qi)
+        if not cols:
+            return None
+        suma = sub[cols].sum(axis=1)
+        return {"reun": int(suma.sum()), "cp": int((suma > 0).sum())}
+
+    df_cons = df_cur.copy()
+    df_cons["_prio"] = [
+        (prio_dict.get(cn) if prio_dict.get(cn) in THRESH else "?") for cn in df_cons["_cn"]
+    ]
+    cols_ytd = [m for m in MESES[:ref_month] if m in df_cons.columns]
+
+    def _fila(sub, etiqueta):
+        ytd = sub[cols_ytd].sum(axis=1) if cols_ytd else sub.iloc[:, :0].sum(axis=1)
+        total_reun = int(ytd.sum())
+        return {
+            "prio": etiqueta,
+            "clientes": int(len(sub)),
+            "q": [_celda(sub, qi) for qi in (1, 2, 3, 4)],
+            "totalReun": total_reun,
+            "totalCp": int((ytd > 0).sum()),
+            # Proyección anual: ritmo YTD llevado a 12 meses (antes era Q1 × 4).
+            "proy": int(round(total_reun / ref_month * 12)) if ref_month else 0,
+        }
+
+    consolidado_q = {
+        "year": cur_year,
+        "currentQ": last_q,
+        "refMonth": ref_month,
+        "rows": [_fila(df_cons[df_cons["_prio"] == p], p) for p in ("HP", "MP", "LP")],
+        "total": _fila(df_cons, "Total"),
+        # Contrapartes sin prioridad en el foto: explican que el Total no sea
+        # exactamente HP+MP+LP.
+        "sinPrio": int((df_cons["_prio"] == "?").sum()),
+    }
+
     # ── RITMO SEMANAL DEL TRIMESTRE EN CURSO ────────────────────────────
     # Promedio de reuniones por semana en el trimestre, cortado en la última
     # semana completa (lunes a domingo). Sale de Apuntes y no del foto: el foto
@@ -1059,6 +1106,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "crossSellRadar": cross_sell_radar,
         "crossGastoReun": cross_gasto_reun,
         "fotoYTD": foto_ytd,
+        "consolidadoQ": consolidado_q,
         "recentLabels": recent_labels,
         "recentVals": recent_vals,
         "years": years_avail,
