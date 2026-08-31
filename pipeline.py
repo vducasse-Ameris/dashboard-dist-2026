@@ -736,16 +736,17 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         _pr = _pr if _pr in THRESH else "?"
         reun_ytd_by_prio[_pr] += int(sum(float(_row.get(m, 0) or 0) for m in _cols_ytd))
 
-    # ── NUEVOS DISTRIBUIDORES (vs año anterior) ─────────────────────────
-    # Distribuidores que están en la sección 'Distribuidores' del foto del año
-    # actual, pero NO estaban en el foto del año anterior, Y tuvieron al menos
-    # una reunión en el año actual. Para cada uno, buscamos el subtema/fondo
-    # de su primera reunión.
+    # ── NUEVOS CONTACTOS (vs año anterior) ──────────────────────────────
+    # Contrapartes que están en el foto del año actual pero NO estaban en el
+    # del año anterior, Y tuvieron al menos una reunión este año. Para cada una
+    # buscamos el subtema/fondo de su primera reunión.
+    #
+    # Antes esto filtraba _tipo == "Dist" y se llamaba "nuevos distribuidores",
+    # pero dejaba fuera aseguradoras, AFPs y demás institucionales, que también
+    # son contactos nuevos. Ahora entran todas y cada fila lleva su tipo.
     nuevos_distribuidores = []
-    if "_tipo" in df_cur.columns and not df_p1.empty and "_tipo" in df_p1.columns:
-        dist_cur_set  = set(df_cur[df_cur["_tipo"] == "Dist"]["_cn"])
-        dist_prev_set = set(df_p1[df_p1["_tipo"] == "Dist"]["_cn"])
-        candidatos = sorted(dist_cur_set - dist_prev_set)
+    if not df_p1.empty:
+        candidatos = sorted(set(df_cur["_cn"]) - set(df_p1["_cn"]))
         for cn in candidatos:
             row_arr = df_cur[df_cur["_cn"] == cn]
             if row_arr.empty:
@@ -777,7 +778,8 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
                         fondo = s
             q_num = (primera_mes - 1) // 3 + 1
             nuevos_distribuidores.append({
-                "name":   str(row["Cliente"]),
+                "name":   str(row["Cliente"]).strip(),
+                "tipo":   row.get("_tipo") or "Dist",
                 "fondo":  fondo,
                 "q":      f"Q{q_num}",
                 "q_num":  q_num,
@@ -1087,7 +1089,7 @@ def compute_data(xlsm_input, today: date | None = None) -> dict:
         "activationData": activation_data,
         "activationCounts": activation_counts,
         "areasData": areas_data,
-        "nuevosDistribuidores": nuevos_distribuidores,
+        "nuevosContactos": nuevos_distribuidores,
         "qComparativa": q_comparativa,
         "crossSellRadar": cross_sell_radar,
         "crossGastoReun": cross_gasto_reun,

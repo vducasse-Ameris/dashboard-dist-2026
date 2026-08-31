@@ -403,19 +403,21 @@ function applyData(d) {
     setText('[data-q-text="recontact-section"]', 'Tasa de recontacto ' + (cy - 1) + ' → ' + cy + ' YTD · click para ver detalle');
 
 
-    // Nuevos distribuidores
-    var nd = d.nuevosDistribuidores || [];
+    // Nuevos contactos (distribuidores + institucionales)
+    var nd = d.nuevosContactos || [];
     var ndKpiVal = document.querySelector('[data-q-text="nuevos-kpi-value"]');
     if (ndKpiVal) ndKpiVal.textContent = nd.length;
-    setText('[data-q-text="nuevos-kpi-label"]', 'Nuevos distribuidores ' + cy);
+    setText('[data-q-text="nuevos-kpi-label"]', 'Nuevos contactos ' + cy);
     var ndSubEl = document.querySelector('[data-q-text="nuevos-kpi-sub"]');
     if (ndSubEl) {
       var names = nd.slice(0, 4).map(function(n){return n.name;}).join(' · ');
       ndSubEl.textContent = names || 'sin nuevos a la fecha';
     }
-    setText('[data-q-text="nuevos-section"]', 'Nuevos distribuidores ' + cy + ' — detalle');
+    setText('[data-q-text="nuevos-section"]', 'Nuevos contactos ' + cy + ' — detalle');
+    var ndD = nd.filter(function(n){ return n.tipo !== 'Inst'; }).length;
     setText('[data-q-text="nuevos-footer"]',
-      '* Cliente nuevo = distribuidor presente en el foto ' + cy + ' que no estaba en ' + (cy - 1));
+      '* Contacto nuevo = contraparte presente en el foto ' + cy + ' que no estaba en ' + (cy - 1)
+      + ', con al menos una reunión este año · ' + ndD + ' distribuidores · ' + (nd.length - ndD) + ' institucionales');
     var ndTbody = document.getElementById('nuevos-tbody');
     if (ndTbody) {
       if (nd.length === 0) {
@@ -433,6 +435,9 @@ function applyData(d) {
           var isLast = (i === nd.length - 1);
           return '<tr' + (isLast ? '' : ' style="border-bottom:1px solid var(--border);"') + '>'
             + '<td style="padding:8px 12px;font-weight:500;color:var(--text);">' + n.name + '</td>'
+            + '<td style="text-align:center;padding:8px 12px;"><span style="font-size:9px;font-weight:700;padding:2px 8px;border-radius:3px;letter-spacing:.05em;text-transform:uppercase;background:'
+              + (n.tipo === 'Inst' ? '#6B4C9B' : '#E8ECF4') + ';color:' + (n.tipo === 'Inst' ? '#FFFFFF' : '#3D5278') + ';">'
+              + (n.tipo === 'Inst' ? 'Institucional' : 'Distribuidor') + '</span></td>'
             + '<td style="text-align:center;padding:8px 12px;"><span style="background:#EBF0F8;color:#1B4B9B;font-size:10px;font-weight:600;padding:2px 8px;border-radius:4px;">'
             + (n.fondo || '—') + '</span></td>'
             + '<td style="text-align:center;padding:8px 12px;font-family:\'IBM Plex Mono\',monospace;color:#0E7A4E;font-weight:600;">'
@@ -443,7 +448,7 @@ function applyData(d) {
     }
 
     // Labels Q/año restantes (Consolidado, Footer, setYoy)
-    setText('[data-q-text="nuevos-card-title"]', 'Clientes nuevos incorporados en ' + cy);
+    setText('[data-q-text="nuevos-card-title"]', 'Contrapartes contactadas por primera vez en ' + cy);
     setText('[data-q-text="comparativa-section"]', 'Comparativa ' + cq.label + ' vs ' + cq.label_year_prev + ' — por prioridad');
     setText('[data-q-text="crosssell-section"]', 'Oportunidades de cross-sell — alto contacto, pocos productos');
     setText('[data-q-text="crosssell-title"]', 'Clientes con ≥ 3 reuniones en ' + cy + ' y ≤ 1 producto distinto discutido (fuera de Follow Up)');
@@ -1240,7 +1245,7 @@ def transform(html: str) -> str:
     )
     html = html.replace(
         '<div class="kpi-label">Nuevos distribuidores Q1 2026</div>',
-        '<div class="kpi-label" data-q-text="nuevos-kpi-label">Nuevos distribuidores Q1 2026</div>',
+        '<div class="kpi-label" data-q-text="nuevos-kpi-label">Nuevos contactos</div>',
         1,
     )
     html = html.replace(
@@ -1251,7 +1256,7 @@ def transform(html: str) -> str:
     # Section label + envolver el card de detalle con id para rebuild dinámico
     html = html.replace(
         '<div class="section-label">Nuevos distribuidores Q1 2026 — detalle</div>',
-        '<div class="section-label" data-q-text="nuevos-section" id="nuevos-section-label">Nuevos distribuidores Q1 2026 — detalle</div>',
+        '<div class="section-label" data-q-text="nuevos-section" id="nuevos-section-label">Nuevos contactos — detalle</div>',
         1,
     )
     # Reemplazar la tbody hardcodeada con un placeholder (la JS lo llena)
@@ -1770,6 +1775,9 @@ def transform(html: str) -> str:
 
     # 15) Sacar el semáforo de contacto
     html = remove_semaforo(html)
+
+    # 16) Nuevos contactos: incluye institucionales, columna Tipo
+    html = add_nuevos_contactos(html)
 
     return html
 
@@ -2369,7 +2377,7 @@ function renderLabelsPeriodo(d) {
   }
   // El título de la pestaña del browser también llevaba el año fijo.
   if (cy) document.title = 'Distribución Ameris — Dashboard ' + cy;
-  setT('nuevos-card-sub', 'Distribuidores que realizaron su primera inversión con Ameris en ' + cy);
+  setT('nuevos-card-sub', 'Distribuidores e institucionales — aseguradoras, AFPs y otros — con su primera reunión registrada en ' + cy);
   setT('recontact-sub', 'Clientes que tuvieron reunión en ' + (cy - 1)
     + ' y ya fueron contactados en ' + cy + ' (Ene–' + MES_S[n-1] + ')');
 }
@@ -2601,6 +2609,22 @@ CONSOLIDADO_NUEVO = r"""    <div class="card-title" data-q-text="cons-title">Reu
 """
 
 CONSOLIDADO_OTROS = [('<div class="card-sub">Distribuidores que realizaron su primera inversión con Ameris en 2026</div>', '<div class="card-sub" data-q-text="nuevos-card-sub">Distribuidores que realizaron su primera inversión con Ameris</div>'), ('<strong>YTD Ene–May 2026</strong>', '<strong data-q-text="semaforo-ytd">YTD</strong>'), ('<button class="ftab" onclick="setClients(\'2024\',this)">2024</button>\n        <button class="ftab" onclick="setClients(\'2025\',this)">2025</button>\n        <button class="ftab" onclick="setClients(\'2026\',this)">2026</button>', '<span data-q-buttons="clientes-year"></span>')]
+
+
+def add_nuevos_contactos(html: str) -> str:
+    """La tabla de nuevos clientes listaba sólo distribuidores. Ahora entran
+    también los institucionales (aseguradoras, AFPs), así que la columna pasa a
+    "Contraparte" y se agrega una de Tipo."""
+    viejo = ('<th style="padding:8px 12px;text-align:left;color:#fff;font-weight:500;'
+             'border-radius:4px 0 0 0;">Distribuidor</th>')
+    nuevo = ('<th style="padding:8px 12px;text-align:left;color:#fff;font-weight:500;'
+             'border-radius:4px 0 0 0;">Contraparte</th>\n'
+             '          <th style="padding:8px 12px;text-align:center;color:#fff;font-weight:500;">Tipo</th>')
+    if viejo in html:
+        html = html.replace(viejo, nuevo, 1)
+    else:
+        print("  WARN: no encontré la cabecera de la tabla de nuevos contactos")
+    return html
 
 
 def add_consolidado_dinamico(html: str) -> str:
